@@ -3195,7 +3195,10 @@
 
         container.innerHTML = sortedData.map(function(d) {
             const rate = d.rate || 0;
-            const barColor = rate < 80 ? '#ef4444' : ((villageColorsMap && villageColorsMap[d.village]) || '#667eea');
+            
+            // ✅ ตั้งค่าเงื่อนไขสี: 80% ขึ้นไปเป็นสีฟ้า (#0ea5e9) ต่ำกว่า 80% เป็นสีแดง (#ea5455)
+            const barColor = rate >= 80 ? '#0ea5e9' : '#ea5455'; 
+            
             const barHeight = Math.max(rate, 5);
             const total = d.total || 0;
             const vaccinatedCount = d.vaccinatedCount || d.onTime || 0;
