@@ -2954,11 +2954,10 @@
         showLoading();
 
         try {
-            const [result, villagesResult, facilityResult] = await Promise.all([
-                callGAS('getDashboardStats', [APP.currentUser.role, APP.currentUser.village, APP.currentUser.hcode, APP.currentUser.subdistrict]),
-                callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode, APP.currentUser.subdistrict]),
-                callGAS('getFacilityMap', [])
-            ]);
+            // [แก้ไขแล้ว] เรียกข้อมูลทีละขั้นตอนเพื่อป้องกันคอขวดและ Failed to fetch
+            const facilityResult = await callGAS('getFacilityMap', []);
+            const villagesResult = await callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode, APP.currentUser.subdistrict]);
+            const result = await callGAS('getDashboardStats', [APP.currentUser.role, APP.currentUser.village, APP.currentUser.hcode, APP.currentUser.subdistrict]);
 
             APP.facilityMap = facilityResult.success ? facilityResult.map : {};
 
@@ -4588,10 +4587,9 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
                 userVillage: APP.currentUser.village
             };
             
-            const [apptRes, fRes] = await Promise.all([
-                callGAS('getAppointments', [filters]), 
-                callGAS('getFacilityMap', [])
-            ]);
+            // [แก้ไขแล้ว] เรียกข้อมูลทีละขั้นตอน (Sequential)
+            const fRes = await callGAS('getFacilityMap', []);
+            const apptRes = await callGAS('getAppointments', [filters]); 
             
             APP.facilityMap = fRes.success ? fRes.map : {};
             hideLoading();
@@ -5499,12 +5497,10 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
 
         let vRes, repRes, fRes;
         try {
-            // โหลดข้อมูลให้ครบทั้ง 3 อย่าง
-            [vRes, repRes, fRes] = await Promise.all([
-                callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode]),
-                callGAS('getTrackingReporters', []),
-                callGAS('getFacilityMap', [])
-            ]);
+            // [แก้ไขแล้ว] โหลดข้อมูลทีละคำสั่งเรียงกัน
+            fRes = await callGAS('getFacilityMap', []);
+            repRes = await callGAS('getTrackingReporters', []);
+            vRes = await callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode]);
         } catch (e) {
             hideLoading();
             page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(e.message) + '</div>';
@@ -5519,7 +5515,6 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
 
         const lockVillage = (APP.currentUser.role === 'เจ้าหน้าที่' && APP.currentUser.village && APP.currentUser.village !== '-') ? APP.currentUser.village : '';
 
-        // เพิ่มตัวกรอง hcode เข้ามาในหน้ารายงาน
         const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
         let facilityFilterHtml = '';
         if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
@@ -5606,7 +5601,6 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
 
         doLoadReport();
     }
-
     async function doLoadReport() {
         showLoading('กำลังดึงข้อมูลรายงาน...');
 
