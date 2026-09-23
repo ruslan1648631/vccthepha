@@ -3046,6 +3046,163 @@
         page-break-inside: avoid;
     }
 }
+/* ============================================================
+   BOTTOM NAV — "เพิ่มเติม" BUTTON & BOTTOM SHEET (แบบ A)
+   ============================================================ */
+.bottom-nav-item.more-btn i {
+    background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+    color: #d97706 !important;
+}
+
+.bottom-nav-item.more-btn.active i {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    color: #fff !important;
+}
+
+/* ============ BOTTOM SHEET ============ */
+.bottom-sheet-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 9998;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.bottom-sheet-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.bottom-sheet {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #fff;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 12px 20px 30px;
+    z-index: 9999;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.bottom-sheet.active {
+    transform: translateY(0);
+}
+
+.bottom-sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 2px;
+    margin: 0 auto 16px;
+}
+
+.bottom-sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.bottom-sheet-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bottom-sheet-header h4 i {
+    color: #667eea;
+}
+
+.bottom-sheet-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.bottom-sheet-close:active {
+    transform: scale(0.9);
+    background: #e2e8f0;
+}
+
+.bottom-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.bottom-sheet-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 12px;
+    background: #f8fafc;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+    text-align: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-sheet-item:active {
+    transform: scale(0.96);
+}
+
+.bottom-sheet-item.active {
+    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    border-color: #667eea;
+}
+
+.bottom-sheet-item.active i {
+    color: #4f46e5;
+}
+
+.bottom-sheet-item i {
+    font-size: 22px;
+    color: #667eea;
+    transition: color 0.2s ease;
+}
+
+.bottom-sheet-item span {
+    font-size: 12px;
+    font-weight: 500;
+    color: #334155;
+    line-height: 1.3;
+}
+
+/* ============ TABLET / DESKTOP ============ */
+@media (min-width: 769px) {
+    .bottom-sheet,
+    .bottom-sheet-overlay {
+        display: none !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -3325,21 +3482,25 @@
     // ⚠️ นำ Web App URL ที่เพิ่งคัดลอกมาเมื่อกี้ มาวางที่นี่
     const API_URL = "https://script.google.com/macros/s/AKfycbwOURwW8llT2-zw5qB7-Q9BtFilNdLXw_w77oIE6UKLeKgnteph4NaoocvjzcLiBX_N/exec";
 
-    async function callGAS(fnName, args, options) {
+    /* ============================================================
+ *  callGAS — เรียก Google Apps Script API พร้อม Retry + Timeout
+ * ============================================================ */
+async function callGAS(fnName, args, options) {
     options = options || {};
-    const maxRetries = options.maxRetries !== undefined ? options.maxRetries : 3;
-    const retryDelay = options.retryDelay || 1000; // 1 วินาที
-    const timeout = options.timeout || 45000; // 45 วินาที
+    const maxRetries = (typeof options.maxRetries === 'number') ? options.maxRetries : 3;
+    const retryDelay = options.retryDelay || 1000;   // 1 วินาที
+    const timeout    = options.timeout    || 45000;  // 45 วินาที
 
     let lastError = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         const startTime = Date.now();
-        
+        let timeoutId = null;
+
         try {
             // ✅ สร้าง AbortController เพื่อ timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            timeoutId = setTimeout(() => controller.abort(), timeout);
 
             const response = await fetch(API_URL, {
                 method: 'POST',
@@ -3355,66 +3516,134 @@
             });
 
             clearTimeout(timeoutId);
+            timeoutId = null;
+
             const elapsed = Date.now() - startTime;
 
-            // ✅ สำเร็จ
+            // ==========================================
+            // ✅ HTTP 2xx — สำเร็จ
+            // ==========================================
             if (response.ok) {
                 const rawText = await response.text();
 
                 if (!rawText || rawText.trim() === '') {
-                    throw new Error('Server ไม่ตอบกลับข้อมูล');
+                    throw new Error('Server ไม่ตอบกลับข้อมูล (Response ว่างเปล่า)');
                 }
 
                 try {
                     const result = JSON.parse(rawText);
-                    console.log(`✅ [${fnName}] OK (${elapsed}ms)${attempt > 1 ? ' [retry ' + attempt + ']' : ''}`);
-                    return result; // ✅ สำเร็จ คืนค่าทันที
-
+                    console.log(`✅ [${fnName}] OK (${elapsed}ms)` +
+                                (attempt > 1 ? ` [retry ${attempt}]` : ''));
+                    return result;
                 } catch (parseErr) {
+                    console.error(`❌ [${fnName}] ตอบกลับไม่ใช่ JSON:`, rawText.slice(0, 300));
                     throw new Error('Response ไม่ใช่ JSON: ' + rawText.slice(0, 100));
                 }
             }
 
-            // ❌ HTTP Error — ถ้าเป็น 5xx ให้ retry, 4xx ไม่ต้อง
+            // ==========================================
+            // ❌ HTTP 5xx — Retry ได้
+            // ==========================================
             if (response.status >= 500 && attempt < maxRetries) {
                 console.warn(`⚠️ [${fnName}] HTTP ${response.status} (attempt ${attempt}/${maxRetries}) — จะลองใหม่...`);
-                lastError = new Error(`HTTP ${response.status}`);
-                await sleep(retryDelay * attempt); // exponential backoff
-                continue;
-            }
-
-            // Error ที่ retry ไม่ช่วย (400, 401, 403, 404)
-            throw new Error(`HTTP ${response.status} ${response.statusText}`);
-
-        } catch (err) {
-            const elapsed = Date.now() - startTime;
-            lastError = err;
-
-            // ✅ ตรวจสอบว่าเป็น Network Error หรือ Timeout ที่ retry ได้
-            const isRetryable = 
-                err.name === 'AbortError' ||
-                err.message.includes('Failed to fetch') ||
-                err.message.includes('NetworkError') ||
-                err.message.includes('Network request failed') ||
-                err.message.includes('load failed') ||
-                err.message.includes('HTTP 5');
-
-            if (isRetryable && attempt < maxRetries) {
-                console.warn(`⚠️ [${fnName}] ${err.message} (attempt ${attempt}/${maxRetries}) — รอ ${retryDelay * attempt}ms แล้วลองใหม่...`);
+                lastError = new Error(`HTTP ${response.status} ${response.statusText}`);
                 await sleep(retryDelay * attempt);
                 continue;
             }
 
-            // ✅ ลองครั้งสุดท้ายแล้ว ยังพังอยู่ → throw
-            if (attempt === maxRetries) {
-                console.error(`❌ [${fnName}] ล้มเหลวหลังจากลอง ${maxRetries} ครั้ง (${elapsed}ms):`, err);
+            // ==========================================
+            // ❌ HTTP 4xx — Retry ไม่ช่วย → throw ทันที
+            // ==========================================
+            throw new Error(`HTTP ${response.status} ${response.statusText}`);
+
+        } catch (err) {
+            // ✅ Clear timeout ถ้ายังไม่ได้ clear
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+
+            const elapsed = Date.now() - startTime;
+            lastError = err;
+
+            // ==========================================
+            // ✅ ตรวจสอบว่า Retry ได้ไหม
+            // ==========================================
+            const errMsg = (err.message || '').toString();
+            const isAbort     = err.name === 'AbortError';
+            const isNetwork   = /Failed to fetch|NetworkError|Network request failed|load failed/i.test(errMsg);
+            const isServer    = /HTTP 5\d\d/.test(errMsg);
+            const isRetryable = isAbort || isNetwork || isServer;
+
+            // ✅ ถ้า Retry ได้ + ยังไม่ครบ → ลองใหม่
+            if (isRetryable && attempt < maxRetries) {
+                console.warn(`⚠️ [${fnName}] ${errMsg} (attempt ${attempt}/${maxRetries}) — รอ ${retryDelay * attempt}ms...`);
+                await sleep(retryDelay * attempt);
+                continue;
+            }
+
+            // ✅ ถ้า Retry ไม่ได้ (4xx) → throw ทันที ไม่ต้อง loop ต่อ
+            if (!isRetryable) {
+                console.error(`❌ [${fnName}] ล้มเหลว (retry ไม่ช่วย): ${errMsg} (${elapsed}ms)`);
                 throw new Error(translateError(err, elapsed));
             }
+
+            // ✅ Retry ได้แต่ครบ attempts แล้ว → throw
+            console.error(`❌ [${fnName}] ล้มเหลวหลังจากลอง ${maxRetries} ครั้ง (${elapsed}ms):`, err);
+            throw new Error(translateError(err, elapsed));
         }
     }
 
-    // ถ้าหลุดออกมาโดยไม่ return (กรณีไม่ควรเกิด)
+    // Fallback (ไม่ควรถึงบรรทัดนี้)
     throw new Error(translateError(lastError, 0));
+}
+
+
+/* ============================================================
+ *  ✅ Helper: หน่วงเวลาแบบ Promise
+ * ============================================================ */
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+/* ============================================================
+ *  ✅ Helper: แปลง Error ให้เป็นข้อความที่เข้าใจง่าย
+ * ============================================================ */
+function translateError(err, elapsed) {
+    const msg = (err && err.message) ? err.message : String(err || 'Unknown error');
+
+    // ---- Timeout (AbortController) ----
+    if (err && err.name === 'AbortError') {
+        return `⏱️ หมดเวลา (${Math.round(elapsed / 1000)} วินาที) — Server ใช้เวลานานเกินไป กรุณาลองอีกครั้ง`;
+    }
+
+    // ---- Network Error ----
+    if (/Failed to fetch|NetworkError|Network request failed|load failed/i.test(msg)) {
+        return '🌐 การเชื่อมต่อล้มเหลว (Network) — อาจเกิดจากอินเทอร์เน็ตหรือ Google Apps Script ไม่พร้อมใช้งาน กรุณาลองอีกครั้ง';
+    }
+
+    // ---- HTTP Status ----
+    if (/HTTP 401/.test(msg)) return '🔒 ไม่มีสิทธิ์เข้าถึง — ตรวจสอบ Deployment ตั้ง "Who has access: Anyone"';
+    if (/HTTP 403/.test(msg)) return '🚫 ถูกปฏิเสธ (Forbidden) — ตรวจสอบสิทธิ์ Deployment';
+    if (/HTTP 404/.test(msg)) return '❓ ไม่พบ Web App URL — Deployment อาจถูกลบ กรุณา Deploy ใหม่';
+    if (/HTTP 500/.test(msg)) return '💥 Server Error — code.gs มีข้อผิดพลาด กรุณาตรวจสอบ Log';
+    if (/HTTP 502|HTTP 503/.test(msg)) {
+        return '⏸️ Google Apps Script ไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่ใน 1-2 นาที';
+    }
+    if (/HTTP 429/.test(msg)) return '🚦 เรียกใช้งานถี่เกินไป (Rate Limit) — กรุณารอสักครู่แล้วลองใหม่';
+
+    // ---- Response ว่างเปล่า / ไม่ใช่ JSON ----
+    if (/Server ไม่ตอบกลับข้อมูล/.test(msg)) return '📭 Server ไม่ตอบกลับข้อมูล — กรุณาลองอีกครั้ง';
+    if (/ไม่ใช่ JSON/.test(msg))             return '📄 Server ตอบกลับผิดรูปแบบ — กรุณาลองอีกครั้ง';
+
+    // ---- Timeout (fallback) ----
+    if (elapsed > 30000) {
+        return `⏱️ ประมวลผลนานเกินไป (${Math.round(elapsed / 1000)} วินาที) — ลองลดขอบเขตข้อมูล`;
+    }
+
+    // ---- ค่าเริ่มต้น ----
+    return msg;
 }
 
 // ✅ Helper: หน่วงเวลา
@@ -3649,73 +3878,208 @@ function translateError(err, elapsed) {
     }
 
     function renderBottomNav(sidebarItems) {
-        const mobileItems = sidebarItems.filter(item => !item.sep);
-        const bottomNavItems = mobileItems.slice(0, 5); 
+    const mobileItems = sidebarItems.filter(item => !item.sep);
+    
+    // ✅ ถ้ามีเมนู <= 5 → แสดงทั้งหมด
+    //    ถ้ามี > 5 → แสดง 4 ตัวแรก + ปุ่ม "เพิ่มเติม"
+    let bottomNavItems, moreItems = [];
+    
+    if (mobileItems.length <= 5) {
+        bottomNavItems = mobileItems;
+    } else {
+        bottomNavItems = mobileItems.slice(0, 4);
+        moreItems = mobileItems.slice(4);
+    }
 
-        document.getElementById('bottomNav').innerHTML = bottomNavItems.map(function(item) {
-            return '<div class="bottom-nav-item ' + (APP.currentPage === item.id ? 'active' : '') + '" data-page="' + item.id + '">' +
-                   '<i class="' + item.icon + '"></i>' +
-                   '<span>' + item.label.replace('รายชื่อ', '').replace('จัดการ', '') + '</span>' + 
+    // สร้าง HTML ของ Bottom Nav
+    let navHtml = bottomNavItems.map(function(item) {
+        return '<div class="bottom-nav-item ' + (APP.currentPage === item.id ? 'active' : '') + 
+               '" data-page="' + item.id + '">' +
+               '<i class="' + item.icon + '"></i>' +
+               '<span>' + item.label.replace('รายชื่อ', '').replace('จัดการ', '').replace('ติดตาม', '').slice(0, 12) + '</span>' +
+               '</div>';
+    }).join('');
+
+    // ✅ เพิ่มปุ่ม "เพิ่มเติม" ถ้ามีเมนูเกิน
+    if (moreItems.length > 0) {
+        const isMoreActive = moreItems.some(item => item.id === APP.currentPage);
+        navHtml += '<div class="bottom-nav-item more-btn ' + (isMoreActive ? 'active' : '') + 
+                   '" id="bottomNavMoreBtn" data-more="true">' +
+                   '<i class="fas fa-ellipsis-h"></i>' +
+                   '<span>เพิ่มเติม</span>' +
                    '</div>';
-        }).join('');
-
-        document.querySelectorAll('.bottom-nav-item').forEach(function(el) {
-            el.addEventListener('click', function() {
-                const pg = this.getAttribute('data-page');
-                navigateTo(pg);
-            });
-        });
     }
 
-    const PAGE_TITLES = {
-        dashboard: 'Dashboard',
-        users: 'จัดการผู้ใช้งาน',
-        categories: 'จัดการหมู่บ้าน',
-        manageData: 'จัดการข้อมูล',
-        accessLog: 'ประวัติการเข้าใช้งานระบบ',
-        children: 'รายชื่อเด็ก 0-5 ปี',
-        missing: 'รายชื่อเด็กขาดนัด',
-        appointments: 'รายชื่อนัดวัคซีน',
-        trackingForm: 'รายงานการติดตาม',
-        officerTracking: 'ติดตามวัคซีนเด็ก',
-        report: 'รายงานสรุปการติดตามวัคซีน'
-    };
+    document.getElementById('bottomNav').innerHTML = navHtml;
 
-    function navigateTo(page) {
-        APP.currentPage = page;
-        renderSidebarMenu();
-        document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
-        document.getElementById('topBarTitle').textContent = PAGE_TITLES[page] || page;
-        document.querySelectorAll('.bottom-nav-item').forEach(function(item) {
-            item.classList.remove('active');
-            if(item.getAttribute('data-page') === page) {
-                item.classList.add('active');
-            }
+    // ✅ ผูก event ให้ปุ่มเมนูปกติ
+    document.querySelectorAll('.bottom-nav-item[data-page]').forEach(function(el) {
+        el.addEventListener('click', function() {
+            const pg = this.getAttribute('data-page');
+            if (pg && pg !== 'more') navigateTo(pg);
         });
+    });
 
-        switch (page) {
-    case 'dashboard': loadDashboard(); break;
-    case 'users': loadUsersPage(); break;
-    case 'categories': loadCategoriesPage(); break;
-    case 'manageData': loadManageDataPage(); break;
-    case 'accessLog': loadAccessLogPage(); break;
-    case 'children': loadChildrenPage(); break;
-    case 'missing': loadMissingPage(); break;
-    case 'appointments': loadAppointmentsPage(); break;
-    case 'calendar': loadCalendarPage(); break;
-    case 'trackingForm': loadTrackingFormPage(); break;
-    case 'officerTracking': loadOfficerTrackingPage(); break;
-    case 'report': loadReportPage(); break;
-    case 'coverage': 
-        document.getElementById('coveragePage').classList.add('active');
-        loadCoveragePage(); 
-        break;
-    default: 
-        loadDashboard(); 
-        break;
+    // ✅ ผูก event ให้ปุ่ม "เพิ่มเติม"
+    const moreBtn = document.getElementById('bottomNavMoreBtn');
+    if (moreBtn) {
+        moreBtn.addEventListener('click', function() {
+            openBottomSheet(moreItems);
+        });
+    }
 }
-    }
 
+
+/* ============================================================
+ *  ✅ BOTTOM SHEET — แสดงเมนูที่เหลือ
+ *  ============================================================ */
+function openBottomSheet(items) {
+    // ลบ sheet เก่าถ้ามี
+    const oldSheet = document.getElementById('bottomSheet');
+    if (oldSheet) oldSheet.remove();
+    const oldOverlay = document.getElementById('bottomSheetOverlay');
+    if (oldOverlay) oldOverlay.remove();
+
+    const html = `
+        <div class="bottom-sheet-overlay" id="bottomSheetOverlay" onclick="closeBottomSheet()"></div>
+        <div class="bottom-sheet" id="bottomSheet">
+            <div class="bottom-sheet-handle"></div>
+            <div class="bottom-sheet-header">
+                <h4><i class="fas fa-th-large"></i> เมนูเพิ่มเติม</h4>
+                <button class="bottom-sheet-close" onclick="closeBottomSheet()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="bottom-sheet-grid">
+                ${items.map(item => `
+                    <div class="bottom-sheet-item ${APP.currentPage === item.id ? 'active' : ''}" 
+                         data-page="${item.id}">
+                        <i class="${item.icon}"></i>
+                        <span>${item.label}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    // Trigger animation
+    setTimeout(() => {
+        const overlay = document.getElementById('bottomSheetOverlay');
+        const sheet = document.getElementById('bottomSheet');
+        if (overlay) overlay.classList.add('active');
+        if (sheet) sheet.classList.add('active');
+    }, 10);
+
+    // ผูก event ให้แต่ละเมนู
+    document.querySelectorAll('.bottom-sheet-item[data-page]').forEach(el => {
+        el.addEventListener('click', function() {
+            const pg = this.getAttribute('data-page');
+            closeBottomSheet();
+            setTimeout(() => navigateTo(pg), 300);
+        });
+    });
+}
+
+function closeBottomSheet() {
+    const sheet = document.getElementById('bottomSheet');
+    const overlay = document.getElementById('bottomSheetOverlay');
+    if (sheet) sheet.classList.remove('active');
+    if (overlay) overlay.classList.remove('active');
+    
+    setTimeout(() => {
+        if (sheet) sheet.remove();
+        if (overlay) overlay.remove();
+    }, 350);
+}
+const PAGE_TITLES = {
+    dashboard: 'Dashboard',
+    users: 'จัดการผู้ใช้งาน',
+    categories: 'จัดการหมู่บ้าน',
+    manageData: 'จัดการข้อมูล',
+    accessLog: 'ประวัติการเข้าใช้งานระบบ',
+    children: 'รายชื่อเด็ก 0-5 ปี',
+    missing: 'รายชื่อเด็กขาดนัด',
+    appointments: 'รายชื่อนัดวัคซีน',
+    calendar: 'ปฏิทินนัดวัคซีน',
+    trackingForm: 'รายงานการติดตาม',
+    officerTracking: 'ติดตามวัคซีนเด็ก',
+    report: 'รายงานสรุปการติดตามวัคซีน',
+    coverage: 'ความครอบคลุมวัคซีน'
+};
+function navigateTo(page) {
+    // ✅ ปิด Bottom Sheet ถ้าเปิดอยู่
+    if (typeof closeBottomSheet === 'function') {
+        closeBottomSheet();
+    }
+    
+    APP.currentPage = page;
+    renderSidebarMenu();
+    
+    document.querySelectorAll('.page').forEach(function(p) { 
+        p.classList.remove('active'); 
+    });
+    
+    document.getElementById('topBarTitle').textContent = PAGE_TITLES[page] || page;
+    
+    // ✅ อัปเดต Bottom Nav (เรียกใหม่ทั้งหมดเพื่อให้ active ถูกต้อง)
+    //     ดึง items จาก renderSidebarMenu ที่เก็บไว้
+    //     แต่เราเรียกใช้ method ที่แยกออกมา
+    updateBottomNavActive(page);
+
+    switch (page) {
+        case 'dashboard': loadDashboard(); break;
+        case 'users': loadUsersPage(); break;
+        case 'categories': loadCategoriesPage(); break;
+        case 'manageData': loadManageDataPage(); break;
+        case 'accessLog': loadAccessLogPage(); break;
+        case 'children': loadChildrenPage(); break;
+        case 'missing': loadMissingPage(); break;
+        case 'appointments': loadAppointmentsPage(); break;
+        case 'calendar': loadCalendarPage(); break;
+        case 'trackingForm': loadTrackingFormPage(); break;
+        case 'officerTracking': loadOfficerTrackingPage(); break;
+        case 'report': loadReportPage(); break;
+        case 'coverage': 
+            document.getElementById('coveragePage').classList.add('active');
+            loadCoveragePage(); 
+            break;
+        default: loadDashboard(); break;
+    }
+}
+
+
+/* ============================================================
+ *  ✅ Helper: อัปเดต Active State ของ Bottom Nav
+ *  ============================================================ */
+function updateBottomNavActive(page) {
+    // ✅ อัปเดตเมนูปกติ
+    document.querySelectorAll('.bottom-nav-item[data-page]').forEach(function(item) {
+        item.classList.remove('active');
+        if (item.getAttribute('data-page') === page) {
+            item.classList.add('active');
+        }
+    });
+
+    // ✅ อัปเดตปุ่ม "เพิ่มเติม"
+    const moreBtn = document.getElementById('bottomNavMoreBtn');
+    if (moreBtn) {
+        // ตรวจสอบว่า page นี้อยู่ในเมนู "เพิ่มเติม" หรือไม่
+        // โดยดูจาก sidebar menu items ทั้งหมด
+        const sidebarItems = document.querySelectorAll('.menu-item[data-page]');
+        const allPages = Array.from(sidebarItems).map(el => el.getAttribute('data-page'));
+        const normalPages = Array.from(document.querySelectorAll('.bottom-nav-item[data-page]'))
+            .map(el => el.getAttribute('data-page'));
+        
+        // ถ้า page นี้ไม่อยู่ใน normal items → ถือว่าอยู่ใน "เพิ่มเติม"
+        if (page && !normalPages.includes(page) && allPages.includes(page)) {
+            moreBtn.classList.add('active');
+        } else {
+            moreBtn.classList.remove('active');
+        }
+    }
+}
     // ============================================================
     // DASHBOARD PAGE
     // ============================================================
@@ -3723,60 +4087,293 @@ function translateError(err, elapsed) {
     async function loadDashboard() {
     const page = document.getElementById('dashboardPage');
     page.classList.add('active');
-    
-    // ✅ แสดง UI ก่อน (โหลดเร็ว)
+
+    // ============================================================
+    // ✅ STEP 1: แสดง Skeleton UI ทันที (ผู้ใช้เห็นก่อน ไม่ต้องรอ)
+    // ============================================================
+    const today = new Date();
+    const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const dateStr = 'วันที่ ' + today.getDate() + ' ' + thaiMonths[today.getMonth()] + ' พ.ศ. ' + (today.getFullYear() + 543);
+
     page.innerHTML = `
         <div class="page-title"><i class="fas fa-chart-line"></i> ภาพรวมระบบ</div>
-        <div style="text-align:center; padding:80px 20px;">
-            <div class="loading-spinner" style="margin:0 auto 20px;"></div>
-            <div style="font-size:16px; font-weight:600; color:#475569;">กำลังโหลดข้อมูล...</div>
-            <div style="font-size:13px; color:#94a3b8; margin-top:8px;">กรุณารอสักครู่</div>
-        </div>`;
+        <div style="text-align:right; margin-bottom:15px; color:#888; font-size:13px;">
+            <i class="fas fa-calendar-day"></i> ${dateStr}
+        </div>
+
+        <div class="stats-grid">
+            ${['blue', 'green', 'orange', 'red'].map(c => `
+                <div class="stat-card ${c}" style="opacity:0.7;">
+                    <div class="stat-info">
+                        <h3 style="color:#cbd5e1;">กำลังโหลด...</h3>
+                        <div class="number" style="background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; height: 36px; width: 80px;"></div>
+                    </div>
+                    <div class="stat-icon ${c}"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>`).join('')}
+        </div>
+
+        <div class="charts-row" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start;">
+            <div class="chart-card" style="height: 320px; display:flex; align-items:center; justify-content:center; color:#94a3b8;">
+                <div style="text-align:center;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:28px; color:#667eea;"></i>
+                    <div style="margin-top:12px; font-size:14px; font-weight:500;">กำลังโหลดกราฟ...</div>
+                </div>
+            </div>
+            <div class="chart-card" style="height: 320px; display:flex; align-items:center; justify-content:center; color:#94a3b8;">
+                <div style="text-align:center;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:28px; color:#667eea;"></i>
+                    <div style="margin-top:12px; font-size:14px; font-weight:500;">กำลังโหลดกราฟ...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-card" style="height: 340px; display:flex; align-items:center; justify-content:center; color:#94a3b8;">
+            <div style="text-align:center;">
+                <i class="fas fa-spinner fa-spin" style="font-size:28px; color:#667eea;"></i>
+                <div style="margin-top:12px; font-size:14px; font-weight:500;">กำลังโหลดข้อมูลหมู่บ้าน...</div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <h4><i class="fas fa-map-marked-alt"></i> แผนที่แสดงพิกัดบ้านเด็ก</h4>
+            <div id="childMap" style="height: 450px; border-radius: 8px; z-index: 10; display:flex; align-items:center; justify-content:center; background: #f1f5f9;">
+                <div style="text-align:center; color:#94a3b8;">
+                    <i class="fas fa-map fa-2x" style="margin-bottom:10px;"></i>
+                    <div>กำลังโหลดแผนที่...</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // ✅ เพิ่ม shimmer animation (ถ้ายังไม่มีใน CSS)
+    if (!document.getElementById('shimmer-style')) {
+        const style = document.createElement('style');
+        style.id = 'shimmer-style';
+        style.textContent = `
+            @keyframes shimmer {
+                0%   { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
 
     try {
-        // ✅ 1. โหลด FacilityMap ก่อน (เบา)
-        const facilityResult = await callGAS('getFacilityMap', [], { maxRetries: 3 });
+        // ============================================================
+        // ✅ STEP 2: โหลดข้อมูลเบาพร้อมกัน (Parallel) — เร็วขึ้น 2 เท่า
+        // ============================================================
+        const [facilityResult, villagesResult] = await Promise.all([
+            callGAS('getFacilityMap', [], { maxRetries: 2, timeout: 20000 }),
+            callGAS('getVillages', 
+                [APP.currentUser.role, APP.currentUser.hcode, APP.currentUser.subdistrict],
+                { maxRetries: 2, timeout: 20000 }
+            )
+        ]);
+
         APP.facilityMap = facilityResult.success ? facilityResult.map : {};
 
-        // ✅ 2. โหลด Villages (เบา)
-        const villagesResult = await callGAS('getVillages', 
-            [APP.currentUser.role, APP.currentUser.hcode, APP.currentUser.subdistrict],
-            { maxRetries: 3 }
-        );
-
         const villageColorsMap = {};
-        if (villagesResult.success) {
-            villagesResult.villages.forEach(v => villageColorsMap[v.name] = v.color);
+        if (villagesResult.success && villagesResult.villages) {
+            villagesResult.villages.forEach(v => {
+                villageColorsMap[v.name] = v.color;
+            });
         }
 
-        // ✅ 3. โหลด Dashboard Stats (หนัก) — retry มากกว่า
-        showLoading('กำลังประมวลผลข้อมูลสรุป...');
+        // ============================================================
+        // ✅ STEP 3: โหลด Dashboard Stats (หนัก) — retry มากกว่า
+        // ============================================================
         const result = await callGAS('getDashboardStats',
             [APP.currentUser.role, APP.currentUser.village, APP.currentUser.hcode, APP.currentUser.subdistrict],
-            { maxRetries: 5, retryDelay: 2000, timeout: 60000 }  // ⚡ retry 5 ครั้ง, timeout 60s
+            { maxRetries: 4, retryDelay: 1500, timeout: 60000 }
         );
-        hideLoading();
 
         if (!result.success) {
-            page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(result.message) + '</div>';
-            return;
+            throw new Error(result.message || 'ไม่สามารถโหลดข้อมูลได้');
         }
 
-        // ... (โค้ดแสดงผลเดิม)
+        // ============================================================
+        // ✅ STEP 4: ประมวลผลและแสดงผล
+        // ============================================================
         const s = result.stats;
-        // ... ทำต่อเหมือนเดิม
+        const appointmentsThisMonth = s.appointmentsThisMonth || 0;
+        const appointmentsToday = s.appointmentsToday || 0;
+
+        APP.dashboardVillageData = result.villageData || [];
+        APP.dashboardVillageColors = villageColorsMap;
+
+        const statusData = result.statusData || {};
+        const facilityCoverage = result.facilityCoverage || [];
+
+        // ✅ สร้าง Dropdown ตัวกรองสถานพยาบาล (ถ้ามีสิทธิ์)
+        let mapFacilityDropdownHtml = '';
+        const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && 
+                                  (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+        if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
+            const facilityOptions = '<option value="ทั้งหมด">แสดงทุกสถานพยาบาล</option>' + 
+                Object.keys(APP.facilityMap).map(k => 
+                    `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`
+                ).join('');
+            mapFacilityDropdownHtml = `
+                <select id="mapFacilityFilter" onchange="initLeafletMap()" 
+                        style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; 
+                               font-family: 'Kanit', sans-serif; outline: none; cursor: pointer; 
+                               font-size: 14px; margin-right: 8px; background: #fff;">
+                    ${facilityOptions}
+                </select>`;
+        }
+
+        // ============================================================
+        // ✅ STEP 5: แทนที่ Skeleton ด้วย UI จริง
+        // ============================================================
+        page.innerHTML = `
+            <div class="page-title"><i class="fas fa-chart-line"></i> ภาพรวมระบบ</div>
+            <div style="text-align:right; margin-bottom:15px; color:#888; font-size:13px;">
+                <i class="fas fa-calendar-day"></i> ${dateStr}
+            </div>
+
+            <div class="stats-grid">
+                ${statCard('blue', 'fas fa-child', 'เด็ก 0-5 ปีทั้งหมด', s.totalChildren || 0, 'คน')}
+                ${statCard('green', 'fas fa-check-circle', 'มาตามนัดปกติ/ครบเกณฑ์', (s.onTime || 0) + (s.complete || 0), 'คน')}
+                ${statCard('orange', 'fas fa-calendar-alt', 'นัดหมายเดือนนี้', appointmentsThisMonth, 'นัด')}
+                ${statCard('red', 'fas fa-exclamation-triangle', 'ขาดนัดปัจจุบัน', s.missed || 0, 'คน')}
+            </div>
+
+            <div class="charts-row" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start;">
+                <div class="chart-card" style="flex: 1;">
+                    <h4><i class="fas fa-chart-pie"></i> สัดส่วนสถานะวัคซีน</h4>
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <div class="chart-card" style="flex: 2;">
+                    <h4>
+                        <i class="fas fa-hospital"></i> ความครอบคลุมรายสถานพยาบาล (%)
+                        <small style="color:#888; font-weight:normal; font-size:11px;">(คลิกแท่งกราฟเพื่อดูแผนที่และหมู่บ้าน)</small>
+                    </h4>
+                    <div style="position: relative; height: 280px; width: 100%;">
+                        <canvas id="facilityCoverageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="chart-card" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0;">
+                            <i class="fas fa-chart-bar"></i> ผลงานแยกหมู่บ้าน (ร้อยละ)
+                            <span id="villageChartSubtitle" style="font-size:13px; color:#667eea; font-weight:500; margin-left: 8px;"></span>
+                        </h4>
+                        <button id="resetVillageFilterBtn" onclick="resetVillageChartFilter()" 
+                                style="display:none; padding: 6px 12px; background: #f1f5f9; border: 1px solid #cbd5e1; 
+                                       border-radius: 6px; cursor: pointer; font-family: 'Kanit'; font-size: 13px; color: #475569;">
+                            <i class="fas fa-undo"></i> แสดงภาพรวมทั้งหมด
+                        </button>
+                    </div>
+                    <div id="villageBarChartVertical" class="vertical-bar-container"></div>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <h4 style="margin: 0;">
+                        <i class="fas fa-map-marked-alt text-blue-500"></i> แผนที่แสดงพิกัดบ้านเด็ก
+                    </h4>
+                    <div>
+                        ${mapFacilityDropdownHtml}
+                        <select id="mapStatusFilter" onchange="initLeafletMap()" 
+                                style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; 
+                                       font-family: 'Kanit', sans-serif; outline: none; cursor: pointer; 
+                                       font-size: 14px; background: #fff;">
+                            <option value="ทั้งหมด">แสดงสถานะทั้งหมด</option>
+                            <option value="ตามนัดปกติ">มาตามนัดปกติ</option>
+                            <option value="ครบตามเกณฑ์">ครบตามเกณฑ์</option>
+                            <option value="ขาดนัด">ขาดนัด</option>
+                            <option value="ปฏิเสธวัคซีน">ปฏิเสธวัคซีน</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="childMap" style="height: 450px; border-radius: 8px; z-index: 10;"></div>
+            </div>
+        `;
+
+        // ============================================================
+        // ✅ STEP 6: วาดกราฟและแผนที่ (async หลัง render)
+        // ============================================================
+        setTimeout(function() {
+            try {
+                renderStatusChart(statusData);
+                renderFacilityCoverageChart(facilityCoverage);
+                renderVillageVerticalBar(APP.dashboardVillageData, APP.dashboardVillageColors);
+                initLeafletMap();
+            } catch (e) {
+                console.warn('Chart render error:', e);
+            }
+        }, 100);
 
     } catch (err) {
-        hideLoading();
+        // ============================================================
+        // ❌ Error Handling — แสดง UI ที่สวยงาม + ปุ่มลองใหม่
+        // ============================================================
+        console.error('loadDashboard error:', err);
+
+        // ✅ เก็บข้อมูลไว้ debug
+        const errorDetail = err.message || err.toString();
+        const isNetworkError = /fetch|network|timeout|connection/i.test(errorDetail);
+
         page.innerHTML = `
-            <div class="error-message" style="padding:40px; text-align:center;">
-                <i class="fas fa-exclamation-triangle" style="font-size:40px; color:#ef4444; margin-bottom:16px;"></i>
-                <div style="font-size:16px; font-weight:600; margin-bottom:8px;">ไม่สามารถโหลดข้อมูลได้</div>
-                <div style="font-size:14px; color:#64748b; margin-bottom:20px;">${esc(err.message)}</div>
-                <button onclick="loadDashboard()" style="padding:10px 24px; background:#667eea; color:#fff; border:none; border-radius:8px; cursor:pointer; font-family:Kanit; font-size:14px;">
-                    <i class="fas fa-redo"></i> ลองอีกครั้ง
-                </button>
-            </div>`;
+            <div class="page-title"><i class="fas fa-chart-line"></i> ภาพรวมระบบ</div>
+            
+            <div style="background:#fff; border-radius:20px; padding:60px 30px; text-align:center; 
+                        box-shadow:0 4px 20px rgba(0,0,0,.06); border:1px solid #fecaca; max-width:600px; 
+                        margin:40px auto;">
+                <div style="width:80px; height:80px; border-radius:50%; 
+                            background:${isNetworkError ? '#fef3c7' : '#fee2e2'}; 
+                            display:flex; align-items:center; justify-content:center; 
+                            margin:0 auto 24px;">
+                    <i class="fas ${isNetworkError ? 'fa-wifi' : 'fa-exclamation-triangle'}" 
+                       style="font-size:36px; color:${isNetworkError ? '#f59e0b' : '#ef4444'};"></i>
+                </div>
+                
+                <div style="font-size:20px; font-weight:700; color:#0f172a; margin-bottom:12px;">
+                    ${isNetworkError ? 'การเชื่อมต่อล้มเหลว' : 'ไม่สามารถโหลดข้อมูลได้'}
+                </div>
+                
+                <div style="font-size:14px; color:#64748b; line-height:1.6; margin-bottom:8px;">
+                    ${esc(errorDetail)}
+                </div>
+                
+                <div style="font-size:12px; color:#94a3b8; margin-bottom:28px;">
+                    ${isNetworkError 
+                        ? 'กรุณาตรวจสอบอินเทอร์เน็ต หรือรอสักครู่แล้วลองอีกครั้ง' 
+                        : 'กรุณาลองใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ'}
+                </div>
+
+                <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                    <button onclick="loadDashboard()" 
+                            style="padding:12px 28px; background:linear-gradient(135deg, #667eea, #764ba2); 
+                                   color:#fff; border:none; border-radius:10px; cursor:pointer; 
+                                   font-family:Kanit; font-size:14px; font-weight:600; 
+                                   box-shadow:0 4px 12px rgba(102,126,234,.3);
+                                   display:inline-flex; align-items:center; gap:8px;">
+                        <i class="fas fa-redo"></i> ลองอีกครั้ง
+                    </button>
+                    <button onclick="location.reload()" 
+                            style="padding:12px 24px; background:#f1f5f9; color:#475569; 
+                                   border:1px solid #e2e8f0; border-radius:10px; cursor:pointer; 
+                                   font-family:Kanit; font-size:14px; font-weight:500;
+                                   display:inline-flex; align-items:center; gap:8px;">
+                        <i class="fas fa-sync-alt"></i> รีเฟรชหน้า
+                    </button>
+                </div>
+
+                ${isNetworkError ? `
+                    <div style="margin-top:24px; padding:12px; background:#fef3c7; border-radius:8px; 
+                                font-size:12px; color:#92400e; text-align:left;">
+                        <i class="fas fa-lightbulb"></i> <strong>คำแนะนำ:</strong> 
+                        Google Apps Script อาจใช้เวลา 10-30 วินาทีในการตอบกลับครั้งแรก 
+                        หรืออาจมีช่วงที่ระบบหยุดชั่วคราว กรุณารอ 1-2 นาทีแล้วลองใหม่
+                    </div>
+                ` : ''}
+            </div>
+        `;
     }
 }
 
@@ -6690,10 +7287,10 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
             '<p style="font-size: 12px; color: #888; margin: 0;">ลบรายชื่อเด็ก 0-5 ปีทั้งหมดในระบบ</p></div>' +
             '<button class="btn-cancel" style="background: #dc3545; color: white; border: none; padding: 10px 15px;" onclick="confirmClearDataSheet()"><i class="fas fa-trash-alt"></i> ลบข้อมูล Data</button>' +
             '</div>' +
-            '<div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #fff8f8; border: 1px solid #ffcdd2; border-radius: 8px;">' +
-            '<div><h5 style="margin-bottom: 5px; color: #333; font-size: 15px;">ลบข้อมูลนัดหมาย (Sheet: Appointment)</h5>' +
-            '<p style="font-size: 12px; color: #888; margin: 0;">ลบรายชื่อนัดหมายวัคซีนทั้งหมดในระบบ</p></div>' +
-            '<button class="btn-cancel" style="background: #dc3545; color: white; border: none; padding: 10px 15px;" onclick="confirmClearAppointmentSheet()"><i class="fas fa-trash-alt"></i> ลบข้อมูล Appointment</button>' +
+            '<div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #fff8f8; border: 1px solid #ffcdd2; border-radius: 8px; margin-bottom: 15px;">' +
+            '<div><h5 style="margin-bottom: 5px; color: #333; font-size: 15px;">ลบนัดหมายที่ผ่านมาแล้ว (Sheet: Appointment)</h5>' +
+            '<p style="font-size: 12px; color: #888; margin: 0;">ลบเฉพาะนัดหมายที่มีวันนัดผ่านมาแล้ว เก็บนัดหมายปัจจุบันและอนาคตไว้</p></div>' +
+            '<button class="btn-cancel" style="background: #f59e0b; color: white; border: none; padding: 10px 15px;" onclick="confirmClearOldAppointments()"><i class="fas fa-history"></i> ลบนัดหมายเก่า</button>' +
             '</div>' +
             '<div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #fff8f8; border: 1px solid #ffcdd2; border-radius: 8px; margin-top: 15px;"> ' +
             '<div><h5 style="margin-bottom: 5px; color: #333; font-size: 15px;">ลบประวัติการติดตามอัตโนมัติ (System (Auto))</h5>' +
@@ -7320,38 +7917,129 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
         }
     };
 
-    window.confirmClearAppointmentSheet = async function() {
-        const warningText = APP.currentUser.role === 'Admin_Ampur' 
-            ? "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนัดหมายวัคซีนทั้งหมดทุกสถานพยาบาล (ลบแล้วกู้คืนไม่ได้!)"
-            : "คุณแน่ใจหรือไม่ที่จะลบข้อมูลนัดหมายวัคซีนทั้งหมดของสถานพยาบาลคุณ (ลบแล้วกู้คืนไม่ได้!)";
-
-        const r = await Swal.fire({
-            title: 'ยืนยันการลบข้อมูล Appointment?',
-            text: warningText,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'ใช่, ลบข้อมูลเลย',
-            cancelButtonText: 'ยกเลิก'
-        });
-
-        if (r.isConfirmed) {
-            showLoading('กำลังลบข้อมูล...');
-            try {
-                const res = await callGAS('clearAppointmentSheet', [APP.currentUser.role, APP.currentUser.hcode]);
-                hideLoading();
-                if (res.success) {
-                    Swal.fire('สำเร็จ', res.message, 'success');
-                } else {
-                    Swal.fire('ผิดพลาด', res.message, 'error');
-                }
-            } catch (e) {
-                hideLoading();
-                Swal.fire('ผิดพลาด', e.message, 'error');
-            }
+    /* ============================================================
+ *  ✅ ลบนัดหมายที่ผ่านมาแล้ว (แบบเลือกช่วงเวลา)
+ *  ============================================================ */
+window.confirmClearOldAppointments = async function() {
+    // ✅ Step 1: เลือกช่วงเวลาที่ต้องการลบ
+    const firstConfirm = await Swal.fire({
+        title: 'ลบนัดหมายที่ผ่านมาแล้ว',
+        html: `
+            <div style="text-align:left; font-family:Kanit; padding: 10px 0;">
+                <p style="color:#475569; font-size:14px; margin-bottom:16px;">
+                    เลือกช่วงเวลาที่ต้องการลบ:
+                </p>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <label style="display:flex; align-items:center; gap:10px; padding:12px 16px; background:#f8fafc; border-radius:10px; cursor:pointer; border: 2px solid transparent; transition: all .2s;" onmouseover="this.style.borderColor='#667eea'" onmouseout="this.style.borderColor='transparent'">
+                        <input type="radio" name="oldApptRange" value="0" checked style="transform: scale(1.3);">
+                        <div>
+                            <div style="font-weight:600; color:#0f172a;">ลบนัดหมายที่ผ่านมาแล้วทั้งหมด</div>
+                            <div style="font-size:12px; color:#64748b;">นัดหมายทุกวันที่ผ่านมาแล้ว (ก่อนวันนี้)</div>
+                        </div>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:10px; padding:12px 16px; background:#f8fafc; border-radius:10px; cursor:pointer; border: 2px solid transparent; transition: all .2s;" onmouseover="this.style.borderColor='#667eea'" onmouseout="this.style.borderColor='transparent'">
+                        <input type="radio" name="oldApptRange" value="6" style="transform: scale(1.3);">
+                        <div>
+                            <div style="font-weight:600; color:#0f172a;">ลบเฉพาะนัดหมายที่ผ่านมาเกิน 6 เดือน</div>
+                            <div style="font-size:12px; color:#64748b;">เก็บนัดหมายใน 6 เดือนล่าสุดไว้</div>
+                        </div>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:10px; padding:12px 16px; background:#f8fafc; border-radius:10px; cursor:pointer; border: 2px solid transparent; transition: all .2s;" onmouseover="this.style.borderColor='#667eea'" onmouseout="this.style.borderColor='transparent'">
+                        <input type="radio" name="oldApptRange" value="12" style="transform: scale(1.3);">
+                        <div>
+                            <div style="font-weight:600; color:#0f172a;">ลบเฉพาะนัดหมายที่ผ่านมาเกิน 1 ปี</div>
+                            <div style="font-size:12px; color:#64748b;">เก็บนัดหมายใน 1 ปีล่าสุดไว้</div>
+                        </div>
+                    </label>
+                </div>
+                <div style="margin-top:16px; padding:12px; background:#fffbeb; border-radius:8px; font-size:12px; color:#92400e;">
+                    <i class="fas fa-lightbulb"></i> <strong>คำแนะนำ:</strong> ก่อนลบแนะนำให้ backup ข้อมูลไว้ก่อน
+                </div>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        confirmButtonText: '<i class="fas fa-arrow-right"></i> ถัดไป',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: () => {
+            const selected = document.querySelector('input[name="oldApptRange"]:checked');
+            return selected ? parseInt(selected.value) : 0;
         }
-    };
+    });
+
+    if (!firstConfirm.isConfirmed) return;
+    const monthsBack = firstConfirm.value;
+
+    // ✅ Step 2: ยืนยันครั้งสุดท้าย
+    const rangeText = monthsBack === 0 
+        ? 'นัดหมายที่ผ่านมาแล้วทั้งหมด' 
+        : `นัดหมายที่ผ่านมาเกิน ${monthsBack} เดือน`;
+
+    const finalConfirm = await Swal.fire({
+        title: 'ยืนยันการลบ',
+        html: `
+            <div style="font-family:Kanit; font-size:14px; color:#475569; line-height:1.6;">
+                <p>คุณต้องการลบ <strong style="color:#dc3545;">${rangeText}</strong> ใช่หรือไม่?</p>
+                ${APP.currentUser.role === 'Admin_Ampur' 
+                    ? '<p style="color:#dc3545;"><strong>ทุกสถานพยาบาล</strong></p>' 
+                    : `<p style="color:#dc3545;">เฉพาะ <strong>${APP.currentUser.hcode}</strong></p>`}
+                <p style="margin-top:12px; padding:10px; background:#fef2f2; border-radius:6px; font-size:13px;">
+                    ⚠️ การลบไม่สามารถกู้คืนได้
+                </p>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: '<i class="fas fa-trash-alt"></i> ยืนยันลบ',
+        cancelButtonText: 'ยกเลิก'
+    });
+
+    if (!finalConfirm.isConfirmed) return;
+
+    // ✅ Step 3: เรียก API
+    showLoading('กำลังลบนัดหมายที่ผ่านมาแล้ว...');
+    try {
+        const res = await callGAS('clearOldAppointments', [
+            APP.currentUser.role,
+            APP.currentUser.hcode,
+            monthsBack
+        ]);
+        hideLoading();
+
+        if (res.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'ลบสำเร็จ!',
+                html: `
+                    <div style="font-family:Kanit; font-size:14px;">
+                        <p style="color:#047857; font-weight:600; margin-bottom:8px;">
+                            <i class="fas fa-check-circle"></i> ${res.message}
+                        </p>
+                        <div style="display:flex; gap:20px; justify-content:center; margin-top:16px;">
+                            <div style="text-align:center;">
+                                <div style="font-size:24px; font-weight:700; color:#dc3545;">${res.deleted || 0}</div>
+                                <div style="font-size:12px; color:#64748b;">ลบแล้ว</div>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="font-size:24px; font-weight:700; color:#10b981;">${res.kept || 0}</div>
+                                <div style="font-size:12px; color:#64748b;">เก็บไว้</div>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                confirmButtonText: 'ตกลง',
+                confirmButtonColor: '#667eea'
+            });
+        } else {
+            Swal.fire('ผิดพลาด', res.message, 'error');
+        }
+    } catch (e) {
+        hideLoading();
+        Swal.fire('ผิดพลาด', e.message, 'error');
+    }
+};
 
     window.confirmClearAutoTracking = async function() {
         const r = await Swal.fire({
