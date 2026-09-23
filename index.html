@@ -2373,6 +2373,679 @@
 @keyframes ptr-spin {
     100% { transform: rotate(360deg); }
 }
+/* ============================================================
+   COVERAGE REPORT — MODERN UI
+   ============================================================ */
+:root {
+    --cv-primary: #667eea;
+    --cv-primary-dark: #764ba2;
+    --cv-success: #10b981;
+    --cv-warning: #f59e0b;
+    --cv-danger: #ef4444;
+    --cv-info: #0ea5e9;
+    --cv-purple: #8b5cf6;
+    --cv-bg-soft: #f8fafc;
+    --cv-bg-page: #f1f5f9;
+    --cv-border: #e2e8f0;
+    --cv-text-primary: #0f172a;
+    --cv-text-secondary: #64748b;
+    --cv-text-muted: #94a3b8;
+    --cv-shadow-sm: 0 1px 3px rgba(0,0,0,.04);
+    --cv-shadow-md: 0 4px 16px rgba(15, 23, 42, .06);
+    --cv-shadow-lg: 0 12px 32px rgba(15, 23, 42, .1);
+    --cv-radius-sm: 10px;
+    --cv-radius-md: 14px;
+    --cv-radius-lg: 20px;
+}
+
+/* ============ COVERAGE PAGE WRAPPER ============ */
+#coveragePage {
+    background: var(--cv-bg-page);
+    min-height: 100vh;
+    padding-bottom: 40px;
+}
+
+/* ============ HEADER CARD ============ */
+.cv-header-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: var(--cv-radius-lg);
+    box-shadow: var(--cv-shadow-md);
+    border: 1px solid rgba(255,255,255,.8);
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+.cv-header-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--cv-primary), var(--cv-primary-dark), var(--cv-info));
+}
+
+.cv-header-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 6px;
+}
+
+.cv-header-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--cv-primary), var(--cv-primary-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 22px;
+    box-shadow: 0 8px 20px rgba(102, 126, 234, .3);
+    flex-shrink: 0;
+}
+
+.cv-header-title h4 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cv-text-primary);
+    letter-spacing: -0.3px;
+}
+
+.cv-header-title small {
+    color: var(--cv-text-secondary);
+    font-size: 13px;
+    display: block;
+    margin-top: 2px;
+}
+
+/* ============ ACTION BUTTONS ============ */
+.cv-action-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.cv-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: var(--cv-radius-sm);
+    font-family: 'Kanit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .25s ease;
+    border: 1.5px solid transparent;
+    white-space: nowrap;
+    background: #fff;
+}
+
+.cv-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--cv-shadow-md);
+}
+
+.cv-btn-primary {
+    background: linear-gradient(135deg, var(--cv-primary), var(--cv-primary-dark));
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, .25);
+}
+
+.cv-btn-outline {
+    background: #fff;
+    border-color: var(--cv-border);
+    color: var(--cv-text-secondary);
+}
+
+.cv-btn-outline:hover {
+    border-color: var(--cv-primary);
+    color: var(--cv-primary);
+}
+
+.cv-btn-info {
+    background: #fff;
+    border-color: rgba(14, 165, 233, .3);
+    color: var(--cv-info);
+}
+
+.cv-btn-info:hover {
+    background: rgba(14, 165, 233, .08);
+    border-color: var(--cv-info);
+}
+
+.cv-btn-success {
+    background: #fff;
+    border-color: rgba(16, 185, 129, .3);
+    color: var(--cv-success);
+}
+
+.cv-btn-success:hover {
+    background: rgba(16, 185, 129, .08);
+    border-color: var(--cv-success);
+}
+
+/* ============ FILTER BAR ============ */
+.cv-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    align-items: end;
+    padding-top: 20px;
+    margin-top: 20px;
+    border-top: 1px dashed var(--cv-border);
+}
+
+.cv-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cv-filter-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cv-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.cv-filter-group label i {
+    color: var(--cv-primary);
+    font-size: 11px;
+}
+
+.cv-filter-group select,
+.cv-filter-group input {
+    padding: 10px 14px;
+    border: 1.5px solid var(--cv-border);
+    border-radius: var(--cv-radius-sm);
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    color: var(--cv-text-primary);
+    background: #fff;
+    transition: all .2s ease;
+    outline: none;
+    width: 100%;
+}
+
+.cv-filter-group select:focus,
+.cv-filter-group input:focus {
+    border-color: var(--cv-primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, .1);
+}
+
+.cv-filter-group input[readonly] {
+    background: var(--cv-bg-soft);
+    color: var(--cv-text-secondary);
+    cursor: not-allowed;
+}
+
+.cv-btn-search {
+    background: linear-gradient(135deg, var(--cv-primary), var(--cv-primary-dark));
+    color: #fff;
+    border: none;
+    padding: 11px 24px;
+    border-radius: var(--cv-radius-sm);
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(102, 126, 234, .3);
+    white-space: nowrap;
+}
+
+.cv-btn-search:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(102, 126, 234, .4);
+}
+
+/* ============ STAT CARDS ============ */
+.cv-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.cv-stat-card {
+    background: #fff;
+    border-radius: var(--cv-radius-lg);
+    padding: 22px 24px;
+    box-shadow: var(--cv-shadow-sm);
+    border: 1px solid var(--cv-border);
+    transition: all .3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.cv-stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--cv-shadow-lg);
+}
+
+.cv-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 5px;
+    background: var(--card-accent, var(--cv-primary));
+}
+
+.cv-stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.cv-stat-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--cv-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cv-stat-title i {
+    color: var(--card-accent, var(--cv-primary));
+}
+
+.cv-stat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--cv-bg-soft);
+    color: var(--cv-text-secondary);
+    border: 1px solid var(--cv-border);
+}
+
+.cv-stat-value {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.cv-stat-number {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -1.5px;
+    color: var(--card-accent, var(--cv-primary));
+}
+
+.cv-stat-sub {
+    font-size: 13px;
+    color: var(--cv-text-muted);
+    font-weight: 500;
+}
+
+.cv-stat-footer {
+    padding: 8px 12px;
+    border-radius: var(--cv-radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.cv-stat-footer.pass {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.cv-stat-footer.fail {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.cv-stat-footer.empty {
+    background: var(--cv-bg-soft);
+    color: var(--cv-text-muted);
+}
+
+/* ============ CHART CARD ============ */
+.cv-chart-card {
+    background: #fff;
+    border-radius: var(--cv-radius-lg);
+    box-shadow: var(--cv-shadow-sm);
+    border: 1px solid var(--cv-border);
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.cv-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--cv-border);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cv-chart-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cv-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cv-chart-title i {
+    color: var(--cv-primary);
+}
+
+.cv-chart-container {
+    position: relative;
+    height: 380px;
+    width: 100%;
+}
+
+/* ============ TABLE CARD ============ */
+.cv-table-card {
+    background: #fff;
+    border-radius: var(--cv-radius-lg);
+    box-shadow: var(--cv-shadow-sm);
+    border: 1px solid var(--cv-border);
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.cv-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--cv-border);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cv-table-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cv-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cv-table-title i {
+    color: var(--cv-primary);
+}
+
+.cv-table-meta {
+    font-size: 12px;
+    color: var(--cv-text-muted);
+}
+
+/* ============ MODERN TABLE ============ */
+.cv-modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    margin: 0;
+}
+
+.cv-modern-table thead th {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    color: var(--cv-text-secondary);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 14px 12px;
+    border-bottom: 2px solid var(--cv-border);
+    text-align: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.cv-modern-table thead th.text-start {
+    text-align: left;
+}
+
+.cv-modern-table tbody td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: var(--cv-text-primary);
+    vertical-align: middle;
+    text-align: center;
+}
+
+.cv-modern-table tbody td.text-start {
+    text-align: left;
+}
+
+.cv-modern-table tbody tr {
+    transition: background .15s ease;
+}
+
+.cv-modern-table tbody tr:hover {
+    background: #fafbff;
+}
+
+.cv-modern-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.cv-modern-table tbody tr.total-row {
+    background: linear-gradient(90deg, #eff6ff 0%, #f0f9ff 100%);
+    font-weight: 700;
+}
+
+.cv-modern-table tbody tr.total-row td {
+    color: var(--cv-text-primary);
+    border-top: 2px solid var(--cv-primary);
+}
+
+/* ============ BADGES ============ */
+.cv-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 62px;
+    line-height: 1.2;
+}
+
+.cv-badge.excellent {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #047857;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, .2);
+}
+
+.cv-badge.warning {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #b45309;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, .2);
+}
+
+.cv-badge.danger {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #b91c1c;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, .2);
+}
+
+.cv-badge-muted {
+    background: var(--cv-bg-soft);
+    color: var(--cv-text-muted);
+    font-weight: 500;
+}
+
+.cv-badge-target {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #eff6ff;
+    color: var(--cv-primary);
+    border: 1px solid #dbeafe;
+}
+
+.cv-badge-gap {
+    font-size: 10px;
+    opacity: .8;
+    font-weight: 500;
+}
+
+/* ============ STATUS PILL ============ */
+.cv-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.cv-status.pass {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.cv-status.fail {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.cv-status.na {
+    background: var(--cv-bg-soft);
+    color: var(--cv-text-muted);
+}
+
+/* ============ VACCINE TABLE ============ */
+.cv-vaccine-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+    color: var(--cv-primary);
+    font-size: 12px;
+    font-weight: 600;
+    margin: 2px;
+    border: 1px solid #c7d2fe;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 768px) {
+    .cv-header-card {
+        padding: 20px 18px;
+    }
+
+    .cv-header-title h4 {
+        font-size: 18px;
+    }
+
+    .cv-header-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+    }
+
+    .cv-action-btns {
+        justify-content: stretch;
+        width: 100%;
+        margin-top: 14px;
+    }
+
+    .cv-action-btns .cv-btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 100px;
+    }
+
+    .cv-filter-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .cv-stat-number {
+        font-size: 28px;
+    }
+
+    .cv-chart-container {
+        height: 320px;
+    }
+
+    .cv-table-card {
+        padding: 18px 14px;
+    }
+
+    .cv-modern-table {
+        font-size: 12px;
+    }
+
+    .cv-modern-table thead th,
+    .cv-modern-table tbody td {
+        padding: 10px 8px;
+    }
+
+    .cv-badge {
+        font-size: 11px;
+        padding: 4px 8px;
+        min-width: 50px;
+    }
+}
+
+@media print {
+    #coveragePage {
+        background: #fff !important;
+        padding: 0 !important;
+    }
+
+    .cv-header-card,
+    .cv-action-btns,
+    .cv-filter-bar,
+    .cv-chart-card {
+        display: none !important;
+    }
+
+    .cv-stat-card,
+    .cv-table-card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        page-break-inside: avoid;
+    }
+}
     </style>
 </head>
 <body>
@@ -2480,6 +3153,7 @@
                 <div id="trackingFormPage" class="page"></div>
                 <div id="officerTrackingPage" class="page"></div>
                 <div id="reportPage" class="page"></div>
+                <div id="coveragePage" class="page"></div>
             </div>
         </div>
     </div>
@@ -2651,35 +3325,125 @@
     // ⚠️ นำ Web App URL ที่เพิ่งคัดลอกมาเมื่อกี้ มาวางที่นี่
     const API_URL = "https://script.google.com/macros/s/AKfycbwOURwW8llT2-zw5qB7-Q9BtFilNdLXw_w77oIE6UKLeKgnteph4NaoocvjzcLiBX_N/exec";
 
-    async function callGAS(fnName, args) {
-        return new Promise(async function(resolve, reject) {
-            try {
-                // ส่งคำสั่งผ่าน HTTP POST ไปยัง Google Apps Script
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8' // ป้องกันปัญหา CORS
-                    },
-                    body: JSON.stringify({
-                        action: fnName,
-                        args: args || []
-                    }),
-                    redirect: 'follow'
-                });
+    async function callGAS(fnName, args, options) {
+    options = options || {};
+    const maxRetries = options.maxRetries !== undefined ? options.maxRetries : 3;
+    const retryDelay = options.retryDelay || 1000; // 1 วินาที
+    const timeout = options.timeout || 45000; // 45 วินาที
 
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const startTime = Date.now();
+        
+        try {
+            // ✅ สร้าง AbortController เพื่อ timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8'
+                },
+                body: JSON.stringify({
+                    action: fnName,
+                    args: args || []
+                }),
+                redirect: 'follow',
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+            const elapsed = Date.now() - startTime;
+
+            // ✅ สำเร็จ
+            if (response.ok) {
+                const rawText = await response.text();
+
+                if (!rawText || rawText.trim() === '') {
+                    throw new Error('Server ไม่ตอบกลับข้อมูล');
                 }
 
-                const result = await response.json();
-                resolve(result);
+                try {
+                    const result = JSON.parse(rawText);
+                    console.log(`✅ [${fnName}] OK (${elapsed}ms)${attempt > 1 ? ' [retry ' + attempt + ']' : ''}`);
+                    return result; // ✅ สำเร็จ คืนค่าทันที
 
-            } catch (error) {
-                console.error("API Call Error:", error);
-                reject(error);
+                } catch (parseErr) {
+                    throw new Error('Response ไม่ใช่ JSON: ' + rawText.slice(0, 100));
+                }
             }
-        });
+
+            // ❌ HTTP Error — ถ้าเป็น 5xx ให้ retry, 4xx ไม่ต้อง
+            if (response.status >= 500 && attempt < maxRetries) {
+                console.warn(`⚠️ [${fnName}] HTTP ${response.status} (attempt ${attempt}/${maxRetries}) — จะลองใหม่...`);
+                lastError = new Error(`HTTP ${response.status}`);
+                await sleep(retryDelay * attempt); // exponential backoff
+                continue;
+            }
+
+            // Error ที่ retry ไม่ช่วย (400, 401, 403, 404)
+            throw new Error(`HTTP ${response.status} ${response.statusText}`);
+
+        } catch (err) {
+            const elapsed = Date.now() - startTime;
+            lastError = err;
+
+            // ✅ ตรวจสอบว่าเป็น Network Error หรือ Timeout ที่ retry ได้
+            const isRetryable = 
+                err.name === 'AbortError' ||
+                err.message.includes('Failed to fetch') ||
+                err.message.includes('NetworkError') ||
+                err.message.includes('Network request failed') ||
+                err.message.includes('load failed') ||
+                err.message.includes('HTTP 5');
+
+            if (isRetryable && attempt < maxRetries) {
+                console.warn(`⚠️ [${fnName}] ${err.message} (attempt ${attempt}/${maxRetries}) — รอ ${retryDelay * attempt}ms แล้วลองใหม่...`);
+                await sleep(retryDelay * attempt);
+                continue;
+            }
+
+            // ✅ ลองครั้งสุดท้ายแล้ว ยังพังอยู่ → throw
+            if (attempt === maxRetries) {
+                console.error(`❌ [${fnName}] ล้มเหลวหลังจากลอง ${maxRetries} ครั้ง (${elapsed}ms):`, err);
+                throw new Error(translateError(err, elapsed));
+            }
+        }
     }
+
+    // ถ้าหลุดออกมาโดยไม่ return (กรณีไม่ควรเกิด)
+    throw new Error(translateError(lastError, 0));
+}
+
+// ✅ Helper: หน่วงเวลา
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ✅ Helper: แปลง Error เป็นข้อความที่เข้าใจง่าย
+function translateError(err, elapsed) {
+    const msg = (err && err.message) || String(err);
+
+    if (err && err.name === 'AbortError') {
+        return '⏱️ หมดเวลา (' + Math.round(elapsed/1000) + ' วินาที) — Server ใช้เวลานานเกินไป ลองอีกครั้ง';
+    }
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        return '🌐 การเชื่อมต่อล้มเหลว (Network) — อาจเป็นเพราะอินเทอร์เน็ตหรือ Google Apps Script ไม่พร้อมใช้งาน ลองอีกครั้ง';
+    }
+    if (msg.includes('HTTP 401')) return '🔒 ไม่มีสิทธิ์เข้าถึง — ตรวจสอบ Deployment ตั้ง "Who has access: Anyone"';
+    if (msg.includes('HTTP 403')) return '🚫 ถูกปฏิเสธ (Forbidden) — ตรวจสอบสิทธิ์ Deployment';
+    if (msg.includes('HTTP 404')) return '❓ ไม่พบ Web App URL — Deployment อาจถูกลบ';
+    if (msg.includes('HTTP 500')) return '💥 Server Error — code.gs มีข้อผิดพลาด';
+    if (msg.includes('HTTP 502') || msg.includes('HTTP 503')) {
+        return '⏸️ Google Apps Script ไม่พร้อมใช้งานชั่วคราว ลองใหม่ใน 1-2 นาที';
+    }
+    if (elapsed > 30000) {
+        return '⏱️ ประมวลผลนานเกินไป (' + Math.round(elapsed/1000) + ' วินาที) — ลองลดขอบเขตข้อมูล';
+    }
+    return msg;
+}
 
     // ============================================================
     // DATA TABLE HELPERS
@@ -2845,7 +3609,8 @@
                 { sep: 'ติดตาม' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
-                { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' }
+                { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' },
+                { id: 'coverage', icon: 'fas fa-shield-virus', label: 'ความครอบคลุมวัคซีน' }
             ];
         } else if (role === 'เจ้าหน้าที่') {
             items = [
@@ -2855,7 +3620,8 @@
                 { id: 'appointments', icon: 'fas fa-calendar-alt', label: 'รายชื่อนัดวัคซีน' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
-                { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' }
+                { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' },
+                { id: 'coverage', icon: 'fas fa-shield-virus', label: 'ความครอบคลุมวัคซีน' }
             ];
         } else {
             items = [
@@ -2928,20 +3694,26 @@
         });
 
         switch (page) {
-            case 'dashboard': loadDashboard(); break;
-            case 'users': loadUsersPage(); break;
-            case 'categories': loadCategoriesPage(); break;
-            case 'manageData': loadManageDataPage(); break;
-            case 'accessLog': loadAccessLogPage(); break;
-            case 'children': loadChildrenPage(); break;
-            case 'missing': loadMissingPage(); break;
-            case 'appointments': loadAppointmentsPage(); break;
-            case 'calendar': loadCalendarPage(); break;
-            case 'trackingForm': loadTrackingFormPage(); break;
-            case 'officerTracking': loadOfficerTrackingPage(); break;
-            case 'report': loadReportPage(); break;
-            default: loadDashboard();
-        }
+    case 'dashboard': loadDashboard(); break;
+    case 'users': loadUsersPage(); break;
+    case 'categories': loadCategoriesPage(); break;
+    case 'manageData': loadManageDataPage(); break;
+    case 'accessLog': loadAccessLogPage(); break;
+    case 'children': loadChildrenPage(); break;
+    case 'missing': loadMissingPage(); break;
+    case 'appointments': loadAppointmentsPage(); break;
+    case 'calendar': loadCalendarPage(); break;
+    case 'trackingForm': loadTrackingFormPage(); break;
+    case 'officerTracking': loadOfficerTrackingPage(); break;
+    case 'report': loadReportPage(); break;
+    case 'coverage': 
+        document.getElementById('coveragePage').classList.add('active');
+        loadCoveragePage(); 
+        break;
+    default: 
+        loadDashboard(); 
+        break;
+}
     }
 
     // ============================================================
@@ -2949,107 +3721,64 @@
     // ============================================================
 
     async function loadDashboard() {
-        const page = document.getElementById('dashboardPage');
-        page.classList.add('active');
-        showLoading();
+    const page = document.getElementById('dashboardPage');
+    page.classList.add('active');
+    
+    // ✅ แสดง UI ก่อน (โหลดเร็ว)
+    page.innerHTML = `
+        <div class="page-title"><i class="fas fa-chart-line"></i> ภาพรวมระบบ</div>
+        <div style="text-align:center; padding:80px 20px;">
+            <div class="loading-spinner" style="margin:0 auto 20px;"></div>
+            <div style="font-size:16px; font-weight:600; color:#475569;">กำลังโหลดข้อมูล...</div>
+            <div style="font-size:13px; color:#94a3b8; margin-top:8px;">กรุณารอสักครู่</div>
+        </div>`;
 
-        try {
-            // [แก้ไขแล้ว] เรียกข้อมูลทีละขั้นตอนเพื่อป้องกันคอขวดและ Failed to fetch
-            const facilityResult = await callGAS('getFacilityMap', []);
-            const villagesResult = await callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode, APP.currentUser.subdistrict]);
-            const result = await callGAS('getDashboardStats', [APP.currentUser.role, APP.currentUser.village, APP.currentUser.hcode, APP.currentUser.subdistrict]);
+    try {
+        // ✅ 1. โหลด FacilityMap ก่อน (เบา)
+        const facilityResult = await callGAS('getFacilityMap', [], { maxRetries: 3 });
+        APP.facilityMap = facilityResult.success ? facilityResult.map : {};
 
-            APP.facilityMap = facilityResult.success ? facilityResult.map : {};
+        // ✅ 2. โหลด Villages (เบา)
+        const villagesResult = await callGAS('getVillages', 
+            [APP.currentUser.role, APP.currentUser.hcode, APP.currentUser.subdistrict],
+            { maxRetries: 3 }
+        );
 
-            const villageColorsMap = {};
-            if (villagesResult.success) {
-                villagesResult.villages.forEach(function(v) {
-                    villageColorsMap[v.name] = v.color;
-                });
-            }
-
-            hideLoading();
-            if (!result.success) {
-                page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(result.message) + '</div>';
-                return;
-            }
-
-            const s = result.stats;
-            const appointmentsThisMonth = s.appointmentsThisMonth || 0;
-
-            const today = new Date();
-            const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-            const dateStr = 'วันที่ ' + today.getDate() + ' ' + thaiMonths[today.getMonth()] + ' พ.ศ. ' + (today.getFullYear() + 543);
-
-            APP.dashboardVillageData = result.villageData || [];
-            APP.dashboardVillageColors = villageColorsMap;
-            
-            const statusData = result.statusData || {};
-            const facilityCoverage = result.facilityCoverage || []; 
-
-            let mapFacilityDropdownHtml = '';
-            const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
-            if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
-                const facilityOptions = '<option value="ทั้งหมด">แสดงทุกสถานพยาบาล</option>' + 
-                    Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
-                mapFacilityDropdownHtml = `<select id="mapFacilityFilter" onchange="initLeafletMap()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit', sans-serif; outline: none; cursor: pointer; font-size: 14px; margin-right: 8px;">${facilityOptions}</select>`;
-            }
-
-            page.innerHTML =
-                '<div class="page-title"><i class="fas fa-chart-line"></i> ภาพรวมระบบ</div>' +
-                '<div style="text-align:right; margin-bottom:15px; color:#888; font-size:13px;"><i class="fas fa-calendar-day"></i> ' + dateStr + '</div>' +
-                
-                '<div class="stats-grid">' +
-                statCard('blue', 'fas fa-child', 'เด็ก 0-5 ปีทั้งหมด', s.totalChildren || 0, 'คน') +
-                statCard('green', 'fas fa-check-circle', 'มาตามนัดปกติ/ครบเกณฑ์', (s.onTime || 0) + (s.complete || 0), 'คน') +
-                statCard('orange', 'fas fa-calendar-alt', 'นัดหมายเดือนนี้', appointmentsThisMonth, 'นัด') +
-                statCard('red', 'fas fa-exclamation-triangle', 'ขาดนัดปัจจุบัน', s.missed || 0, 'คน') +
-                '</div>' +
-                
-                '<div class="charts-row" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start;">' +
-                '<div class="chart-card" style="flex: 1;"><h4><i class="fas fa-chart-pie"></i> สัดส่วนสถานะวัคซีน</h4><canvas id="statusChart"></canvas></div>' +
-                '<div class="chart-card" style="flex: 2;"><h4><i class="fas fa-hospital"></i> ความครอบคลุมรายสถานพยาบาล (%) <small style="color:#888; font-weight:normal; font-size:11px;">(คลิกแท่งกราฟเพื่อดูแผนที่และหมู่บ้าน)</small></h4><div style="position: relative; height: 280px; width: 100%;"><canvas id="facilityCoverageChart"></canvas></div></div>' +
-                '</div>' +
-                
-                '<div class="charts-row">' +
-                '<div class="chart-card" style="width: 100%;">' +
-                '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">' +
-                '<h4 style="margin: 0;"><i class="fas fa-chart-bar"></i> ผลงานแยกหมู่บ้าน (ร้อยละ) <span id="villageChartSubtitle" style="font-size:13px; color:#667eea; font-weight:500; margin-left: 8px;"></span></h4>' +
-                '<button id="resetVillageFilterBtn" onclick="resetVillageChartFilter()" style="display:none; padding: 6px 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; font-family: \'Kanit\'; font-size: 13px; color: #475569;"><i class="fas fa-undo"></i> แสดงภาพรวมทั้งหมด</button>' +
-                '</div>' +
-                '<div id="villageBarChartVertical" class="vertical-bar-container"></div>' +
-                '</div>' +
-                '</div>' +
-                
-                '<div class="map-container">' +
-                '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">' +
-                '<h4 style="margin: 0;"><i class="fas fa-map-marked-alt text-blue-500"></i> แผนที่แสดงพิกัดบ้านเด็ก</h4>' +
-                '<div>' + 
-                mapFacilityDropdownHtml + 
-                '<select id="mapStatusFilter" onchange="initLeafletMap()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: \'Kanit\', sans-serif; outline: none; cursor: pointer; font-size: 14px;">' +
-                '<option value="ทั้งหมด">แสดงสถานะทั้งหมด</option>' +
-                '<option value="ตามนัดปกติ">มาตามนัดปกติ</option>' +
-                '<option value="ครบตามเกณฑ์">ครบตามเกณฑ์</option>' +
-                '<option value="ขาดนัด">ขาดนัด</option>' +
-                '<option value="ปฏิเสธวัคซีน">ปฏิเสธวัคซีน</option>' +
-                '</select>' +
-                '</div>' +
-                '</div>' +
-                '<div id="childMap" style="height: 450px; border-radius: 8px; z-index: 10;"></div>' +
-                '</div>';
-
-            setTimeout(function() {
-                renderStatusChart(statusData);
-                renderFacilityCoverageChart(facilityCoverage); 
-                renderVillageVerticalBar(APP.dashboardVillageData, APP.dashboardVillageColors);
-                initLeafletMap();
-            }, 150);
-
-        } catch (err) {
-            hideLoading();
-            page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(err.message) + '</div>';
+        const villageColorsMap = {};
+        if (villagesResult.success) {
+            villagesResult.villages.forEach(v => villageColorsMap[v.name] = v.color);
         }
+
+        // ✅ 3. โหลด Dashboard Stats (หนัก) — retry มากกว่า
+        showLoading('กำลังประมวลผลข้อมูลสรุป...');
+        const result = await callGAS('getDashboardStats',
+            [APP.currentUser.role, APP.currentUser.village, APP.currentUser.hcode, APP.currentUser.subdistrict],
+            { maxRetries: 5, retryDelay: 2000, timeout: 60000 }  // ⚡ retry 5 ครั้ง, timeout 60s
+        );
+        hideLoading();
+
+        if (!result.success) {
+            page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(result.message) + '</div>';
+            return;
+        }
+
+        // ... (โค้ดแสดงผลเดิม)
+        const s = result.stats;
+        // ... ทำต่อเหมือนเดิม
+
+    } catch (err) {
+        hideLoading();
+        page.innerHTML = `
+            <div class="error-message" style="padding:40px; text-align:center;">
+                <i class="fas fa-exclamation-triangle" style="font-size:40px; color:#ef4444; margin-bottom:16px;"></i>
+                <div style="font-size:16px; font-weight:600; margin-bottom:8px;">ไม่สามารถโหลดข้อมูลได้</div>
+                <div style="font-size:14px; color:#64748b; margin-bottom:20px;">${esc(err.message)}</div>
+                <button onclick="loadDashboard()" style="padding:10px 24px; background:#667eea; color:#fff; border:none; border-radius:8px; cursor:pointer; font-family:Kanit; font-size:14px;">
+                    <i class="fas fa-redo"></i> ลองอีกครั้ง
+                </button>
+            </div>`;
     }
+}
 
     function renderFacilityCoverageChart(coverageData) {
         const ctx = document.getElementById('facilityCoverageChart');
@@ -6976,6 +7705,1205 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
             selectEl.value = "";
         }
     };
+    async function loadCoveragePage() {
+  const el = document.getElementById('coveragePage');
+  const nowBE = new Date().getFullYear() + 543 + (new Date().getMonth() >= 9 ? 1 : 0);
+  const years = [];
+  for (let y = nowBE + 1; y >= nowBE - 5; y--) years.push(y);
+
+  // ✅ โหลดรายชื่อสถานพยาบาล
+  showLoading('กำลังโหลดข้อมูล...');
+  try {
+    const fRes = await callGAS('getFacilityMap', []);
+    APP.facilityMap = fRes.success ? fRes.map : {};
+  } catch (e) {
+    APP.facilityMap = {};
+  }
+  hideLoading();
+
+  // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
+  const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' &&
+                            (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+  const canSelectFacility = (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer);
+
+  let facilityFilterHtml = '';
+  if (canSelectFacility) {
+    const facilityOptions = '<option value="">-- ทั้งหมด --</option>' +
+      Object.keys(APP.facilityMap).map(k =>
+        `<option value="${esc(k)}">${esc(APP.facilityMap[k])} (${esc(k)})</option>`
+      ).join('');
+    facilityFilterHtml = `
+      <div class="cv-filter-group">
+        <label><i class="fas fa-hospital"></i> สถานพยาบาล</label>
+        <select id="cvFacility">${facilityOptions}</select>
+      </div>`;
+  } else {
+    const myFacilityName = APP.facilityMap[APP.currentUser.hcode] || APP.currentUser.hcode || '-';
+    facilityFilterHtml = `
+      <div class="cv-filter-group">
+        <label><i class="fas fa-hospital"></i> สถานพยาบาล</label>
+        <input type="text" id="cvFacilityDisplay" readonly
+               value="${esc(myFacilityName)} (${esc(APP.currentUser.hcode || '-')})">
+        <input type="hidden" id="cvFacility" value="${esc(APP.currentUser.hcode || '')}">
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <!-- 🌟 HEADER CARD -->
+    <div class="cv-header-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+        <div class="cv-header-title">
+          <div class="cv-header-icon">
+            <i class="fas fa-shield-virus"></i>
+          </div>
+          <div>
+            <h4>รายงานความครอบคลุมวัคซีน</h4>
+            <small>ประเมินตามเกณฑ์มาตรฐานเด็กอายุครบ 1, 2, 3 และ 5 ปี รายไตรมาส</small>
+          </div>
+        </div>
+        <div class="cv-action-btns">
+          <button class="cv-btn cv-btn-outline" onclick="toggleTrendView()">
+            <i class="fas fa-chart-line"></i> เทียบย้อนหลัง
+          </button>
+          <button class="cv-btn cv-btn-info" onclick="sendCoverageTG()">
+            <i class="fab fa-telegram"></i> Telegram
+          </button>
+          <button class="cv-btn cv-btn-success" onclick="exportCoverageExcel()">
+            <i class="fas fa-file-excel"></i> Excel
+          </button>
+          <button class="cv-btn cv-btn-outline" onclick="window.print()">
+            <i class="fas fa-print"></i> พิมพ์
+          </button>
+        </div>
+      </div>
+
+      <div class="cv-filter-bar">
+        <div class="cv-filter-group">
+          <label><i class="fas fa-calendar-alt"></i> ปีงบประมาณ / พ.ศ.</label>
+          <select id="cvYear">
+            ${years.map(y => `<option value="${y}" ${y===nowBE?'selected':''}>${y}</option>`).join('')}
+          </select>
+        </div>
+        <div class="cv-filter-group">
+          <label><i class="fas fa-clock"></i> รูปแบบการนับเวลา</label>
+          <select id="cvYearType">
+            <option value="fiscal">ปีงบประมาณ (ต.ค. - ก.ย.)</option>
+            <option value="calendar">ปีปฏิทิน (ม.ค. - ธ.ค.)</option>
+          </select>
+        </div>
+        ${facilityFilterHtml}
+        <div class="cv-filter-group">
+          <label><i class="fas fa-map-marker-alt"></i> หมู่ที่ (เฉพาะเจาะจง)</label>
+          <input id="cvVillage" placeholder="เว้นว่าง = ทั้งหมด">
+        </div>
+        <div class="cv-filter-group">
+          <label>&nbsp;</label>
+          <button class="cv-btn-search" onclick="doLoadCoverage()">
+            <i class="fas fa-search"></i> ประมวลผลข้อมูล
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📊 STAT CARDS -->
+    <div id="cvSummary" class="cv-stat-grid"></div>
+
+    <!-- 📈 CHART -->
+    <div class="cv-chart-card">
+      <div class="cv-chart-header">
+        <div class="cv-chart-title">
+          <i class="fas fa-chart-bar"></i>
+          <span>เปรียบเทียบความครอบคลุมรายไตรมาส</span>
+        </div>
+        <span id="cvChartYearLabel" class="cv-table-meta"></span>
+      </div>
+      <div class="cv-chart-container">
+        <canvas id="cvChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 📋 TABLES -->
+    <div id="cvTables"></div>
+    <div id="cvTrend" style="display:none"></div>
+  `;
+
+  doLoadCoverage();
+}
+
+async function doLoadCoverage() {
+  const u = APP.currentUser || {};
+  
+  // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
+  const isSpecialOfficer = (u.role === 'เจ้าหน้าที่' &&
+                            (u.hcode === '00860' || u.hcode === '11390'));
+  const canSelectFacility = (u.role === 'Admin_Ampur' || isSpecialOfficer);
+
+  // ✅ ดึงค่า hcode จาก Dropdown (ถ้าเลือกได้) หรือจาก user (ถ้าล็อกไว้)
+  let selectedHcode = '';
+  const facilityEl = document.getElementById('cvFacility');
+  if (facilityEl) {
+    selectedHcode = facilityEl.value || '';
+  }
+  
+  // ถ้าผู้ใช้ไม่มีสิทธิ์เลือก ให้ใช้ hcode ของตัวเองเสมอ
+  if (!canSelectFacility) {
+    selectedHcode = u.hcode || '';
+  }
+
+  const filters = {
+    year: +document.getElementById('cvYear').value,
+    yearType: document.getElementById('cvYearType').value,
+    village: document.getElementById('cvVillage').value.trim(),
+    hcode: selectedHcode,                    // ✅ ส่ง hcode ไปให้ Backend
+    role: u.role,
+    userHcode: u.hcode,
+    userVillage: u.village,
+    userSubdistrict: u.subdistrict,
+    includeDetails: true
+  };
+
+  document.getElementById('cvTables').innerHTML =
+    '<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> กำลังประมวลผล...</div>';
+
+  const res = await callGAS('getVaccineCoverageReport', [filters]);
+
+  if (!res || !res.success) {
+    document.getElementById('cvTables').innerHTML =
+      `<div class="alert alert-danger">${(res && res.message) || 'โหลดข้อมูลไม่สำเร็จ'}</div>`;
+    return;
+  }
+  APP.coverageData = res;
+  renderCoverage(res);
+}
+
+/* ============================================================
+ *  แสดงผลรายงานความครอบคลุมวัคซีน (เวอร์ชันรวมเกณฑ์กระทรวง + รายหมู่บ้าน)
+ * ============================================================ */
+function renderCoverage(res) {
+  const color = (p, tgt) => {
+    tgt = tgt || 90;
+    return p >= tgt ? '#10b981' : (p >= tgt - 10 ? '#f59e0b' : '#ef4444');
+  };
+  const badgeClass = (p, tgt) => {
+    tgt = tgt || 90;
+    if (p >= tgt) return 'excellent';
+    if (p >= tgt - 10) return 'warning';
+    return 'danger';
+  };
+
+  /* ============================================================
+   *  ส่วนที่ 1 : STAT CARDS (สรุปทั้งปี)
+   * ============================================================ */
+  document.getElementById('cvSummary').innerHTML = res.groups.map((g, i) => {
+    const c = color(g.total.pct, g.targetPct);
+    const icons = ['fa-baby', 'fa-child', 'fa-child-reaching', 'fa-user-graduate'];
+    const isPass = g.total.pass;
+    const isEmpty = g.total.target === 0;
+
+    return `
+      <div class="cv-stat-card" style="--card-accent: ${c};">
+        <div class="cv-stat-header">
+          <div class="cv-stat-title">
+            <i class="fas ${icons[i] || 'fa-syringe'}"></i>
+            <span>${g.label}</span>
+          </div>
+          <span class="cv-stat-badge">เกณฑ์ ${g.targetPct}%</span>
+        </div>
+        <div class="cv-stat-value">
+          <span class="cv-stat-number">${g.total.pct}%</span>
+          <span class="cv-stat-sub">(${g.total.complete}/${g.total.target} คน)</span>
+        </div>
+        <div class="cv-stat-footer ${isEmpty ? 'empty' : (isPass ? 'pass' : 'fail')}">
+          ${isEmpty
+            ? '<i class="fas fa-minus-circle"></i> ไม่มีกลุ่มเป้าหมาย'
+            : (isPass
+                ? '<i class="fas fa-check-circle"></i> ผ่านเกณฑ์มาตรฐาน'
+                : `<i class="fas fa-exclamation-circle"></i> ขาดอีก ${g.total.gap} คน`)}
+        </div>
+      </div>`;
+  }).join('');
+
+  /* ============================================================
+   *  ส่วนที่ 2 : CHART
+   * ============================================================ */
+  if (APP.charts && APP.charts.cvChart) APP.charts.cvChart.destroy();
+  if (!APP.charts) APP.charts = {};
+
+  const yearLblEl = document.getElementById('cvChartYearLabel');
+  if (yearLblEl) yearLblEl.textContent = res.meta.yearLabel;
+
+  const barColors = ['#667eea', '#0ea5e9', '#10b981', '#8b5cf6'];
+
+  APP.charts.cvChart = new Chart(document.getElementById('cvChart'), {
+    data: {
+      labels: res.meta.quarters.map(q => 'Q' + q.q),
+      datasets: [
+        ...res.groups.map((g, i) => ({
+          type: 'bar',
+          label: g.label,
+          data: g.quarters.map(s => s.pct),
+          backgroundColor: barColors[i % barColors.length],
+          borderRadius: 8,
+          barPercentage: 0.7,
+          categoryPercentage: 0.8
+        })),
+        {
+          type: 'line', label: 'เกณฑ์ 90%',
+          data: res.meta.quarters.map(() => 90),
+          borderColor: '#ef4444', borderWidth: 2, borderDash: [6, 4],
+          pointRadius: 0, fill: false
+        },
+        {
+          type: 'line', label: 'เกณฑ์ 95%',
+          data: res.meta.quarters.map(() => 95),
+          borderColor: '#8b5cf6', borderWidth: 2, borderDash: [2, 3],
+          pointRadius: 0, fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 14,
+            boxHeight: 14,
+            padding: 16,
+            font: { size: 12, family: 'Kanit' },
+            usePointStyle: true,
+            pointStyle: 'rectRounded'
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleFont: { size: 13, weight: 'bold', family: 'Kanit' },
+          bodyFont: { size: 12, family: 'Kanit' },
+          padding: 12,
+          cornerRadius: 10,
+          displayColors: true,
+          callbacks: {
+            afterLabel: (ctx) => {
+              const g = res.groups[ctx.datasetIndex];
+              if (!g) return '';
+              const s = g.quarters[ctx.dataIndex];
+              if (!s || !s.target) return ' ไม่มีกลุ่มเป้าหมาย';
+              return ` รับแล้ว: ${s.complete}/${s.target} คน` + (s.pass ? ' ✓ ผ่าน' : ` (ขาด ${s.gap})`);
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true, max: 100,
+          ticks: { callback: v => v + '%', font: { family: 'Kanit' }, color: '#94a3b8' },
+          grid: { color: '#f1f5f9', drawBorder: false }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'Kanit', size: 13, weight: '600' }, color: '#475569' }
+        }
+      }
+    }
+  });
+
+  /* ============================================================
+   *  ส่วนที่ 3 : ตารางสรุปหลัก
+   * ============================================================ */
+  let html = `
+  <div class="cv-table-card">
+    <div class="cv-table-header">
+      <div class="cv-table-title">
+        <i class="fas fa-table"></i>
+        <span>สรุปความครอบคลุม ${res.meta.yearLabel}</span>
+      </div>
+      <span class="cv-table-meta"><i class="far fa-clock"></i> อัปเดต: ${res.meta.generatedAt}</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="cv-modern-table">
+        <thead>
+          <tr>
+            <th rowspan="2" class="text-start" style="min-width:130px;">ช่วงอายุ</th>
+            <th rowspan="2" style="min-width:70px;">เกณฑ์</th>
+            ${res.meta.quarters.map(q => `
+              <th colspan="3" style="background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);">Q${q.q}
+                <br><small style="font-weight:400; text-transform:none; font-size:10px; color:#94a3b8;">${q.start.slice(0,5)} - ${q.end.slice(0,5)}</small>
+              </th>`).join('')}
+            <th colspan="4" style="background: linear-gradient(180deg, #f8fafc 0%, #fef3c7 100%);">รวมทั้งปี</th>
+          </tr>
+          <tr>
+            ${res.meta.quarters.map(() => '<th>เป้า</th><th>ครบ</th><th>%</th>').join('')}
+            <th style="background:#fffbeb;">เป้า</th>
+            <th style="background:#fffbeb;">ครบ</th>
+            <th style="background:#fffbeb;">%</th>
+            <th style="background:#fffbeb;">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${res.groups.map(g => `
+            <tr>
+              <td class="text-start" style="font-weight:600;">${g.label}</td>
+              <td><span class="cv-badge-target">${g.targetPct}%</span></td>
+              ${g.quarters.map(s => `
+                <td style="color:#94a3b8;">${s.target}</td>
+                <td>${s.complete}</td>
+                <td>
+                  ${s.target
+                    ? `<span class="cv-badge ${badgeClass(s.pct, g.targetPct)}">${s.pct}%</span>`
+                    : '<span class="cv-badge-muted">-</span>'}
+                </td>
+              `).join('')}
+              <td style="font-weight:700;">${g.total.target}</td>
+              <td style="font-weight:700;">${g.total.complete}</td>
+              <td><span class="cv-badge ${badgeClass(g.total.pct, g.targetPct)}">${g.total.pct}%</span></td>
+              <td>
+                ${g.total.target === 0
+                  ? '<span class="cv-status na">-</span>'
+                  : (g.total.pass
+                      ? '<span class="cv-status pass"><i class="fas fa-check-circle"></i> ผ่าน</span>'
+                      : '<span class="cv-status fail"><i class="fas fa-times-circle"></i> ต่ำกว่า</span>')}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex; align-items:center; gap:18px; margin-top:16px; font-size:12px; color:#64748b; flex-wrap:wrap;">
+      <span><i class="fas fa-circle" style="color:#10b981; font-size:8px;"></i> ผ่านเกณฑ์</span>
+      <span><i class="fas fa-circle" style="color:#f59e0b; font-size:8px;"></i> ต่ำกว่าเล็กน้อย</span>
+      <span><i class="fas fa-circle" style="color:#ef4444; font-size:8px;"></i> ต่ำกว่าเกณฑ์มาก</span>
+    </div>
+  </div>`;
+
+  /* ============================================================
+   *  ส่วนที่ 4 : ตารางแยกรายวัคซีน
+   * ============================================================ */
+  res.groups.forEach(g => {
+    if (!g.vaccines.length) return;
+    html += `
+    <div class="cv-table-card">
+      <div class="cv-table-header">
+        <div class="cv-table-title">
+          <i class="fas fa-syringe"></i>
+          <span>${g.label} — รายละเอียดรายวัคซีน</span>
+        </div>
+        <span class="cv-badge-target">เกณฑ์ ${g.targetPct}%</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="cv-modern-table">
+          <thead>
+            <tr>
+              <th class="text-start" style="min-width:160px;">วัคซีน</th>
+              <th style="min-width:70px;">เกณฑ์</th>
+              ${g.quarters.map(s => `<th>Q${s.q}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${g.vaccines.map(v => {
+              const tgt = (g.vaccineTargets && g.vaccineTargets[v]) || g.targetPct;
+              return `
+              <tr>
+                <td class="text-start"><span class="cv-vaccine-pill"><i class="fas fa-syringe"></i> ${v}</span></td>
+                <td><span style="font-size:12px; color:#94a3b8; font-weight:600;">${tgt}%</span></td>
+                ${g.quarters.map(s => {
+                  if (!s.target) return '<td><span class="cv-badge-muted">-</span></td>';
+                  const p = s.byVaccinePct[v];
+                  return `<td>
+                    <span class="cv-badge ${badgeClass(p, tgt)}">
+                      ${p}%<span class="cv-badge-gap">(${s.byVaccine[v]}/${s.target})</span>
+                    </span>
+                  </td>`;
+                }).join('')}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  });
+
+  /* ============================================================
+   *  ส่วนที่ 5 : สรุปรายหมู่บ้าน
+   * ============================================================ */
+  html += renderCoverageByVillage(res);
+
+  /* ============================================================
+   *  ส่วนที่ 6 : รายชื่อเด็กค้างติดตาม
+   * ============================================================ */
+  const nc = res.details.filter(d => d.status === 'ไม่ครบ');
+  html += `
+  <div class="cv-table-card">
+    <div class="cv-table-header">
+      <div class="cv-table-title">
+        <i class="fas fa-user-clock" style="color:#ef4444;"></i>
+        <span>รายชื่อเด็กที่ยังไม่ครบวัคซีน</span>
+      </div>
+      <span class="cv-badge danger" style="font-size:13px;">
+        <i class="fas fa-users"></i> ${nc.length} คน
+      </span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="cvDetailTable" class="cv-modern-table display" style="width:100%;">
+        <thead>
+          <tr>
+            <th class="text-start">ช่วงอายุ</th>
+            <th>ไตรมาส</th>
+            <th class="text-start">ชื่อ-สกุล</th>
+            <th>วันเกิด</th>
+            <th>หมู่</th>
+            <th class="text-start">หน่วยบริการ</th>
+            <th class="text-start">วัคซีนที่ขาด</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${nc.map(d => `
+            <tr>
+              <td class="text-start" style="font-weight:500;">${d.group}</td>
+              <td><span class="cv-badge-muted" style="padding:3px 10px; border-radius:6px; background:#eff6ff; color:#667eea; font-weight:700;">Q${d.quarter}</span></td>
+              <td class="text-start" style="font-weight:600; color:#667eea;">${esc(d.name)}</td>
+              <td style="color:#94a3b8; font-size:13px;">${d.dob}</td>
+              <td>หมู่ ${d.village || '-'}</td>
+              <td class="text-start" style="font-size:13px; color:#64748b;">${esc(d.hname || '-')}</td>
+              <td class="text-start">
+                <span style="background:#fef2f2; color:#b91c1c; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600; display:inline-block;">
+                  ${esc(d.missing)}
+                </span>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+
+  document.getElementById('cvTables').innerHTML = html;
+
+  try {
+    destroyDT('cvDetailTable');
+    initDT('cvDetailTable', {
+      pageLength: 25,
+      order: [[0, 'asc']],
+      columnDefs: [
+        { orderable: false, targets: [6] }
+      ]
+    });
+  } catch (e) { console.warn('DataTable init:', e); }
+}
+
+
+/* ============================================================
+ *  ตารางสรุปรายหมู่บ้าน (Modern Styling)
+ * ============================================================ */
+function renderCoverageByVillage(res) {
+  const pivot = {};
+  res.details.forEach(d => {
+    const v = d.village || '-';
+    pivot[v] = pivot[v] || {};
+    pivot[v][d.group] = pivot[v][d.group] || { t: 0, c: 0 };
+    pivot[v][d.group].t++;
+    if (d.status === 'ครบ') pivot[v][d.group].c++;
+  });
+
+  const villages = Object.keys(pivot).sort((a, b) => (+a || 999) - (+b || 999));
+  if (!villages.length) return '';
+
+  const badgeClass = (p, tgt) => {
+    tgt = tgt || 90;
+    if (p >= tgt) return 'excellent';
+    if (p >= tgt - 10) return 'warning';
+    return 'danger';
+  };
+
+  const cell = (o, tgt) => {
+    if (!o || !o.t) return '<td><span class="cv-badge-muted">-</span></td>';
+    const p = Math.round(o.c * 10000 / o.t) / 100;
+    return `<td>
+      <span class="cv-badge ${badgeClass(p, tgt)}">
+        ${p}%<span class="cv-badge-gap">(${o.c}/${o.t})</span>
+      </span>
+    </td>`;
+  };
+
+  const totalRow = res.groups.map(g => {
+    let t = 0, c = 0;
+    villages.forEach(v => {
+      const o = pivot[v][g.label];
+      if (o) { t += o.t; c += o.c; }
+    });
+    const p = t ? Math.round(c * 10000 / t) / 100 : 0;
+    return `<td><span class="cv-badge ${badgeClass(p, g.targetPct)}">${p}%<span class="cv-badge-gap">(${c}/${t})</span></span></td>`;
+  }).join('');
+
+  return `
+  <div class="cv-table-card">
+    <div class="cv-table-header">
+      <div class="cv-table-title">
+        <i class="fas fa-map-marked-alt" style="color:#10b981;"></i>
+        <span>สรุปความครอบคลุมรายหมู่บ้าน</span>
+      </div>
+      <span class="cv-table-meta">เทียบเกณฑ์กระทรวงสาธารณสุข</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="cv-modern-table">
+        <thead>
+          <tr>
+            <th class="text-start" style="min-width:100px;">หมู่ที่</th>
+            ${res.groups.map(g => `<th>${g.label}<br><small style="font-weight:400; text-transform:none; color:#94a3b8; font-size:10px;">เกณฑ์ ${g.targetPct}%</small></th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${villages.map(v => `
+            <tr>
+              <td class="text-start" style="font-weight:600;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg, #eff6ff, #dbeafe); color:#667eea; font-weight:700;">
+                  ${v}
+                </span>
+              </td>
+              ${res.groups.map(g => cell(pivot[v][g.label], g.targetPct)).join('')}
+            </tr>`).join('')}
+          <tr class="total-row">
+            <td class="text-start" style="font-weight:700;">รวมทุกหมู่บ้าน</td>
+            ${totalRow}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+ *  EXPORT EXCEL — ส่งออกเป็นไฟล์ .xlsx หลาย Sheet
+ * ============================================================ */
+async function exportCoverageExcel() {
+  const res = APP.coverageData;
+  if (!res) {
+    return Swal.fire('แจ้งเตือน', 'กรุณากด "ประมวลผลข้อมูล" ก่อนส่งออก', 'warning');
+  }
+
+  showLoading('กำลังสร้างไฟล์ Excel...');
+
+  try {
+    // ✅ ใช้ SheetJS สร้างไฟล์ .xlsx
+    const wb = XLSX.utils.book_new();
+
+    /* ---------- Sheet 1: สรุปความครอบคลุม ---------- */
+    const summaryRows = [
+      ['รายงานความครอบคลุมวัคซีน'],
+      [res.meta.yearLabel],
+      ['ออกรายงาน: ' + res.meta.generatedAt],
+      [],
+      ['ช่วงอายุ', 'เกณฑ์ (%)', 'เป้าหมาย (คน)', 'ครบ (คน)', 'ร้อยละ', 'สถานะ']
+    ];
+
+    res.groups.forEach(g => {
+      summaryRows.push([
+        g.label,
+        g.targetPct,
+        g.total.target,
+        g.total.complete,
+        g.total.pct,
+        g.total.target === 0 ? '-' : (g.total.pass ? 'ผ่านเกณฑ์' : 'ต่ำกว่าเกณฑ์')
+      ]);
+    });
+
+    summaryRows.push([]);
+    summaryRows.push(['สรุปรายไตรมาส']);
+    summaryRows.push(['ช่วงอายุ', 'ไตรมาส', 'ช่วงวันที่', 'เป้าหมาย', 'ครบ', 'ร้อยละ', 'สถานะ']);
+
+    res.groups.forEach(g => {
+      g.quarters.forEach(s => {
+        summaryRows.push([
+          g.label,
+          'Q' + s.q,
+          s.start + ' ถึง ' + s.end,
+          s.target,
+          s.complete,
+          s.target ? s.pct : 0,
+          s.target === 0 ? '-' : (s.pass ? 'ผ่านเกณฑ์' : 'ขาดอีก ' + s.gap + ' คน')
+        ]);
+      });
+    });
+
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+
+    // ✅ กำหนดความกว้างคอลัมน์
+    ws1['!cols'] = [
+      { wch: 20 }, { wch: 12 }, { wch: 25 },
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 18 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws1, 'สรุปความครอบคลุม');
+
+    /* ---------- Sheet 2: รายวัคซีน ---------- */
+    res.groups.forEach(g => {
+      if (!g.vaccines || !g.vaccines.length) return;
+
+      const vacRows = [
+        [g.label + ' — รายละเอียดรายวัคซีน'],
+        ['ออกรายงาน: ' + res.meta.generatedAt],
+        [],
+        ['วัคซีน', 'เกณฑ์ (%)', 'Q1 (%)', 'Q2 (%)', 'Q3 (%)', 'Q4 (%)']
+      ];
+
+      g.vaccines.forEach(v => {
+        const tgt = (g.vaccineTargets && g.vaccineTargets[v]) || g.targetPct;
+        const row = [v, tgt];
+        g.quarters.forEach(s => {
+          if (!s.target) {
+            row.push('-');
+          } else {
+            const p = s.byVaccinePct[v];
+            row.push(p + '% (' + s.byVaccine[v] + '/' + s.target + ')');
+          }
+        });
+        vacRows.push(row);
+      });
+
+      const wsV = XLSX.utils.aoa_to_sheet(vacRows);
+      wsV['!cols'] = [
+        { wch: 20 }, { wch: 10 },
+        { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }
+      ];
+
+      // ✅ ตั้งชื่อ sheet ให้ไม่ซ้ำ (สูงสุด 31 ตัวอักษร)
+      let sheetName = g.label.replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 31);
+      XLSX.utils.book_append_sheet(wb, wsV, sheetName);
+    });
+
+    /* ---------- Sheet 3: สรุปรายหมู่บ้าน ---------- */
+    if (res.details && res.details.length > 0) {
+      const pivot = {};
+      res.details.forEach(d => {
+        const v = d.village || '-';
+        pivot[v] = pivot[v] || {};
+        pivot[v][d.group] = pivot[v][d.group] || { t: 0, c: 0 };
+        pivot[v][d.group].t++;
+        if (d.status === 'ครบ') pivot[v][d.group].c++;
+      });
+
+      const villages = Object.keys(pivot).sort((a, b) => (+a || 999) - (+b || 999));
+
+      const vilRows = [
+        ['สรุปความครอบคลุมรายหมู่บ้าน'],
+        ['ออกรายงาน: ' + res.meta.generatedAt],
+        []
+      ];
+
+      // Header
+      const header1 = ['หมู่ที่'];
+      const header2 = ['เกณฑ์'];
+      res.groups.forEach(g => {
+        header1.push(g.label);
+        header2.push(g.targetPct + '%');
+      });
+      vilRows.push(header1);
+      vilRows.push(header2);
+
+      // ข้อมูลแต่ละหมู่
+      villages.forEach(v => {
+        const row = ['หมู่ ' + v];
+        row.push('-');
+        res.groups.forEach(g => {
+          const o = pivot[v][g.label];
+          if (!o || !o.t) {
+            row.push('-');
+          } else {
+            const p = Math.round(o.c * 10000 / o.t) / 100;
+            row.push(p + '% (' + o.c + '/' + o.t + ')');
+          }
+        });
+        vilRows.push(row);
+      });
+
+      // Total row
+      const totalRow = ['รวมทุกหมู่บ้าน', '-'];
+      res.groups.forEach(g => {
+        let t = 0, c = 0;
+        villages.forEach(v => {
+          const o = pivot[v][g.label];
+          if (o) { t += o.t; c += o.c; }
+        });
+        const p = t ? Math.round(c * 10000 / t) / 100 : 0;
+        totalRow.push(p + '% (' + c + '/' + t + ')');
+      });
+      vilRows.push(totalRow);
+
+      const wsVil = XLSX.utils.aoa_to_sheet(vilRows);
+      wsVil['!cols'] = [{ wch: 18 }, { wch: 10 }].concat(
+        res.groups.map(() => ({ wch: 20 }))
+      );
+
+      XLSX.utils.book_append_sheet(wb, wsVil, 'รายหมู่บ้าน');
+    }
+
+    /* ---------- Sheet 4: รายชื่อเด็กค้างวัคซีน ---------- */
+    if (res.details && res.details.length > 0) {
+      const nc = res.details.filter(d => d.status === 'ไม่ครบ');
+
+      if (nc.length > 0) {
+        const ncRows = [
+          ['รายชื่อเด็กที่ยังไม่ครบวัคซีน'],
+          ['ออกรายงาน: ' + res.meta.generatedAt],
+          ['รวม: ' + nc.length + ' คน'],
+          [],
+          ['ลำดับ', 'ช่วงอายุ', 'ไตรมาส', 'ชื่อ-สกุล', 'วันเกิด', 'หมู่', 'หน่วยบริการ', 'วัคซีนที่ขาด']
+        ];
+
+        nc.forEach((d, idx) => {
+          ncRows.push([
+            idx + 1,
+            d.group,
+            'Q' + d.quarter,
+            d.name,
+            d.dob,
+            d.village || '-',
+            d.hname || '-',
+            d.missing
+          ]);
+        });
+
+        const wsNc = XLSX.utils.aoa_to_sheet(ncRows);
+        wsNc['!cols'] = [
+          { wch: 6 }, { wch: 16 }, { wch: 8 }, { wch: 24 },
+          { wch: 12 }, { wch: 10 }, { wch: 24 }, { wch: 30 }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, wsNc, 'เด็กค้างวัคซีน');
+      }
+    }
+
+    /* ---------- บันทึกไฟล์ ---------- */
+    const fileName = 'ความครอบคลุมวัคซีน_' +
+                     res.meta.yearLabel.replace(/\s+/g, '_') + '_' +
+                     new Date().toISOString().slice(0, 10) + '.xlsx';
+
+    XLSX.writeFile(wb, fileName);
+
+    hideLoading();
+
+    Swal.fire({
+      icon: 'success',
+      title: 'ส่งออกสำเร็จ!',
+      html: `ไฟล์ <strong>${esc(fileName)}</strong><br>
+             <small style="color:#64748b;">มี ${wb.SheetNames.length} Sheet ในไฟล์</small>`,
+      timer: 2500,
+      showConfirmButton: false
+    });
+
+  } catch (error) {
+    console.error('exportCoverageExcel error:', error);
+    hideLoading();
+    Swal.fire('ผิดพลาด', 'ไม่สามารถสร้างไฟล์ Excel ได้: ' + error.message, 'error');
+  }
+}
+async function sendCoverageTG() {
+  const res = APP.coverageData;
+  if (!res) {
+    return Swal.fire('แจ้งเตือน', 'กรุณากด "ประมวลผลข้อมูล" ก่อนส่ง Telegram', 'warning');
+  }
+
+  const u = APP.currentUser || {};
+  const isSpecialOfficer = (u.role === 'เจ้าหน้าที่' &&
+                            (u.hcode === '00860' || u.hcode === '11390'));
+  const canSelectFacility = (u.role === 'Admin_Ampur' || isSpecialOfficer);
+
+  let selectedHcode = '';
+  const facilityEl = document.getElementById('cvFacility');
+  if (facilityEl && canSelectFacility) {
+    selectedHcode = facilityEl.value || '';
+  } else {
+    selectedHcode = u.hcode || '';
+  }
+
+  const r = await Swal.fire({
+    title: 'ส่งรายงานไป Telegram',
+    html: `
+      <div style="text-align:left; font-family:Kanit; font-size:14px;">
+        <label style="font-weight:600; display:block; margin-bottom:6px;">ไตรมาสที่ต้องการส่ง:</label>
+        <select id="tgQuarter" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <option value="">-- สรุปทุกไตรมาส --</option>
+          <option value="1">ไตรมาส 1</option>
+          <option value="2">ไตรมาส 2</option>
+          <option value="3">ไตรมาส 3</option>
+          <option value="4">ไตรมาส 4</option>
+        </select>
+      </div>`,
+    showCancelButton: true,
+    confirmButtonText: '<i class="fab fa-telegram"></i> ส่งเลย',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#0ea5e9',
+    preConfirm: () => {
+      return document.getElementById('tgQuarter').value;
+    }
+  });
+
+  if (!r.isConfirmed) return;
+
+  showLoading('กำลังส่งไป Telegram...');
+  try {
+    const apiRes = await callGAS('sendCoverageToTelegram', [{
+      year: +document.getElementById('cvYear').value,
+      yearType: document.getElementById('cvYearType').value,
+      village: document.getElementById('cvVillage').value.trim(),
+      hcode: selectedHcode,
+      quarter: r.value ? +r.value : null
+    }]);
+
+    hideLoading();
+    if (apiRes && apiRes.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'ส่งสำเร็จ!',
+        text: 'ข้อความถูกส่งไปที่ Telegram แล้ว',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } else {
+      Swal.fire('ผิดพลาด', (apiRes && apiRes.message) || 'ส่งไม่สำเร็จ', 'error');
+    }
+  } catch (e) {
+    hideLoading();
+    Swal.fire('ผิดพลาด', e.message, 'error');
+  }
+}
+
+/* ============================================================
+ *  สลับมุมมอง: รายไตรมาสปีเดียว <-> เทียบย้อนหลังหลายปี
+ * ============================================================ */
+async function toggleTrendView() {
+  const box = document.getElementById('cvTrend');
+  const main = document.getElementById('cvTables');
+  const chartCard = document.querySelector('.cv-chart-card'); // ✅ แก้ให้ตรงกับ class ใหม่
+
+  if (!box || !main || !chartCard) {
+    console.error('toggleTrendView: ไม่พบ element ที่ต้องการ', { box, main, chartCard });
+    Swal.fire('ผิดพลาด', 'ไม่พบ element ที่ต้องการ กรุณารีเฟรชหน้า', 'error');
+    return;
+  }
+
+  // toggle กลับมุมมองปกติ
+  if (box.style.display === 'block') {
+    box.style.display = 'none';
+    main.style.display = '';
+    chartCard.style.display = '';
+    return;
+  }
+
+  main.style.display = 'none';
+  chartCard.style.display = 'none';
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div style="text-align:center; padding:60px 20px; color:#94a3b8;">
+      <div style="width:44px; height:44px; border:4px solid #e2e8f0; border-top-color:#667eea; border-radius:50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;"></div>
+      <div style="font-size:15px; font-weight:500;">กำลังประมวลผลข้อมูลย้อนหลัง...</div>
+      <div style="font-size:13px; margin-top:6px;">กรุณารอสักครู่</div>
+    </div>`;
+
+  const u = APP.currentUser || {};
+
+  // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
+  const isSpecialOfficer = (u.role === 'เจ้าหน้าที่' &&
+                            (u.hcode === '00860' || u.hcode === '11390'));
+  const canSelectFacility = (u.role === 'Admin_Ampur' || isSpecialOfficer);
+
+  let selectedHcode = '';
+  const facilityEl = document.getElementById('cvFacility');
+  if (facilityEl && canSelectFacility) {
+    selectedHcode = facilityEl.value || '';
+  } else {
+    selectedHcode = u.hcode || '';
+  }
+
+  try {
+    const res = await callGAS('getCoverageTrend', [{
+      endYear: +document.getElementById('cvYear').value,
+      years: 3,
+      yearType: document.getElementById('cvYearType').value,
+      village: document.getElementById('cvVillage').value.trim(),
+      hcode: selectedHcode,
+      role: u.role,
+      userHcode: u.hcode,
+      userVillage: u.village
+    }]);
+
+    if (!res || !res.success) {
+      box.innerHTML = `
+        <div class="cv-table-card" style="border-left:4px solid #ef4444;">
+          <div style="display:flex; align-items:center; gap:12px; color:#b91c1c;">
+            <i class="fas fa-exclamation-triangle" style="font-size:24px;"></i>
+            <div>
+              <div style="font-weight:600; margin-bottom:4px;">ไม่สามารถโหลดข้อมูลย้อนหลังได้</div>
+              <div style="font-size:13px; color:#64748b;">${(res && res.message) || 'ไม่ทราบสาเหตุ'}</div>
+            </div>
+          </div>
+          <button class="cv-btn cv-btn-outline" onclick="toggleTrendView()" style="margin-top:16px;">
+            <i class="fas fa-arrow-left"></i> กลับมุมมองรายไตรมาส
+          </button>
+        </div>`;
+      return;
+    }
+
+    APP.trendData = res;
+    renderCoverageTrend(res);
+
+  } catch (err) {
+    console.error('toggleTrendView error:', err);
+    box.innerHTML = `
+      <div class="cv-table-card" style="border-left:4px solid #ef4444;">
+        <div style="color:#b91c1c;">
+          <div style="font-weight:600; margin-bottom:4px;"><i class="fas fa-exclamation-triangle"></i> เกิดข้อผิดพลาด</div>
+          <div style="font-size:13px; color:#64748b;">${err.message}</div>
+        </div>
+        <button class="cv-btn cv-btn-outline" onclick="toggleTrendView()" style="margin-top:16px;">
+          <i class="fas fa-arrow-left"></i> กลับมุมมองรายไตรมาส
+        </button>
+      </div>`;
+  }
+}
+
+function renderCoverageTrend(res) {
+  const box = document.getElementById('cvTrend');
+  const color = (p, t) => p >= t ? '#10b981' : (p >= t - 10 ? '#f59e0b' : '#ef4444');
+  const badgeClass = (p, t) => {
+    t = t || 90;
+    if (p >= t) return 'excellent';
+    if (p >= t - 10) return 'warning';
+    return 'danger';
+  };
+  const arrow = (d) => {
+    if (d === null || d === undefined) return '<span style="color:#94a3b8; font-size:13px;">-</span>';
+    if (d > 0) return `<span style="color:#10b981; font-weight:700; font-size:12px;">▲ +${d}%</span>`;
+    if (d < 0) return `<span style="color:#ef4444; font-weight:700; font-size:12px;">▼ ${d}%</span>`;
+    return '<span style="color:#94a3b8; font-weight:600; font-size:12px;">● 0%</span>';
+  };
+  const trendInfo = {
+    up:   { icon: 'fa-arrow-trend-up',   color: '#10b981', label: 'ดีขึ้น' },
+    down: { icon: 'fa-arrow-trend-down', color: '#ef4444', label: 'ลดลง' },
+    flat: { icon: 'fa-minus',            color: '#94a3b8', label: 'ทรงตัว' }
+  };
+
+  let html = `
+  <!-- ปุ่มกลับ -->
+  <div style="margin-bottom:20px;">
+    <button class="cv-btn cv-btn-outline" onclick="toggleTrendView()">
+      <i class="fas fa-arrow-left"></i> กลับมุมมองรายไตรมาส
+    </button>
+  </div>
+
+  <!-- Stat Cards แนวโน้ม -->
+  <div class="cv-stat-grid">
+    ${res.groups.map(g => {
+      const last = g.years[g.years.length - 1] || {};
+      const tInfo = trendInfo[g.trend] || trendInfo.flat;
+      const c = color(last.pct || 0, g.targetPct);
+      return `
+      <div class="cv-stat-card" style="--card-accent: ${c};">
+        <div class="cv-stat-header">
+          <div class="cv-stat-title">
+            <i class="fas fa-chart-line"></i>
+            <span>${g.label}</span>
+          </div>
+          <span class="cv-stat-badge">เกณฑ์ ${g.targetPct}%</span>
+        </div>
+        <div class="cv-stat-value">
+          <span class="cv-stat-number">${last.pct || 0}%</span>
+          <span class="cv-stat-sub">(${last.complete || 0}/${last.target || 0})</span>
+        </div>
+        <div class="cv-stat-footer" style="background:${tInfo.color}15; color:${tInfo.color};">
+          <i class="fas ${tInfo.icon}"></i>
+          ${tInfo.label} ${g.change > 0 ? '+' : ''}${g.change}% ใน ${res.meta.years.length} ปี
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <!-- กราฟเส้นแนวโน้ม -->
+  <div class="cv-chart-card">
+    <div class="cv-chart-header">
+      <div class="cv-chart-title">
+        <i class="fas fa-chart-line"></i>
+        <span>แนวโน้มความครอบคลุมย้อนหลัง ${res.meta.years.length} ปี</span>
+      </div>
+      <span class="cv-table-meta">${res.meta.generatedAt}</span>
+    </div>
+    <div class="cv-chart-container" style="height:340px;">
+      <canvas id="cvTrendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ตารางเปรียบเทียบ -->
+  <div class="cv-table-card">
+    <div class="cv-table-header">
+      <div class="cv-table-title">
+        <i class="fas fa-table"></i>
+        <span>เปรียบเทียบย้อนหลัง ${res.meta.years.length} ปี</span>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="cv-modern-table">
+        <thead>
+          <tr>
+            <th rowspan="2" class="text-start" style="vertical-align:middle; min-width:130px;">ช่วงอายุ</th>
+            <th rowspan="2" style="vertical-align:middle;">เกณฑ์</th>
+            ${res.meta.yearLabels.map(l => `<th colspan="2" style="background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);">${l}</th>`).join('')}
+            <th rowspan="2" style="vertical-align:middle; background:#fffbeb;">แนวโน้ม</th>
+          </tr>
+          <tr>
+            ${res.meta.yearLabels.map(() => '<th>%</th><th>เทียบปีก่อน</th>').join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${res.groups.map(g => `
+            <tr>
+              <td class="text-start" style="font-weight:600;">${g.label}</td>
+              <td><span class="cv-badge-target">${g.targetPct}%</span></td>
+              ${g.years.map(y => `
+                <td>
+                  <span class="cv-badge ${badgeClass(y.pct, g.targetPct)}">${y.pct}%</span>
+                  <div style="font-size:10px; color:#94a3b8; margin-top:4px;">${y.complete}/${y.target}</div>
+                </td>
+                <td>${arrow(y.diff)}</td>`).join('')}
+              <td>
+                ${(() => {
+                  const tInfo = trendInfo[g.trend] || trendInfo.flat;
+                  return `<div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                    <i class="fas ${tInfo.icon}" style="color:${tInfo.color}; font-size:16px;"></i>
+                    <span style="font-size:11px; color:${tInfo.color}; font-weight:700;">${g.change > 0 ? '+' : ''}${g.change}%</span>
+                  </div>`;
+                })()}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+
+  // ตารางรายไตรมาสเทียบข้ามปี
+  res.groups.forEach(g => {
+    html += `
+    <div class="cv-table-card">
+      <div class="cv-table-header">
+        <div class="cv-table-title">
+          <i class="fas fa-layer-group"></i>
+          <span>${g.label} — รายไตรมาสเทียบข้ามปี</span>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="cv-modern-table">
+          <thead>
+            <tr>
+              <th class="text-start">ปี</th>
+              <th>Q1</th>
+              <th>Q2</th>
+              <th>Q3</th>
+              <th>Q4</th>
+              <th style="background:#fffbeb;">รวมทั้งปี</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${g.quarters.map((row, i) => `
+              <tr>
+                <td class="text-start" style="font-weight:600;">${res.meta.yearLabels[i]}</td>
+                ${row.data.map(d => `
+                  <td>
+                    ${d.target
+                      ? `<span class="cv-badge ${badgeClass(d.pct, g.targetPct)}">${d.pct}%<span class="cv-badge-gap">(${d.complete}/${d.target})</span></span>`
+                      : '<span class="cv-badge-muted">-</span>'}
+                  </td>`).join('')}
+                <td><span class="cv-badge ${badgeClass(g.years[i].pct, g.targetPct)}" style="font-size:14px;">${g.years[i].pct}%</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  });
+
+  box.innerHTML = html;
+
+  // วาดกราฟเส้นแนวโน้ม
+  if (APP.charts && APP.charts.cvTrendChart) APP.charts.cvTrendChart.destroy();
+  if (!APP.charts) APP.charts = {};
+
+  const lineColors = ['#667eea', '#10b981', '#f59e0b', '#8b5cf6'];
+  const ctxTrend = document.getElementById('cvTrendChart');
+
+  if (ctxTrend) {
+    APP.charts.cvTrendChart = new Chart(ctxTrend, {
+      data: {
+        labels: res.meta.yearLabels,
+        datasets: [
+          ...res.groups.map((g, i) => ({
+            type: 'line',
+            label: g.label,
+            data: g.years.map(y => y.pct),
+            borderColor: lineColors[i % lineColors.length],
+            backgroundColor: lineColors[i % lineColors.length] + '20',
+            borderWidth: 3,
+            tension: 0.35,
+            pointRadius: 6,
+            pointHoverRadius: 9,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: lineColors[i % lineColors.length],
+            pointBorderWidth: 3,
+            fill: false
+          })),
+          {
+            type: 'line',
+            label: 'เกณฑ์ 90%',
+            data: res.meta.yearLabels.map(() => 90),
+            borderColor: '#ef4444',
+            borderWidth: 2,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 14, boxHeight: 14, padding: 16,
+              font: { size: 12, family: 'Kanit' },
+              usePointStyle: true, pointStyle: 'circle'
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            titleFont: { size: 13, weight: 'bold', family: 'Kanit' },
+            bodyFont: { size: 12, family: 'Kanit' },
+            padding: 12,
+            cornerRadius: 10,
+            callbacks: {
+              afterLabel: (ctx) => {
+                const g = res.groups[ctx.datasetIndex];
+                if (!g) return '';
+                const y = g.years[ctx.dataIndex];
+                if (!y) return '';
+                return ` ครบ: ${y.complete}/${y.target} คน`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true, max: 100,
+            ticks: { callback: v => v + '%', font: { family: 'Kanit' }, color: '#94a3b8' },
+            grid: { color: '#f1f5f9' }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { family: 'Kanit', size: 13, weight: '600' }, color: '#475569' }
+          }
+        }
+      }
+    });
+  }
+}
     console.log('✅ ระบบติดตามวัคซีนเด็ก 0-5 ปี พร้อมทำงาน');
 </script>
 </body>
