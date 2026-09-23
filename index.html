@@ -3705,6 +3705,36 @@ function translateError(err, elapsed) {
         $('#' + id).DataTable(Object.assign(defaults, opts || {}));
     }
 
+/* ============================================================
+ *  ✅ Warm-up Apps Script — ปลุก Backend ล่วงหน้า
+ *  ============================================================ */
+function warmUpBackend() {
+    console.log('🔥 Warming up Apps Script...');
+    const t0 = Date.now();
+    
+    // ยิง request เบาๆ ไปก่อน เพื่อปลุก container
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'ping', args: [] }),
+        redirect: 'follow'
+    })
+    .then(r => {
+        const elapsed = Date.now() - t0;
+        console.log(`✅ Backend warmed up (${elapsed}ms)`);
+    })
+    .catch(e => {
+        console.warn('⚠️ Warm-up failed (ไม่เป็นไร):', e.message);
+    });
+}
+
+// ✅ เรียกตอนเปิดหน้า Login
+document.addEventListener('DOMContentLoaded', function() {
+    warmUpBackend();
+    // ปลุกซ้ำทุก 4 นาที (Apps Script จะ "หลับ" ถ้าไม่มีใครใช้)
+    setInterval(warmUpBackend, 4 * 60 * 1000);
+});
+
     // ============================================================
     // LOGIN
     // ============================================================
@@ -3719,31 +3749,85 @@ function translateError(err, elapsed) {
     });
     
     async function doLogin() {
-        const username = document.getElementById('loginUsername').value.trim();
-        const password = document.getElementById('loginPassword').value;
-        const errorEl = document.getElementById('loginError');
-        errorEl.textContent = '';
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+    errorEl.textContent = '';
 
-        if (!username || !password) {
-            errorEl.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
-            return;
-        }
+    if (!username || !password) {
+        errorEl.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
+        return;
+    }
 
-        showLoading('กำลังเข้าสู่ระบบ...');
+    showLoading('กำลังเข้าสู่ระบบ...');
+
+    let lastError = null;
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-            const result = await callGAS('login', [username, password]);
+            console.log(`🔐 Login attempt ${attempt}/${maxAttempts}`);
+            
+            const result = await callGAS('login', [username, password], {
+                maxRetries: 1,        // ลดลงเหลือ 1 (เพราะเราจัดการ retry เอง)
+                timeout: 20000        // 20 วินาที
+            });
+
             hideLoading();
+
             if (result.success) {
                 APP.currentUser = result;
                 showMainApp();
+                return;
             } else {
                 errorEl.textContent = result.message || 'เข้าสู่ระบบไม่สำเร็จ';
+                return;
             }
+
         } catch (err) {
-            hideLoading();
-            errorEl.textContent = 'เกิดข้อผิดพลาด: ' + (err.message || err.toString());
+            lastError = err;
+            console.warn(`⚠️ Login attempt ${attempt} failed:`, err.message);
+
+            // ถ้าเป็น Error ที่ Retry ไม่ช่วย (401, รหัสผิด) → หยุด
+            if (/401|403|HTTP 4/.test(err.message) && !/404|429/.test(err.message)) {
+                break;
+            }
+
+            // ยังไม่ครบ → รอแล้วลองใหม่
+            if (attempt < maxAttempts) {
+                showLoading(`กำลังเชื่อมต่อใหม่... (ครั้งที่ ${attempt + 1}/${maxAttempts})`);
+                // รอ 2 วินาที, 4 วินาที (exponential backoff)
+                await new Promise(r => setTimeout(r, 2000 * attempt));
+            }
         }
     }
+
+    // ล้มเหลวทั้งหมด
+    hideLoading();
+    errorEl.textContent = lastError ? lastError.message : 'ไม่สามารถเข้าสู่ระบบได้';
+
+    // ✅ แนะนำให้ผู้ใช้ Refresh
+    if (/404|429|timeout|Failed to fetch/.test(lastError?.message || '')) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'การเชื่อมต่อล้มเหลว',
+            html: `
+                <div style="font-family:Kanit; font-size:14px;">
+                    <p>Google Apps Script อาจหยุดชั่วคราว</p>
+                    <p style="color:#64748b; font-size:13px; margin-top:8px;">
+                        กรุณากด "ลองใหม่" อีกครั้ง
+                    </p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fas fa-redo"></i> ลองใหม่',
+            cancelButtonText: 'ปิด',
+            confirmButtonColor: '#667eea'
+        }).then(r => {
+            if (r.isConfirmed) doLogin();
+        });
+    }
+}
 
     // ============================================================
     // APP INITIALIZATION
