@@ -4066,15 +4066,15 @@
                     </table>
                 </div>
             </div>
-                        <!-- ============================================ -->
-            <!-- 🆕 สรุปตามช่วงอายุ (แทน 2 กราฟเดิม)          -->
+                                    <!-- ============================================ -->
+            <!-- 🆕 สรุปตามช่วงอายุ — Stat Cards แบบใหม่       -->
             <!-- ============================================ -->
-            <div class="public-summary-section">
-                <div class="public-summary-title">
+            <div class="public-hero" style="margin-top: 24px;">
+                <div class="public-hero-title">
                     <i class="fas fa-chart-pie"></i>
                     สรุปความครอบคลุมตามช่วงอายุ (ตามเกณฑ์กระทรวง)
                 </div>
-                <div class="public-summary-grid" id="publicSummaryGrid"></div>
+                <div class="public-stats-grid" id="publicAgeStatsGrid"></div>
             </div>
                         <!-- ============================================ -->
             <!-- 🆕 SECTION: สรุปแยกตำบล                       -->
@@ -11296,10 +11296,21 @@ function renderCoverageTrend(res) {
     });
   }
 }
-function renderPublicAgeSummaryCards(ageGroups) {
-    const container = document.getElementById('publicSummaryGrid');
-    if (!container || !ageGroups || ageGroups.length === 0) return;
 
+/* ============================================================
+ *  ✅ สรุปตามช่วงอายุ — Stat Cards แบบใหม่
+ *  ใช้ class .public-stat-card ที่มีอยู่แล้ว
+ *  ============================================================ */
+function renderPublicAgeSummaryCards(ageGroups) {
+    const container = document.getElementById('publicAgeStatsGrid');
+    if (!container) return;
+
+    if (!ageGroups || ageGroups.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">ยังไม่มีข้อมูล</div>';
+        return;
+    }
+
+    // ✅ ไอคอนและสีตามช่วงอายุ
     const styles = {
         'y1': { icon: 'fa-baby',              accent: '#667eea', soft: '#eef2ff' },
         'y2': { icon: 'fa-child',             accent: '#0ea5e9', soft: '#e0f2fe' },
@@ -11307,46 +11318,71 @@ function renderPublicAgeSummaryCards(ageGroups) {
         'y5': { icon: 'fa-user-graduate',     accent: '#8b5cf6', soft: '#ede9fe' }
     };
 
+    // ✅ เกณฑ์ตามกระทรวง
+    const defaultTargets = { 'y1': 90, 'y2': 90, 'y3': 95, 'y5': 90 };
+
     container.innerHTML = ageGroups.map(g => {
         const s = styles[g.key] || styles.y1;
+        const target = g.target || defaultTargets[g.key] || 90;
         const isEmpty = g.total === 0;
-        const isPass = g.rate >= g.target;
-        const gap = Math.max(0, Math.ceil(g.target * g.total / 100) - g.complete);
-        
+        const isPass = g.rate >= target;
+        const gap = Math.max(0, Math.ceil(target * g.total / 100) - g.complete);
+
+        // ✅ เลือกสีของตัวเลขตามสถานะ
         let valueColor = s.accent;
         if (!isEmpty) {
-            valueColor = isPass ? '#10b981' : (g.rate >= g.target - 10 ? '#f59e0b' : '#ef4444');
-        }
-        
-        let footerHtml;
-        if (isEmpty) {
-            footerHtml = '<div class="public-summary-footer empty"><i class="fas fa-minus-circle"></i> ไม่มีกลุ่มเป้าหมาย</div>';
-        } else if (isPass) {
-            footerHtml = '<div class="public-summary-footer pass"><i class="fas fa-check-circle"></i> ผ่านเกณฑ์</div>';
-        } else {
-            footerHtml = `<div class="public-summary-footer fail"><i class="fas fa-exclamation-circle"></i> ขาดอีก ${gap} คน</div>`;
+            valueColor = isPass ? '#10b981' : (g.rate >= target - 10 ? '#f59e0b' : '#ef4444');
         }
 
         return `
-            <div class="public-summary-card" style="--accent: ${valueColor}; --accent-soft: ${s.soft};">
-                <div class="public-summary-header">
-                    <div class="public-summary-title-row">
-                        <div class="public-summary-icon"><i class="fas ${s.icon}"></i></div>
-                        <div class="public-summary-label">${esc(g.label)}</div>
+            <div class="public-stat-card" style="--accent: ${valueColor}; --accent-soft: ${s.soft};">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="public-stat-icon" style="margin-bottom:0; width:40px; height:40px; font-size:18px;">
+                            <i class="fas ${s.icon}"></i>
+                        </div>
+                        <div style="font-size:14px; font-weight:700; color:#0f172a;">
+                            ${esc(g.label)}
+                        </div>
                     </div>
-                    <span class="public-summary-target">เกณฑ์ ${g.target}%</span>
+                    <span style="display:inline-flex; align-items:center; padding:3px 10px; border-radius:20px;
+                                 background:#f1f5f9; color:#64748b; font-size:11px; font-weight:600;
+                                 white-space:nowrap;">
+                        เกณฑ์ ${target}%
+                    </span>
                 </div>
-                <div class="public-summary-value" style="color:${valueColor};">
-                    ${g.rate}<span class="unit">%</span>
+
+                <div class="public-stat-value" style="color:${valueColor}; margin-bottom:6px;">
+                    <span style="font-size:34px; font-weight:700; letter-spacing:-1.5px; line-height:1;">
+                        ${g.rate}
+                    </span>
+                    <span class="unit" style="font-size:13px; color:#94a3b8;">%</span>
                 </div>
-                <div class="public-summary-count">
-                    ครบเกณฑ์ <strong>${g.complete}</strong> จาก <strong>${g.total}</strong> คน
+
+                <div style="font-size:12px; color:#64748b; margin-bottom:12px;">
+                    ครบเกณฑ์ <strong style="color:#334155;">${g.complete}</strong> 
+                    จาก <strong style="color:#334155;">${g.total}</strong> คน
                 </div>
-                ${footerHtml}
+
+                ${isEmpty
+                    ? `<div style="padding:8px 12px; border-radius:8px; text-align:center;
+                                   background:#f1f5f9; color:#64748b; font-size:12px; font-weight:600;">
+                          <i class="fas fa-minus-circle"></i> ไม่มีกลุ่มเป้าหมาย
+                       </div>`
+                    : (isPass
+                        ? `<div style="padding:8px 12px; border-radius:8px; text-align:center;
+                                       background:#ecfdf5; color:#047857; font-size:12px; font-weight:600;">
+                              <i class="fas fa-check-circle"></i> ผ่านเกณฑ์มาตรฐาน
+                           </div>`
+                        : `<div style="padding:8px 12px; border-radius:8px; text-align:center;
+                                       background:#fef2f2; color:#b91c1c; font-size:12px; font-weight:600;">
+                              <i class="fas fa-exclamation-circle"></i> ขาดอีก ${gap} คน
+                           </div>`)}
             </div>
         `;
     }).join('');
 }
+
     console.log('✅ ระบบติดตามวัคซีนเด็ก 0-5 ปี พร้อมทำงาน');
 </script>
 </body>
