@@ -36,6 +36,793 @@
             background: #f0f2f5;
         }
 
+       /* ============================================================
+              PUBLIC DASHBOARD — หน้าแรกก่อน Login
+          ============================================================ */
+.public-dashboard-page {
+    display: none;
+    min-height: 100vh;
+    background: 
+        radial-gradient(circle at 20% 0%, rgba(102, 126, 234, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 80% 100%, rgba(118, 75, 162, 0.08) 0%, transparent 40%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    padding-bottom: 40px;
+}
+
+.public-dashboard-page.active {
+    display: block;
+}
+
+/* ============ TOP BAR ============ */
+.public-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 32px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.public-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.public-brand-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 22px;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.35);
+    flex-shrink: 0;
+}
+
+.public-brand-text h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.3px;
+}
+
+.public-brand-text p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* ============ LOGIN BUTTON ============ */
+.btn-public-login {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Kanit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
+}
+
+.btn-public-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(102, 126, 234, 0.4);
+}
+
+.btn-public-login:active {
+    transform: translateY(0);
+}
+
+/* ============ BODY ============ */
+.public-body {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 32px 24px;
+}
+
+.public-loading {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+/* ============ HERO STATS ============ */
+.public-hero {
+    margin-bottom: 24px;
+}
+
+.public-hero-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 18px;
+    padding-left: 4px;
+}
+
+.public-hero-title i {
+    color: #667eea;
+}
+
+.public-live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    margin-left: 6px;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: livePulse 2s infinite;
+}
+
+@keyframes livePulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.public-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.public-stat-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.public-stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+
+.public-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent, #667eea);
+}
+
+.public-stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--accent-soft, #eef2ff);
+    color: var(--accent, #667eea);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 14px;
+}
+
+.public-stat-label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.public-stat-value {
+    font-size: 34px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -1.5px;
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.public-stat-value .unit {
+    font-size: 13px;
+    color: #94a3b8;
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+.public-stat-trend {
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.public-stat-trend.pass {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.public-stat-trend.fail {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.public-stat-trend.neutral {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+/* ============ CARDS ============ */
+.public-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+.public-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.public-card-header i {
+    color: #667eea;
+}
+
+.public-badge {
+    margin-left: auto;
+    padding: 3px 12px;
+    border-radius: 20px;
+    background: #eff6ff;
+    color: #667eea;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.public-chart-wrap {
+    position: relative;
+    height: 280px;
+    width: 100%;
+}
+
+.public-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 18px;
+}
+
+.public-charts-grid .public-card {
+    margin-bottom: 0;
+}
+
+/* ============ TABLE ============ */
+.public-table-wrap {
+    overflow-x: auto;
+    margin: 0 -22px;
+    padding: 0 22px;
+}
+
+.public-modern-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.public-modern-table thead th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.public-modern-table tbody td {
+    padding: 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: middle;
+}
+
+.public-modern-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.public-modern-table tbody tr:hover {
+    background: #fafbff;
+}
+
+.public-modern-table .facility-name {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.public-rate-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    min-width: 60px;
+}
+
+.public-rate-badge.excellent {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.public-rate-badge.warning {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.public-rate-badge.danger {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.public-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.public-status.pass { color: #059669; }
+.public-status.warn { color: #d97706; }
+.public-status.fail { color: #dc2626; }
+
+/* ============ PDPA NOTICE ============ */
+.public-pdpa {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 1px solid #a7f3d0;
+    border-radius: 16px;
+    padding: 18px 22px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.public-pdpa i {
+    color: #10b981;
+    font-size: 22px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.public-pdpa strong {
+    display: block;
+    color: #047857;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.public-pdpa p {
+    margin: 0;
+    font-size: 12px;
+    color: #065f46;
+    line-height: 1.6;
+}
+
+.public-footer-info {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 12px;
+    padding: 10px 0;
+}
+
+/* ============ LOGIN CLOSE BUTTON ============ */
+.login-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    color: #64748b;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+    transition: all 0.25s ease;
+    z-index: 10;
+}
+
+.login-close-btn:hover {
+    background: #ef4444;
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 768px) {
+    .public-topbar {
+        padding: 12px 16px;
+    }
+
+    .public-brand-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .public-brand-text h1 {
+        font-size: 14px;
+    }
+
+    .public-brand-text p {
+        font-size: 10px;
+    }
+
+    .btn-public-login span {
+        display: none;
+    }
+
+    .btn-public-login {
+        padding: 10px 14px;
+    }
+
+    .public-body {
+        padding: 20px 14px;
+    }
+
+    .public-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .public-stat-card {
+        padding: 16px;
+    }
+
+    .public-stat-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+
+    .public-stat-value {
+        font-size: 24px;
+    }
+
+    .public-stat-label {
+        font-size: 11px;
+    }
+
+    .public-charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .public-chart-wrap {
+        height: 240px;
+    }
+
+    .public-card {
+        padding: 16px;
+        border-radius: 14px;
+    }
+
+    .public-card-header {
+        font-size: 13px;
+        padding-bottom: 12px;
+        margin-bottom: 14px;
+    }
+
+    .public-modern-table {
+        font-size: 12px;
+    }
+
+    .public-modern-table thead th,
+    .public-modern-table tbody td {
+        padding: 10px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .public-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   TOGGLE BUTTONS (สำหรับหมู่บ้าน)
+   ============================================================ */
+.public-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    font-family: 'Kanit', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.public-toggle-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.public-toggle-btn:active {
+    transform: scale(0.96);
+}
+
+/* ============================================================
+   VILLAGE GROUPS (จัดกลุ่มตามตำบล)
+   ============================================================ */
+.village-subdistrict-group {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+.village-subdistrict-group:last-child {
+    margin-bottom: 0;
+}
+
+.village-subdistrict-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.village-subdistrict-header:hover {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.village-subdistrict-group.expanded .village-subdistrict-header {
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.village-subdistrict-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.village-subdistrict-title i {
+    color: #667eea;
+    font-size: 16px;
+}
+
+.village-subdistrict-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: rgba(102, 126, 234, 0.12);
+    color: #667eea;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 8px;
+}
+
+.village-subdistrict-rate {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.village-subdistrict-rate strong {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.village-subdistrict-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff;
+    color: #64748b;
+    font-size: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    border: 1px solid #e2e8f0;
+}
+
+.village-subdistrict-group.expanded .village-subdistrict-toggle {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    border-color: transparent;
+    transform: rotate(180deg);
+}
+
+.village-subdistrict-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: #fff;
+}
+
+.village-subdistrict-group.expanded .village-subdistrict-body {
+    max-height: 3000px;
+}
+
+.village-list {
+    padding: 8px 0;
+}
+
+.village-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.2s ease;
+}
+
+.village-item:last-child {
+    border-bottom: none;
+}
+
+.village-item:hover {
+    background: #fafbff;
+}
+
+.village-item-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.village-item-no {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    color: #667eea;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.village-item-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.village-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.village-item-facility {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+}
+
+.village-item-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.village-item-numbers {
+    font-size: 12px;
+    color: #64748b;
+    text-align: right;
+}
+
+.village-item-numbers strong {
+    color: #0f172a;
+    font-size: 13px;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 768px) {
+    .village-subdistrict-header {
+        padding: 12px 14px;
+    }
+
+    .village-subdistrict-title {
+        font-size: 13px;
+    }
+
+    .village-subdistrict-rate strong {
+        font-size: 14px;
+    }
+
+    .village-item {
+        padding: 10px 14px;
+    }
+
+    .village-item-no {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+
+    .village-item-name {
+        font-size: 12px;
+    }
+
+    .village-item-facility {
+        font-size: 10px;
+    }
+
+    .village-item-numbers {
+        font-size: 11px;
+    }
+}
+
         /* ============================================================
            MODERN LOGIN PAGE
            ============================================================ */
@@ -3210,7 +3997,153 @@
     <!-- ============================================================
     MODERN LOGIN PAGE
     ============================================================ -->
+    <!-- ============================================================
+     PUBLIC DASHBOARD — หน้าแรกก่อน Login
+     ============================================================ -->
+<div id="publicDashboard" class="public-dashboard-page active">
+    
+    <!-- Top Bar -->
+    <div class="public-topbar">
+        <div class="public-brand">
+            <div class="public-brand-icon"><i class="fas fa-syringe"></i></div>
+            <div class="public-brand-text">
+                <h1>ระบบติดตามวัคซีนเด็ก 0-5 ปี</h1>
+                <p>เครือข่ายสุขภาพอำเภอเทพา</p>
+            </div>
+        </div>
+        
+        <div class="public-actions">
+            <button class="btn-public-login" onclick="showLoginModal()">
+                <i class="fas fa-lock"></i>
+                <span>เข้าสู่ระบบ</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="public-body">
+        
+        <!-- Loading -->
+        <div id="publicLoading" class="public-loading">
+            <div class="loading-spinner" style="margin: 0 auto 16px;"></div>
+            <div style="font-size: 14px; color: #64748b;">กำลังโหลดข้อมูลภาพรวม...</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 6px;">ครั้งแรกอาจใช้เวลา 3-5 วินาที</div>
+        </div>
+
+        <!-- Data -->
+        <div id="publicData" style="display: none;">
+            
+            <!-- Section 1: Hero Stats -->
+            <div class="public-hero">
+                <div class="public-hero-title">
+                    <i class="fas fa-chart-line"></i>
+                    ภาพรวมระบบ
+                    <span class="public-live-dot"></span>
+                </div>
+                <div class="public-stats-grid" id="publicStatsGrid"></div>
+            </div>
+
+            <!-- Section 3: Facility Table -->
+            <div class="public-card">
+                <div class="public-card-header">
+                    <i class="fas fa-hospital"></i>
+                    <span>ความครอบคลุมรายสถานพยาบาล</span>
+                    <span class="public-badge" id="publicFacilityCount">0 แห่ง</span>
+                </div>
+                <div class="public-table-wrap">
+                    <table class="public-modern-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>สถานพยาบาล</th>
+                                <th style="text-align:center;">เป้าหมาย</th>
+                                <th style="text-align:center;">ครบเกณฑ์</th>
+                                <th style="text-align:center;">ร้อยละ</th>
+                                <th style="text-align:center;">สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="publicFacilitiesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+                        <!-- ============================================ -->
+            <!-- 🆕 สรุปตามช่วงอายุ (แทน 2 กราฟเดิม)          -->
+            <!-- ============================================ -->
+            <div class="public-summary-section">
+                <div class="public-summary-title">
+                    <i class="fas fa-chart-pie"></i>
+                    สรุปความครอบคลุมตามช่วงอายุ (ตามเกณฑ์กระทรวง)
+                </div>
+                <div class="public-summary-grid" id="publicSummaryGrid"></div>
+            </div>
+                        <!-- ============================================ -->
+            <!-- 🆕 SECTION: สรุปแยกตำบล                       -->
+            <!-- ============================================ -->
+            <div class="public-card">
+                <div class="public-card-header">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <span>ความครอบคลุมรายตำบล</span>
+                    <span class="public-badge" id="publicSubdistrictCount">0 ตำบล</span>
+                </div>
+                <div class="public-table-wrap">
+                    <table class="public-modern-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>ตำบล</th>
+                                <th style="text-align:center;">เป้าหมาย</th>
+                                <th style="text-align:center;">ครบเกณฑ์</th>
+                                <th style="text-align:center;">ร้อยละ</th>
+                                <th style="text-align:center;">สถานะ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="publicSubdistrictsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- 🆕 SECTION: สรุปแยกหมู่บ้าน (จัดกลุ่มตามตำบล) -->
+            <!-- ============================================ -->
+            <div class="public-card">
+                <div class="public-card-header">
+                    <i class="fas fa-home"></i>
+                    <span>ความครอบคลุมรายหมู่บ้าน</span>
+                    <div style="margin-left:auto; display:flex; gap:6px;">
+                        <button class="public-toggle-btn" onclick="expandAllVillages()">
+                            <i class="fas fa-expand-alt"></i> ขยาย
+                        </button>
+                        <button class="public-toggle-btn" onclick="collapseAllVillages()">
+                            <i class="fas fa-compress-alt"></i> ย่อ
+                        </button>
+                    </div>
+                </div>
+                <div id="publicVillagesContainer"></div>
+            </div>
+
+            <!-- PDPA Notice -->
+            <div class="public-pdpa">
+                <i class="fas fa-shield-alt"></i>
+                <div>
+                    <strong>การคุ้มครองข้อมูลส่วนบุคคล (PDPA)</strong>
+                    <p>ข้อมูลที่แสดงเป็นสถิติภาพรวม ไม่ระบุตัวบุคคล ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562</p>
+                </div>
+            </div>
+
+            <!-- Footer Info -->
+            <div class="public-footer-info">
+                <span><i class="far fa-clock"></i> อัปเดตล่าสุด: <span id="publicUpdatedAt">-</span></span>
+            </div>
+
+        </div>
+    </div>
+</div>
     <div id="loginPage" class="login-page">
+    
+    <!-- ✅ ปุ่มปิด (กลับไป Public Dashboard) -->
+    <button class="login-close-btn" onclick="hideLoginModal()" title="กลับหน้าภาพรวม">
+        <i class="fas fa-times"></i>
+    </button>
         <div class="login-container">
             <div class="login-card">
                 <div class="login-header">
@@ -3354,6 +4287,512 @@
         dashboardVillageColors: {},
         facilityMap: {}
     };
+
+/* ============================================================
+ *  PUBLIC DASHBOARD LOGIC
+ *  ============================================================ */
+function showPublicDashboard() {
+    document.getElementById('publicDashboard').classList.add('active');
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'none';
+    loadPublicDashboard();
+}
+
+function showLoginModal() {
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('publicDashboard').classList.remove('active');
+    // Focus username
+    setTimeout(() => {
+        const el = document.getElementById('loginUsername');
+        if (el) el.focus();
+    }, 100);
+}
+
+function hideLoginModal() {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('publicDashboard').classList.add('active');
+    // เคลียร์ error
+    const errEl = document.getElementById('loginError');
+    if (errEl) errEl.textContent = '';
+}
+
+async function loadPublicDashboard() {
+    const loadingEl = document.getElementById('publicLoading');
+    const dataEl = document.getElementById('publicData');
+
+    loadingEl.style.display = 'block';
+    dataEl.style.display = 'none';
+
+    try {
+        const res = await callGAS('getPublicDashboard', [], {
+            maxRetries: 3,
+            timeout: 30000
+        });
+
+        if (!res || !res.success) {
+            loadingEl.innerHTML = `
+                <i class="fas fa-exclamation-triangle" style="font-size:44px; color:#f59e0b;"></i>
+                <div style="margin-top:16px; color:#64748b; font-size:14px;">
+                    ${esc(res && res.message || 'ไม่สามารถโหลดข้อมูลได้')}
+                </div>
+                <button onclick="loadPublicDashboard()" 
+                        style="margin-top:20px; padding:10px 24px; background:#667eea; color:#fff; 
+                               border:none; border-radius:10px; cursor:pointer; font-family:Kanit; font-size:14px;">
+                    <i class="fas fa-redo"></i> ลองใหม่
+                </button>`;
+            return;
+        }
+
+        loadingEl.style.display = 'none';
+        dataEl.style.display = 'block';
+
+        renderPublicStats(res.summary, res.ageGroups);
+        renderPublicTrendChart(res.trend || []);
+        renderPublicAgeChart(res.ageDistribution || {});
+        renderPublicFacilitiesTable(res.facilities || []);
+        
+        // ✅ เพิ่มใหม่
+        renderPublicSubdistrictsTable(res.subdistricts || []);
+        renderPublicVillagesGrouped(res);
+        renderPublicAgeSummaryCards(res.ageGroups);
+
+        const updEl = document.getElementById('publicUpdatedAt');
+        if (updEl) updEl.textContent = res.meta.updatedAt;
+
+    } catch (err) {
+        loadingEl.innerHTML = `
+            <i class="fas fa-wifi" style="font-size:44px; color:#ef4444;"></i>
+            <div style="margin-top:16px; color:#64748b; font-size:14px;">
+                ${esc(err.message || 'การเชื่อมต่อล้มเหลว')}
+            </div>
+            <button onclick="loadPublicDashboard()" 
+                    style="margin-top:20px; padding:10px 24px; background:#667eea; color:#fff; 
+                           border:none; border-radius:10px; cursor:pointer; font-family:Kanit; font-size:14px;">
+                <i class="fas fa-redo"></i> ลองใหม่
+            </button>`;
+    }
+}
+
+function renderPublicStats(summary, ageGroups) {
+    const el = document.getElementById('publicStatsGrid');
+    if (!el) return;
+
+    // ✅ ใช้ข้อมูลเดียวกับหน้า Dashboard ในระบบ
+    const cards = [
+        {
+            icon: 'fa-child',
+            accent: '#667eea',
+            accentSoft: '#eef2ff',
+            label: 'เด็ก 0-5 ปีทั้งหมด',
+            value: summary.totalChildren || 0,
+            unit: 'คน'
+        },
+        {
+            icon: 'fa-check-circle',
+            accent: '#10b981',
+            accentSoft: '#d1fae5',
+            label: 'มาตามนัดปกติ/ครบเกณฑ์',
+            value: summary.onTimeCount || 0,
+            unit: 'คน'
+        },
+        {
+            icon: 'fa-calendar-alt',
+            accent: '#f59e0b',
+            accentSoft: '#fef3c7',
+            label: 'นัดหมายเดือนนี้',
+            value: summary.apptThisMonth || 0,
+            unit: 'นัด'
+        },
+        {
+            icon: 'fa-exclamation-triangle',
+            accent: '#ef4444',
+            accentSoft: '#fee2e2',
+            label: 'ขาดนัดปัจจุบัน',
+            value: summary.missedCount || 0,
+            unit: 'คน'
+        }
+    ];
+
+    el.innerHTML = cards.map(c => `
+        <div class="public-stat-card" style="--accent: ${c.accent}; --accent-soft: ${c.accentSoft};">
+            <div class="public-stat-icon">
+                <i class="fas ${c.icon}"></i>
+            </div>
+            <div class="public-stat-label">${c.label}</div>
+            <div class="public-stat-value">
+                ${c.value.toLocaleString()}
+                <span class="unit">${c.unit}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderPublicTrendChart(trend) {
+    const ctx = document.getElementById('publicTrendChart');
+    if (!ctx || !trend.length) return;
+
+    // ลบกราฟเก่า
+    if (window._publicTrendChart) {
+        try { window._publicTrendChart.destroy(); } catch(e) {}
+    }
+
+    window._publicTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: trend.map(t => 'ปี ' + t.year),
+            datasets: [{
+                label: 'ความครอบคลุม (%)',
+                data: trend.map(t => t.rate),
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 3,
+                tension: 0.35,
+                pointRadius: 7,
+                pointHoverRadius: 10,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#667eea',
+                pointBorderWidth: 3,
+                fill: true
+            }, {
+                label: 'เกณฑ์ 90%',
+                data: trend.map(() => 90),
+                borderColor: '#ef4444',
+                borderWidth: 2,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12, boxHeight: 12, padding: 14,
+                        font: { size: 12, family: 'Kanit' },
+                        usePointStyle: true, pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleFont: { size: 13, family: 'Kanit', weight: 'bold' },
+                    bodyFont: { size: 12, family: 'Kanit' },
+                    padding: 12,
+                    cornerRadius: 10,
+                    callbacks: {
+                        afterLabel: (ctx) => {
+                            const t = trend[ctx.dataIndex];
+                            if (!t) return '';
+                            return `ครบ: ${t.complete}/${t.total} คน`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true, max: 100,
+                    ticks: { callback: v => v + '%', font: { family: 'Kanit' }, color: '#94a3b8' },
+                    grid: { color: '#f1f5f9' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { family: 'Kanit', size: 12 }, color: '#475569' }
+                }
+            }
+        }
+    });
+}
+
+function renderPublicAgeChart(dist) {
+    const ctx = document.getElementById('publicAgeChart');
+    if (!ctx) return;
+
+    if (window._publicAgeChart) {
+        try { window._publicAgeChart.destroy(); } catch(e) {}
+    }
+
+    const labels = Object.keys(dist);
+    const values = Object.values(dist);
+    const colors = ['#667eea', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+    window._publicAgeChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'จำนวนเด็ก',
+                data: values,
+                backgroundColor: colors.slice(0, labels.length),
+                borderRadius: 8,
+                barPercentage: 0.7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleFont: { size: 13, family: 'Kanit' },
+                    bodyFont: { size: 12, family: 'Kanit' },
+                    padding: 12,
+                    cornerRadius: 10,
+                    callbacks: {
+                        label: (ctx) => ` ${ctx.raw} คน`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, font: { family: 'Kanit' }, color: '#94a3b8' },
+                    grid: { color: '#f1f5f9' }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { family: 'Kanit', size: 12 }, color: '#475569' }
+                }
+            }
+        }
+    });
+}
+
+function renderPublicFacilitiesTable(facilities) {
+    const tbody = document.getElementById('publicFacilitiesBody');
+    const countEl = document.getElementById('publicFacilityCount');
+    if (!tbody) return;
+
+    if (countEl) countEl.textContent = facilities.length + ' แห่ง';
+
+    if (facilities.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:#94a3b8;">ยังไม่มีข้อมูล</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = facilities.map((f, i) => {
+        const cls = f.rate >= 90 ? 'excellent' : (f.rate >= 80 ? 'warning' : 'danger');
+        let statusIcon, statusText, statusClass;
+        if (f.rate >= 90) {
+            statusIcon = 'fa-check-circle';
+            statusText = 'ผ่านเกณฑ์';
+            statusClass = 'pass';
+        } else if (f.rate >= 80) {
+            statusIcon = 'fa-exclamation-circle';
+            statusText = 'ต่ำกว่าเล็กน้อย';
+            statusClass = 'warn';
+        } else {
+            statusIcon = 'fa-times-circle';
+            statusText = 'ต้องเร่งรัด';
+            statusClass = 'fail';
+        }
+
+        return `
+            <tr>
+                <td style="color:#94a3b8; font-size:12px; width:36px;">${i + 1}</td>
+                <td class="facility-name">${esc(f.name)}</td>
+                <td style="text-align:center; color:#64748b;">${f.total}</td>
+                <td style="text-align:center; font-weight:600;">${f.onTime !== undefined ? f.onTime : (f.complete || 0)}</td>
+                <td style="text-align:center;">
+                    <span class="public-rate-badge ${cls}">${f.rate}%</span>
+                </td>
+                <td style="text-align:center;">
+                    <span class="public-status ${statusClass}">
+                        <i class="fas ${statusIcon}"></i> ${statusText}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+
+/* ============================================================
+ *  ✅ แก้ showMainApp() ให้ซ่อน Public Dashboard เมื่อ Login สำเร็จ
+ *  ============================================================ */
+const _originalShowMainApp = showMainApp;
+showMainApp = function() {
+    document.getElementById('publicDashboard').classList.remove('active');
+    document.getElementById('loginPage').style.display = 'none';
+    _originalShowMainApp.call(this);
+};
+
+/* ============================================================
+ *  ✅ เรียกตอนเปิดหน้าเว็บ (init)
+ *  ============================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+    // ✅ แสดง Public Dashboard ก่อน
+    showPublicDashboard();
+});
+
+/* ============================================================
+ *  ✅ NEW: Render ตารางตำบล
+ *  ============================================================ */
+function renderPublicSubdistrictsTable(subdistricts) {
+    const tbody = document.getElementById('publicSubdistrictsBody');
+    const countEl = document.getElementById('publicSubdistrictCount');
+    if (!tbody) return;
+
+    if (countEl) countEl.textContent = subdistricts.length + ' ตำบล';
+
+    if (!subdistricts || subdistricts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:#94a3b8;">ยังไม่มีข้อมูล</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = subdistricts.map((s, i) => {
+        const cls = s.rate >= 90 ? 'excellent' : (s.rate >= 80 ? 'warning' : 'danger');
+        let statusIcon, statusText, statusClass;
+        if (s.rate >= 90) {
+            statusIcon = 'fa-check-circle'; statusText = 'ผ่านเกณฑ์'; statusClass = 'pass';
+        } else if (s.rate >= 80) {
+            statusIcon = 'fa-exclamation-circle'; statusText = 'ต่ำกว่าเล็กน้อย'; statusClass = 'warn';
+        } else {
+            statusIcon = 'fa-times-circle'; statusText = 'ต้องเร่งรัด'; statusClass = 'fail';
+        }
+
+        return `
+            <tr>
+                <td style="color:#94a3b8; font-size:12px; width:36px;">${i + 1}</td>
+                <td class="facility-name">
+                    <i class="fas fa-map-marker-alt" style="color:#667eea; margin-right:6px;"></i>
+                    ${esc(s.name)}
+                </td>
+                <td style="text-align:center; color:#64748b;">${s.total}</td>
+                <td style="text-align:center; font-weight:600;">${s.complete}</td>
+                <td style="text-align:center;">
+                    <span class="public-rate-badge ${cls}">${s.rate}%</span>
+                </td>
+                <td style="text-align:center;">
+                    <span class="public-status ${statusClass}">
+                        <i class="fas ${statusIcon}"></i> ${statusText}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+
+/* ============================================================
+ *  ✅ NEW: Render หมู่บ้าน (จัดกลุ่มตามตำบล)
+ *  ============================================================ */
+function renderPublicVillagesGrouped(data) {
+    const container = document.getElementById('publicVillagesContainer');
+    if (!container) return;
+
+    const grouped = data.villagesBySubdistrict || {};
+    const subs = Object.keys(grouped).sort();
+
+    if (subs.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">ยังไม่มีข้อมูลหมู่บ้าน</div>';
+        return;
+    }
+
+    container.innerHTML = subs.map((subName, idx) => {
+        const villages = grouped[subName] || [];
+        
+        // คำนวณยอดรวมของตำบล
+        let totalAll = 0, completeAll = 0;
+        villages.forEach(v => {
+            totalAll += v.total;
+            completeAll += v.complete;
+        });
+        const subRate = totalAll > 0 ? Math.round((completeAll / totalAll) * 1000) / 10 : 0;
+        const subCls = subRate >= 90 ? 'excellent' : (subRate >= 80 ? 'warning' : 'danger');
+
+        return `
+            <div class="village-subdistrict-group" data-subdistrict="${esc(subName)}">
+                <div class="village-subdistrict-header" onclick="toggleVillageGroup(this)">
+                    <div class="village-subdistrict-title">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <span>${esc(subName)}</span>
+                        <span class="village-subdistrict-count">
+                            <i class="fas fa-home"></i> ${villages.length} หมู่บ้าน
+                        </span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="village-subdistrict-rate">
+                            <span>${completeAll}/${totalAll}</span>
+                            <strong style="color: ${subRate >= 90 ? '#047857' : (subRate >= 80 ? '#b45309' : '#b91c1c')};">${subRate}%</strong>
+                        </div>
+                        <div class="village-subdistrict-toggle">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="village-subdistrict-body">
+                    <div class="village-list">
+                        ${villages.map(v => {
+                            const vCls = v.rate >= 90 ? 'excellent' : (v.rate >= 80 ? 'warning' : 'danger');
+                            return `
+                                <div class="village-item">
+                                    <div class="village-item-left">
+                                        <div class="village-item-no">${esc(v.villageNo)}</div>
+                                        <div class="village-item-info">
+                                            <div class="village-item-name">${esc(v.villageName)}</div>
+                                            <div class="village-item-facility">
+                                                <i class="fas fa-hospital" style="font-size:10px;"></i>
+                                                ${esc(v.hname || v.hcode || 'ไม่ระบุ')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="village-item-right">
+                                        <div class="village-item-numbers">
+                                            <strong>${v.complete}</strong>/${v.total} คน
+                                        </div>
+                                        <span class="public-rate-badge ${vCls}" style="min-width:56px;">${v.rate}%</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleVillageGroup(headerEl) {
+    const group = headerEl.closest('.village-subdistrict-group');
+    if (!group) return;
+    group.classList.toggle('expanded');
+    
+    const icon = group.querySelector('.village-subdistrict-toggle i');
+    if (icon) {
+        if (group.classList.contains('expanded')) {
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        } else {
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+    }
+}
+
+function expandAllVillages() {
+    document.querySelectorAll('.village-subdistrict-group').forEach(el => {
+        el.classList.add('expanded');
+        const icon = el.querySelector('.village-subdistrict-toggle i');
+        if (icon) {
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        }
+    });
+}
+
+function collapseAllVillages() {
+    document.querySelectorAll('.village-subdistrict-group').forEach(el => {
+        el.classList.remove('expanded');
+        const icon = el.querySelector('.village-subdistrict-toggle i');
+        if (icon) {
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+    });
+}
 
     // ============================================================
     // UTILITY FUNCTIONS
@@ -3598,52 +5037,41 @@ async function callGAS(fnName, args, options) {
     throw new Error(translateError(lastError, 0));
 }
 
-
 /* ============================================================
- *  ✅ Helper: หน่วงเวลาแบบ Promise
- * ============================================================ */
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-
-/* ============================================================
- *  ✅ Helper: แปลง Error ให้เป็นข้อความที่เข้าใจง่าย
- * ============================================================ */
-function translateError(err, elapsed) {
-    const msg = (err && err.message) ? err.message : String(err || 'Unknown error');
-
-    // ---- Timeout (AbortController) ----
-    if (err && err.name === 'AbortError') {
-        return `⏱️ หมดเวลา (${Math.round(elapsed / 1000)} วินาที) — Server ใช้เวลานานเกินไป กรุณาลองอีกครั้ง`;
+ *  ✅ Audit Log Helper — บันทึกกิจกรรมผู้ใช้
+ *  ============================================================ */
+function logActivity(action, category, details) {
+    // ✅ ข้ามถ้ายังไม่ Login
+    if (!APP || !APP.currentUser) {
+        console.warn('⚠️ logActivity: ยังไม่ได้ Login');
+        return;
     }
-
-    // ---- Network Error ----
-    if (/Failed to fetch|NetworkError|Network request failed|load failed/i.test(msg)) {
-        return '🌐 การเชื่อมต่อล้มเหลว (Network) — อาจเกิดจากอินเทอร์เน็ตหรือ Google Apps Script ไม่พร้อมใช้งาน กรุณาลองอีกครั้ง';
+    
+    console.log('📝 logActivity →', action, '|', details);
+    
+    // ✅ Fire-and-forget (ไม่รอ response)
+    try {
+        callGAS('logActivity', [{
+            username: APP.currentUser.username,
+            fullname: APP.currentUser.fullname,
+            role: APP.currentUser.role,
+            hcode: APP.currentUser.hcode,
+            action: action,
+            category: category || 'general',
+            details: details || '-',
+            userAgent: navigator.userAgent.slice(0, 200)
+        }]).then(function(res) {
+            if (res && res.success) {
+                console.log('✅ logActivity recorded:', action);
+            } else {
+                console.warn('⚠️ logActivity failed:', res);
+            }
+        }).catch(function(e) {
+            console.warn('logActivity error:', e);
+        });
+    } catch (e) {
+        console.warn('logActivity error:', e);
     }
-
-    // ---- HTTP Status ----
-    if (/HTTP 401/.test(msg)) return '🔒 ไม่มีสิทธิ์เข้าถึง — ตรวจสอบ Deployment ตั้ง "Who has access: Anyone"';
-    if (/HTTP 403/.test(msg)) return '🚫 ถูกปฏิเสธ (Forbidden) — ตรวจสอบสิทธิ์ Deployment';
-    if (/HTTP 404/.test(msg)) return '❓ ไม่พบ Web App URL — Deployment อาจถูกลบ กรุณา Deploy ใหม่';
-    if (/HTTP 500/.test(msg)) return '💥 Server Error — code.gs มีข้อผิดพลาด กรุณาตรวจสอบ Log';
-    if (/HTTP 502|HTTP 503/.test(msg)) {
-        return '⏸️ Google Apps Script ไม่พร้อมใช้งานชั่วคราว กรุณาลองใหม่ใน 1-2 นาที';
-    }
-    if (/HTTP 429/.test(msg)) return '🚦 เรียกใช้งานถี่เกินไป (Rate Limit) — กรุณารอสักครู่แล้วลองใหม่';
-
-    // ---- Response ว่างเปล่า / ไม่ใช่ JSON ----
-    if (/Server ไม่ตอบกลับข้อมูล/.test(msg)) return '📭 Server ไม่ตอบกลับข้อมูล — กรุณาลองอีกครั้ง';
-    if (/ไม่ใช่ JSON/.test(msg))             return '📄 Server ตอบกลับผิดรูปแบบ — กรุณาลองอีกครั้ง';
-
-    // ---- Timeout (fallback) ----
-    if (elapsed > 30000) {
-        return `⏱️ ประมวลผลนานเกินไป (${Math.round(elapsed / 1000)} วินาที) — ลองลดขอบเขตข้อมูล`;
-    }
-
-    // ---- ค่าเริ่มต้น ----
-    return msg;
 }
 
 // ✅ Helper: หน่วงเวลา
@@ -3704,36 +5132,6 @@ function translateError(err, elapsed) {
         };
         $('#' + id).DataTable(Object.assign(defaults, opts || {}));
     }
-
-/* ============================================================
- *  ✅ Warm-up Apps Script — ปลุก Backend ล่วงหน้า
- *  ============================================================ */
-function warmUpBackend() {
-    console.log('🔥 Warming up Apps Script...');
-    const t0 = Date.now();
-    
-    // ยิง request เบาๆ ไปก่อน เพื่อปลุก container
-    fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'ping', args: [] }),
-        redirect: 'follow'
-    })
-    .then(r => {
-        const elapsed = Date.now() - t0;
-        console.log(`✅ Backend warmed up (${elapsed}ms)`);
-    })
-    .catch(e => {
-        console.warn('⚠️ Warm-up failed (ไม่เป็นไร):', e.message);
-    });
-}
-
-// ✅ เรียกตอนเปิดหน้า Login
-document.addEventListener('DOMContentLoaded', function() {
-    warmUpBackend();
-    // ปลุกซ้ำทุก 4 นาที (Apps Script จะ "หลับ" ถ้าไม่มีใครใช้)
-    setInterval(warmUpBackend, 4 * 60 * 1000);
-});
 
     // ============================================================
     // LOGIN
@@ -3829,6 +5227,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
+/* ============================================================
+ *  ✅ Warm-up Apps Script — ปลุก Backend ล่วงหน้า
+ *  ⚠️ ใช้ callGAS() เพื่อหลีกเลี่ยง CORS
+ *  ⚠️ ต้องเรียกหลัง login เท่านั้น (มี user context แล้ว)
+ *  ============================================================ */
+async function warmUpBackend() {
+    console.log('🔥 Warming up Apps Script...');
+    const t0 = Date.now();
+    
+    try {
+        // ✅ ใช้ callGAS — จัดการ CORS + retry + timeout เรียบร้อยแล้ว
+        await callGAS('ping', [], { 
+            maxRetries: 1, 
+            timeout: 8000  // 8 วินาที
+        });
+        const elapsed = Date.now() - t0;
+        console.log(`✅ Backend warmed up (${elapsed}ms)`);
+    } catch (e) {
+        // ⚠️ ไม่ critical — แค่ log ไว้
+        console.warn('⚠️ Warm-up failed (ไม่กระทบการใช้งาน):', e.message);
+    }
+}
+
     // ============================================================
     // APP INITIALIZATION
     // ============================================================
@@ -3847,6 +5268,8 @@ document.addEventListener('DOMContentLoaded', function() {
         navigateTo('dashboard');
         loadVaccineCatalog();
         loadVillageColors();
+        // ✅ แทรกบรรทัดนี้ — หลัง loadVillageColors() ก่อน } ปิด
+    warmUpBackend();
     }
 
     async function loadVillageColors() {
@@ -3861,15 +5284,42 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function logout() {
-        APP.currentUser = null;
-        APP.selectedFiles = [];
-        APP.charts = {};
-        document.getElementById('appContainer').style.display = 'none';
-        document.getElementById('loginPage').style.display = 'flex';
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
-        document.getElementById('loginError').textContent = '';
+    // ✅ Audit Log ก่อน clear currentUser (พร้อม userAgent)
+    if (APP.currentUser) {
+        const logData = {
+            username: APP.currentUser.username,
+            fullname: APP.currentUser.fullname,
+            role: APP.currentUser.role,
+            hcode: APP.currentUser.hcode,
+            action: 'LOGOUT',
+            category: 'auth',
+            details: 'ออกจากระบบ',
+            userAgent: navigator.userAgent.slice(0, 200)
+        };
+        
+        // ✅ ยิง log แบบไม่รอ response
+        try {
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'logActivity', args: [logData] }),
+                redirect: 'follow',
+                keepalive: true  // ⭐ สำคัญ! ให้ request ส่งต่อไปได้แม้ปิดหน้า
+            }).catch(function(e) { console.warn('Logout log failed:', e); });
+        } catch (e) { console.warn('Logout log error:', e); }
+        
+        console.log('📝 logActivity → LOGOUT | ออกจากระบบ');
     }
+    
+    APP.currentUser = null;
+    APP.selectedFiles = [];
+    APP.charts = {};
+    document.getElementById('appContainer').style.display = 'none';
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginError').textContent = '';
+}
 
     async function loadVaccineCatalog() {
         try {
@@ -4861,9 +6311,13 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
     }
 
     window.viewChildFromMap = async function(childId) {
-        showLoading('กำลังโหลดข้อมูล...');
-        try {
-            const result = await callGAS('getChildDetail', [childId]);
+    showLoading('กำลังโหลดข้อมูล...');
+    
+    // ✅ Audit Log — ดูข้อมูลเด็ก
+    logActivity('VIEW', 'view', `ดูรายละเอียดเด็ก ID: ${childId}`);
+    
+    try {
+        const result = await callGAS('getChildDetail', [childId]);
             hideLoading();
             if (!result.success) return Swal.fire('ผิดพลาด', result.message, 'error');
             const c = result.child;
@@ -5240,45 +6694,163 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
     // ACCESS LOG PAGE (Admin Only)
     // ============================================================
     async function loadAccessLogPage() {
-        const page = document.getElementById('accessLogPage');
-        page.classList.add('active');
-        showLoading('กำลังโหลดประวัติการเข้าใช้งาน...');
+    const page = document.getElementById('accessLogPage');
+    page.classList.add('active');
+    showLoading('กำลังโหลดประวัติ...');
 
-        try {
-            const result = await callGAS('getAccessLogs', [APP.currentUser.role, APP.currentUser.hcode]);
-            hideLoading();
-            
-            if (!result.success) {
-                page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(result.message) + '</div>';
-                return;
-            }
+    try {
+        // ✅ โหลดทั้ง 2 อย่าง
+        const [accessRes, activityRes] = await Promise.all([
+            callGAS('getAccessLogs', [APP.currentUser.role, APP.currentUser.hcode]),
+            callGAS('getActivityLogs', [{
+                userRole: APP.currentUser.role,
+                userHcode: APP.currentUser.hcode
+            }])
+        ]);
 
-            const logs = result.logs || [];
+        hideLoading();
 
-            page.innerHTML =
-                '<div class="page-title"><i class="fas fa-history"></i> ประวัติการเข้าใช้งานระบบ</div>' +
-                '<div class="data-table" style="width:100%; overflow-x:auto;">' +
-                '<table id="accessLogTable" class="display nowrap" style="width:100%;">' +
-                '<thead><tr><th>วัน-เวลาที่เข้าใช้</th><th>ชื่อผู้ใช้</th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>สถานพยาบาล</th></tr></thead>' +
-                '<tbody>' + logs.map(function(l) {
-                    return '<tr>' +
-                        '<td>' + esc(l.timestamp) + '</td>' +
-                        '<td><span style="font-weight:500;">' + esc(l.username) + '</span></td>' +
-                        '<td>' + esc(l.fullname) + '</td>' +
-                        '<td><span class="role-badge ' + getRoleClass(l.role) + '">' + esc(l.role) + '</span></td>' +
-                        '<td><span style="color:#667eea; font-weight:500;">' + esc(l.hcode) + '</span></td>' +
-                        '</tr>';
-                }).join('') +
-                '</tbody></table></div>';
+        const accessLogs = accessRes.success ? accessRes.logs : [];
+        const activityLogs = activityRes.success ? activityRes.logs : [];
 
-            // ไม่ต้องทำการจัดเรียงซ้ำ (order: []) เพราะในฝั่ง GAS จัดเรียงข้อมูลจากใหม่ไปเก่ามาให้แล้ว
+        page.innerHTML = `
+            <div class="page-title">
+                <i class="fas fa-history"></i> ประวัติการใช้งานระบบ
+            </div>
+
+            <!-- Tabs -->
+            <div class="filter-bar" style="padding: 0; overflow: hidden;">
+                <div style="display: flex; width: 100%;">
+                    <button id="tabAccess" onclick="switchLogTab('access')"
+                            style="flex: 1; padding: 16px; border: none; background: #667eea; color: #fff;
+                                   font-family: Kanit; font-size: 14px; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-sign-in-alt"></i> ประวัติเข้าใช้งาน (${accessLogs.length})
+                    </button>
+                    <button id="tabActivity" onclick="switchLogTab('activity')"
+                            style="flex: 1; padding: 16px; border: none; background: #f1f5f9; color: #475569;
+                                   font-family: Kanit; font-size: 14px; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-clipboard-list"></i> กิจกรรมทั้งหมด (${activityLogs.length})
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 1: Access Log -->
+            <div id="tabContentAccess">
+                <div class="data-table" style="width:100%; overflow-x:auto;">
+                    <table id="accessLogTable" class="display nowrap" style="width:100%;">
+                        <thead><tr>
+                            <th>วัน-เวลา</th>
+                            <th>ชื่อผู้ใช้</th>
+                            <th>ชื่อ-สกุล</th>
+                            <th>ตำแหน่ง</th>
+                            <th>สถานพยาบาล</th>
+                        </tr></thead>
+                        <tbody>
+                            ${accessLogs.map(l => `
+                                <tr>
+                                    <td>${esc(l.timestamp)}</td>
+                                    <td><span style="font-weight:500;">${esc(l.username)}</span></td>
+                                    <td>${esc(l.fullname)}</td>
+                                    <td><span class="role-badge ${getRoleClass(l.role)}">${esc(l.role)}</span></td>
+                                    <td><span style="color:#667eea; font-weight:500;">${esc(l.hcode)}</span></td>
+                                </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: Activity Log -->
+            <div id="tabContentActivity" style="display: none;">
+                <div class="data-table" style="width:100%; overflow-x:auto;">
+                    <table id="activityLogTable" class="display nowrap" style="width:100%;">
+                        <thead><tr>
+                            <th>วัน-เวลา</th>
+                            <th>ผู้ใช้</th>
+                            <th>กิจกรรม</th>
+                            <th>ประเภท</th>
+                            <th>รายละเอียด</th>
+                            <th>สถานพยาบาล</th>
+                        </tr></thead>
+                        <tbody>
+                            ${activityLogs.map(l => {
+                                const catColors = {
+                                    auth: { bg: '#dbeafe', color: '#1e40af', icon: 'fa-sign-in-alt' },
+                                    export: { bg: '#d1fae5', color: '#047857', icon: 'fa-download' },
+                                    view: { bg: '#e0f2fe', color: '#0369a1', icon: 'fa-eye' },
+                                    edit: { bg: '#fef3c7', color: '#b45309', icon: 'fa-edit' },
+                                    print: { bg: '#ede9fe', color: '#6d28d9', icon: 'fa-print' },
+                                    general: { bg: '#f1f5f9', color: '#475569', icon: 'fa-circle' }
+                                };
+                                const c = catColors[l.category] || catColors.general;
+
+                                return `
+                                    <tr>
+                                        <td style="white-space:nowrap; font-size:12px;">${esc(l.timestamp)}</td>
+                                        <td>
+                                            <div style="font-weight:500;">${esc(l.fullname)}</div>
+                                            <div style="font-size:11px; color:#94a3b8;">${esc(l.username)}</div>
+                                        </td>
+                                        <td>
+                                            <span style="display:inline-flex; align-items:center; gap:5px;
+                                                         padding: 3px 10px; border-radius: 6px;
+                                                         background:${c.bg}; color:${c.color};
+                                                         font-size:12px; font-weight:600;">
+                                                <i class="fas ${c.icon}"></i> ${esc(l.action)}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span style="font-size:11px; color:#64748b; text-transform:uppercase;">
+                                                ${esc(l.category)}
+                                            </span>
+                                        </td>
+                                        <td style="font-size:13px; color:#334155; max-width: 350px;">
+                                            ${esc(l.details)}
+                                        </td>
+                                        <td><span style="color:#667eea; font-weight:500; font-size:12px;">${esc(l.hcode)}</span></td>
+                                    </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        // Init DataTables
+        if (accessLogs.length > 0) {
             initDT('accessLogTable', { scrollX: true, autoWidth: false, order: [] });
-
-        } catch (err) {
-            hideLoading();
-            page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(err.message) + '</div>';
         }
+        if (activityLogs.length > 0) {
+            initDT('activityLogTable', { scrollX: true, autoWidth: false, order: [] });
+        }
+
+    } catch (err) {
+        hideLoading();
+        page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(err.message) + '</div>';
     }
+}
+
+window.switchLogTab = function(tab) {
+    const accessBtn = document.getElementById('tabAccess');
+    const activityBtn = document.getElementById('tabActivity');
+    const accessContent = document.getElementById('tabContentAccess');
+    const activityContent = document.getElementById('tabContentActivity');
+
+    if (tab === 'access') {
+        accessBtn.style.background = '#667eea';
+        accessBtn.style.color = '#fff';
+        activityBtn.style.background = '#f1f5f9';
+        activityBtn.style.color = '#475569';
+        accessContent.style.display = 'block';
+        activityContent.style.display = 'none';
+    } else {
+        activityBtn.style.background = '#667eea';
+        activityBtn.style.color = '#fff';
+        accessBtn.style.background = '#f1f5f9';
+        accessBtn.style.color = '#475569';
+        accessContent.style.display = 'none';
+        activityContent.style.display = 'block';
+    }
+};
     // ============================================================
     // CATEGORIES PAGE (Villages)
     // ============================================================
@@ -5540,9 +7112,20 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
     }
 
     async function doChildSearch() {
-        showLoading('กำลังค้นหา...');
-        const facilityEl = document.getElementById('cFacility');
-        const filters = {
+    showLoading('กำลังค้นหา...');
+    
+    // ✅ Audit Log — ดูรายชื่อเด็ก
+    const searchValue = document.getElementById('cSearch') ? document.getElementById('cSearch').value.trim() : '';
+    const statusValue = document.getElementById('cStatus') ? document.getElementById('cStatus').value : 'ทั้งหมด';
+    
+    // ✅ Log เฉพาะเมื่อผู้ใช้กดค้นหา (ไม่ใช่ refresh อัตโนมัติ)
+    if (searchValue || statusValue !== 'ทั้งหมด') {
+        logActivity('VIEW', 'view', 
+            'ค้นหารายชื่อเด็ก — คำค้น: "' + (searchValue || '-') + '", สถานะ: ' + statusValue);
+    }
+    
+    const facilityEl = document.getElementById('cFacility');
+    const filters = {
             hcode: facilityEl ? facilityEl.value : 'ทั้งหมด',
             search: document.getElementById('cSearch') ? document.getElementById('cSearch').value.trim() : '',
             status: document.getElementById('cStatus') ? document.getElementById('cStatus').value : 'ทั้งหมด',
@@ -5682,8 +7265,18 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
     }
 
     async function doMissingSearch() {
-        showLoading('กำลังค้นหา...');
-        const facilityEl = document.getElementById('mFacility');
+    showLoading('กำลังค้นหา...');
+    
+    // ✅ Audit Log — ดูเด็กขาดนัด
+    const searchValue = document.getElementById('mSearch') ? document.getElementById('mSearch').value.trim() : '';
+    const facilityValue = document.getElementById('mFacility') ? document.getElementById('mFacility').value : 'ทั้งหมด';
+    
+    if (searchValue || facilityValue !== 'ทั้งหมด') {
+        logActivity('VIEW', 'view', 
+            'ดูรายชื่อเด็กขาดนัด — คำค้น: "' + (searchValue || '-') + '", สถานพยาบาล: ' + facilityValue);
+    }
+    
+    const facilityEl = document.getElementById('mFacility');
         const filters = {
             hcode: facilityEl ? facilityEl.value : 'ทั้งหมด',
             search: document.getElementById('mSearch') ? document.getElementById('mSearch').value.trim() : '',
@@ -5747,9 +7340,13 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
     }
 
     function exportMissingCsv() {
-        if (!APP.missingAllRecords || APP.missingAllRecords.length === 0) {
-            return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก', 'info');
-        }
+    if (!APP.missingAllRecords || APP.missingAllRecords.length === 0) {
+        return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก', 'info');
+    }
+    
+    // ✅ Audit Log
+    logActivity('EXPORT', 'export',
+        `ดาวน์โหลดรายชื่อเด็กขาดนัด (${APP.missingAllRecords.length} รายการ)`);
 
         const rows = [];
         rows.push(['HN', 'ชื่อ-สกุล', 'วันเกิด', 'อายุ', 'บ้านเลขที่', 'หมู่ที่', 'อสม. ผู้รับผิดชอบ', 'สถานะ', 'วัคซีนที่ขาด']);
@@ -5832,107 +7429,121 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
     }
 
     async function doLoadAppointments() {
-        showLoading('กำลังโหลดข้อมูลนัดหมาย...');
-        const filterDate = document.getElementById('apptDateFilter') ? document.getElementById('apptDateFilter').value : '';
-        const facilityFilter = document.getElementById('apptFacilityFilter') ? document.getElementById('apptFacilityFilter').value : 'ทั้งหมด';
-        let thaiFilterDate = '';
-        if (filterDate) {
-            const d = new Date(filterDate);
-            if (!isNaN(d.getTime())) {
-                const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-                thaiFilterDate = d.getDate() + ' ' + thaiMonths[d.getMonth()] + ' ' + (d.getFullYear() + 543);
-            }
-        }
-        
-        const filters = { userRole: APP.currentUser.role, userHcode: APP.currentUser.hcode, userSubdistrict: APP.currentUser.subdistrict, userVillage: APP.currentUser.village };  
-        
-        try {
-            const result = await callGAS('getAppointments', [filters]);
-            hideLoading();
-
-            let headers = result.success && result.headers ? result.headers : [];
-            let appts = result.success ? result.appointments : [];
-
-            // กำหนด Index สำหรับระบุคอลัมน์
-            const hcodeIdx = findColumnIndex(headers, ['hcode', 'รหัสสถานพยาบาล', 'สถานพยาบาล'], 0);
-            const dateColIdx = findColumnIndex(headers, ['วันที่นัด', 'วันนัด', 'วันที่', 'นัดครั้งต่อไป'], 3);
-            const hnIdx = findColumnIndex(headers, ['HN', 'รหัส', 'hn']);
-            const nameIdx = findColumnIndex(headers, ['ชื่อ-สกุล', 'ชื่อ', 'ChildName', 'fullname']);
-            
-            // หา Index ของ รหัสวัคซีน เพื่อที่จะนำไปแสดงเป็นป้ายสีสวยๆ
-            const vacColIdx = findColumnIndex(headers, ['รหัสวัคซีน', 'วัคซีน', 'vaccine']);
-
-            // ฟังก์ชันตรวจสอบว่าควรซ่อนคอลัมน์นี้หรือไม่ (ID, CID, ชื่อวัคซีน)
-            const isHiddenCol = (idx, hName) => {
-                const hStr = hName ? hName.toString().trim().toUpperCase() : '';
-                return hStr === 'ID' || hStr === 'CID' || hStr === 'ชื่อวัคซีน';
-            };
-
-            const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
-            if (APP.currentUser.role !== 'Admin_Ampur' && !isSpecialOfficer && hcodeIdx >= 0) {
-                appts = appts.filter(function(a) { return a[hcodeIdx] === APP.currentUser.hcode; });
-            }
-
-            if (facilityFilter !== 'ทั้งหมด' && hcodeIdx >= 0) {
-                appts = appts.filter(function(a) { return a[hcodeIdx] === facilityFilter; });
-            }
-
-            if (thaiFilterDate && dateColIdx >= 0) {
-                appts = appts.filter(function(a) { return a[dateColIdx] && a[dateColIdx].toString().trim().includes(thaiFilterDate); });
-            }
-
-            APP.apptHeaders = headers;
-            APP.apptAllRecords = appts;
-
-            // กรองสร้างส่วนหัวตาราง (ข้ามคอลัมน์ที่ถูกซ่อน)
-            const theadHTML = '<tr>' + headers.map(function(h, idx) { 
-                if (isHiddenCol(idx, h)) return ''; 
-                
-                let displayH = h.toString().trim();
-                if (displayH === 'hcode' || displayH === 'รหัสสถานพยาบาล') displayH = 'สถานพยาบาล';
-                if (displayH === 'รหัสวัคซีน') displayH = 'วัคซีน'; // เปลี่ยนชื่อ Header จาก รหัสวัคซีน เป็น วัคซีน ตอนแสดงผล
-                
-                return '<th style="white-space: nowrap;">' + esc(displayH) + '</th>'; 
-            }).join('') + '</tr>';
-
-            // กรองสร้างส่วนข้อมูลแถวตาราง
-            const tbodyHTML = appts.map(function(row) {
-                let trHtml = '<tr>';
-                for (let idx = 0; idx < headers.length; idx++) {
-                    if (isHiddenCol(idx, headers[idx])) continue; 
-                    
-                    const cell = row[idx] !== undefined ? row[idx] : '';
-                    if (idx === hcodeIdx) {
-                        const displayName = APP.facilityMap[cell] || cell || '-';
-                        trHtml += '<td><span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span></td>';
-                    } else if (idx === vacColIdx && cell) {
-                        // แยกชื่อวัคซีนมาใส่กรอบสีๆ (Tag)
-                        const vacTags = cell.toString().split(',').map(function(v) {
-                            return '<span class="status-badge" style="background:#e3f2fd; color:#0284c7; margin-right:4px; margin-bottom:2px; display:inline-block; border: 1px solid #bae6fd;">' + esc(v.trim()) + '</span>';
-                        }).join('');
-                        trHtml += '<td>' + vacTags + '</td>';
-                    } else {
-                        trHtml += '<td>' + esc(cell) + '</td>';
-                    }
-                }
-                trHtml += '</tr>';
-                return trHtml;
-            }).join('');
-
-            document.getElementById('apptsTableWrap').innerHTML = '<div class="data-table" style="width:100%; overflow:hidden;"><table id="apptsTable" class="display nowrap" style="width:100%;">' +
-                '<thead>' + theadHTML + '</thead><tbody>' + tbodyHTML + '</tbody></table></div>';
-
-            initDT('apptsTable', { scrollX: true, autoWidth: false });
-        } catch (err) {
-            hideLoading();
-            document.getElementById('apptsTableWrap').innerHTML = '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(err.message) + '</div>';
+    showLoading('กำลังโหลดข้อมูลนัดหมาย...');
+    
+    const filterDate = document.getElementById('apptDateFilter') ? document.getElementById('apptDateFilter').value : '';
+    const facilityFilter = document.getElementById('apptFacilityFilter') ? document.getElementById('apptFacilityFilter').value : 'ทั้งหมด';
+    
+    // ✅ Audit Log — ดูรายชื่อนัดวัคซีน (เฉพาะเมื่อมี filter)
+    if (filterDate || facilityFilter !== 'ทั้งหมด') {
+        logActivity('VIEW', 'view', 
+            'ดูรายชื่อนัดวัคซีน — วันที่: ' + (filterDate || '-') + ', สถานพยาบาล: ' + facilityFilter);
+    }
+    
+    // ✅ ลบตัวซ้ำออกแล้ว — เดิมมี const facilityFilter ซ้ำ
+    let thaiFilterDate = '';
+    if (filterDate) {
+        const d = new Date(filterDate);
+        if (!isNaN(d.getTime())) {
+            const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            thaiFilterDate = d.getDate() + ' ' + thaiMonths[d.getMonth()] + ' ' + (d.getFullYear() + 543);
         }
     }
+    
+    const filters = { 
+        userRole: APP.currentUser.role, 
+        userHcode: APP.currentUser.hcode, 
+        userSubdistrict: APP.currentUser.subdistrict, 
+        userVillage: APP.currentUser.village 
+    };
+    
+    try {
+        const result = await callGAS('getAppointments', [filters]);
+        hideLoading();
+
+        let headers = result.success && result.headers ? result.headers : [];
+        let appts = result.success ? result.appointments : [];
+
+        const hcodeIdx = findColumnIndex(headers, ['hcode', 'รหัสสถานพยาบาล', 'สถานพยาบาล'], 0);
+        const dateColIdx = findColumnIndex(headers, ['วันที่นัด', 'วันนัด', 'วันที่', 'นัดครั้งต่อไป'], 3);
+        const hnIdx = findColumnIndex(headers, ['HN', 'รหัส', 'hn']);
+        const nameIdx = findColumnIndex(headers, ['ชื่อ-สกุล', 'ชื่อ', 'ChildName', 'fullname']);
+        const vacColIdx = findColumnIndex(headers, ['รหัสวัคซีน', 'วัคซีน', 'vaccine']);
+
+        const isHiddenCol = (idx, hName) => {
+            const hStr = hName ? hName.toString().trim().toUpperCase() : '';
+            return hStr === 'ID' || hStr === 'CID' || hStr === 'ชื่อวัคซีน';
+        };
+
+        const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && 
+                                  (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+        
+        if (APP.currentUser.role !== 'Admin_Ampur' && !isSpecialOfficer && hcodeIdx >= 0) {
+            appts = appts.filter(function(a) { return a[hcodeIdx] === APP.currentUser.hcode; });
+        }
+
+        if (facilityFilter !== 'ทั้งหมด' && hcodeIdx >= 0) {
+            appts = appts.filter(function(a) { return a[hcodeIdx] === facilityFilter; });
+        }
+
+        if (thaiFilterDate && dateColIdx >= 0) {
+            appts = appts.filter(function(a) { 
+                return a[dateColIdx] && a[dateColIdx].toString().trim().includes(thaiFilterDate); 
+            });
+        }
+
+        APP.apptHeaders = headers;
+        APP.apptAllRecords = appts;
+
+        const theadHTML = '<tr>' + headers.map(function(h, idx) { 
+            if (isHiddenCol(idx, h)) return ''; 
+            let displayH = h.toString().trim();
+            if (displayH === 'hcode' || displayH === 'รหัสสถานพยาบาล') displayH = 'สถานพยาบาล';
+            if (displayH === 'รหัสวัคซีน') displayH = 'วัคซีน';
+            return '<th style="white-space: nowrap;">' + esc(displayH) + '</th>'; 
+        }).join('') + '</tr>';
+
+        const tbodyHTML = appts.map(function(row) {
+            let trHtml = '<tr>';
+            for (let idx = 0; idx < headers.length; idx++) {
+                if (isHiddenCol(idx, headers[idx])) continue; 
+                const cell = row[idx] !== undefined ? row[idx] : '';
+                if (idx === hcodeIdx) {
+                    const displayName = APP.facilityMap[cell] || cell || '-';
+                    trHtml += '<td><span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span></td>';
+                } else if (idx === vacColIdx && cell) {
+                    const vacTags = cell.toString().split(',').map(function(v) {
+                        return '<span class="status-badge" style="background:#e3f2fd; color:#0284c7; margin-right:4px; margin-bottom:2px; display:inline-block; border: 1px solid #bae6fd;">' + esc(v.trim()) + '</span>';
+                    }).join('');
+                    trHtml += '<td>' + vacTags + '</td>';
+                } else {
+                    trHtml += '<td>' + esc(cell) + '</td>';
+                }
+            }
+            trHtml += '</tr>';
+            return trHtml;
+        }).join('');
+
+        document.getElementById('apptsTableWrap').innerHTML = 
+            '<div class="data-table" style="width:100%; overflow:hidden;"><table id="apptsTable" class="display nowrap" style="width:100%;">' +
+            '<thead>' + theadHTML + '</thead><tbody>' + tbodyHTML + '</tbody></table></div>';
+
+        initDT('apptsTable', { scrollX: true, autoWidth: false });
+    } catch (err) {
+        hideLoading();
+        document.getElementById('apptsTableWrap').innerHTML = 
+            '<div class="error-message">เกิดข้อผิดพลาด: ' + esc(err.message) + '</div>';
+    }
+}
 
     function exportApptCsv() {
-        if (!APP.apptAllRecords || APP.apptAllRecords.length === 0) {
-            return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับ export', 'info');
-        }
+    if (!APP.apptAllRecords || APP.apptAllRecords.length === 0) {
+        return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับ export', 'info');
+    }
+    
+    // ✅ Audit Log
+    logActivity('EXPORT', 'export',
+        `ดาวน์โหลดรายชื่อนัดวัคซีน (${APP.apptAllRecords.length} รายการ)`);
         
         // ฟังก์ชันตรวจสอบว่าควรซ่อนคอลัมน์นี้หรือไม่ (ใช้ตรวจสอบร่วมกับตอนแสดงผล)
         const isHiddenCol = (idx, hName) => {
@@ -7006,7 +8617,11 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
             document.getElementById('rptSearch').value = '';
             doLoadReport();
         });
-        document.getElementById('rptPrintBtn').addEventListener('click', function() { window.print(); });
+        document.getElementById('rptPrintBtn').addEventListener('click', function() {
+    // ✅ Audit Log
+    logActivity('PRINT', 'print', 'พิมพ์รายงานการติดตามวัคซีน');
+    window.print();
+});
         document.getElementById('rptCsvBtn').addEventListener('click', exportRptCsv);
 
         doLoadReport();
@@ -7896,15 +9511,15 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
             if (progressDiv) progressDiv.style.display = 'none';
 
             if (response && response.success) {
-                // ✅ ปิด modal ด้วย
-                if (importModal) {
-                    importModal.classList.remove('active');
-                }
-
-                // ✅ แสดงผลลัพธ์
-                Swal.fire({
+             if (importModal) importModal.classList.remove('active');
+    
+              // ✅ Audit Log
+             logActivity('UPLOAD', 'edit',
+                 `Import ข้อมูลเด็ก ${dataRows.length - 1} แถว — ${response.message}`);
+    
+                   Swal.fire({
                     icon: 'success',
-                    title: 'สำเร็จ!',
+                   title: 'สำเร็จ!',
                     text: response.message || 'นำเข้าข้อมูลเรียบร้อย',
                     timer: 2500, // เพิ่มเวลาแสดงผลนิดหน่อยให้อ่านสรุปการ Upsert ทัน
                     showConfirmButton: false
@@ -9047,10 +10662,15 @@ function renderCoverageByVillage(res) {
  *  EXPORT EXCEL — ส่งออกเป็นไฟล์ .xlsx หลาย Sheet
  * ============================================================ */
 async function exportCoverageExcel() {
-  const res = APP.coverageData;
-  if (!res) {
-    return Swal.fire('แจ้งเตือน', 'กรุณากด "ประมวลผลข้อมูล" ก่อนส่งออก', 'warning');
-  }
+    const res = APP.coverageData;
+    if (!res) {
+        return Swal.fire('แจ้งเตือน', 'กรุณากด "ประมวลผลข้อมูล" ก่อนส่งออก', 'warning');
+    }
+    
+    // ✅ Audit Log
+    logActivity('EXPORT', 'export',
+        `ส่งออก Excel รายงานความครอบคลุม ${res.meta.yearLabel} ` +
+        `(${res.summary?.totalChildren || 0} คน)`);
 
   showLoading('กำลังสร้างไฟล์ Excel...');
 
@@ -9675,6 +11295,57 @@ function renderCoverageTrend(res) {
       }
     });
   }
+}
+function renderPublicAgeSummaryCards(ageGroups) {
+    const container = document.getElementById('publicSummaryGrid');
+    if (!container || !ageGroups || ageGroups.length === 0) return;
+
+    const styles = {
+        'y1': { icon: 'fa-baby',              accent: '#667eea', soft: '#eef2ff' },
+        'y2': { icon: 'fa-child',             accent: '#0ea5e9', soft: '#e0f2fe' },
+        'y3': { icon: 'fa-child-reaching',    accent: '#f59e0b', soft: '#fef3c7' },
+        'y5': { icon: 'fa-user-graduate',     accent: '#8b5cf6', soft: '#ede9fe' }
+    };
+
+    container.innerHTML = ageGroups.map(g => {
+        const s = styles[g.key] || styles.y1;
+        const isEmpty = g.total === 0;
+        const isPass = g.rate >= g.target;
+        const gap = Math.max(0, Math.ceil(g.target * g.total / 100) - g.complete);
+        
+        let valueColor = s.accent;
+        if (!isEmpty) {
+            valueColor = isPass ? '#10b981' : (g.rate >= g.target - 10 ? '#f59e0b' : '#ef4444');
+        }
+        
+        let footerHtml;
+        if (isEmpty) {
+            footerHtml = '<div class="public-summary-footer empty"><i class="fas fa-minus-circle"></i> ไม่มีกลุ่มเป้าหมาย</div>';
+        } else if (isPass) {
+            footerHtml = '<div class="public-summary-footer pass"><i class="fas fa-check-circle"></i> ผ่านเกณฑ์</div>';
+        } else {
+            footerHtml = `<div class="public-summary-footer fail"><i class="fas fa-exclamation-circle"></i> ขาดอีก ${gap} คน</div>`;
+        }
+
+        return `
+            <div class="public-summary-card" style="--accent: ${valueColor}; --accent-soft: ${s.soft};">
+                <div class="public-summary-header">
+                    <div class="public-summary-title-row">
+                        <div class="public-summary-icon"><i class="fas ${s.icon}"></i></div>
+                        <div class="public-summary-label">${esc(g.label)}</div>
+                    </div>
+                    <span class="public-summary-target">เกณฑ์ ${g.target}%</span>
+                </div>
+                <div class="public-summary-value" style="color:${valueColor};">
+                    ${g.rate}<span class="unit">%</span>
+                </div>
+                <div class="public-summary-count">
+                    ครบเกณฑ์ <strong>${g.complete}</strong> จาก <strong>${g.total}</strong> คน
+                </div>
+                ${footerHtml}
+            </div>
+        `;
+    }).join('');
 }
     console.log('✅ ระบบติดตามวัคซีนเด็ก 0-5 ปี พร้อมทำงาน');
 </script>
