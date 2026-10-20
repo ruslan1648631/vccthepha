@@ -4244,6 +4244,7 @@
                 <div id="officerTrackingPage" class="page"></div>
                 <div id="reportPage" class="page"></div>
                 <div id="coveragePage" class="page"></div>
+                <div id="vaccineRegisterPage" class="page"></div>
             </div>
         </div>
     </div>
@@ -4287,6 +4288,131 @@
         dashboardVillageColors: {},
         facilityMap: {}
     };
+
+    // ============================================================
+    // CONFIGURATION & API ENDPOINT
+    // ============================================================
+    const API_URL = "https://script.google.com/macros/s/AKfycbwOURwW8llT2-zw5qB7-Q9BtFilNdLXw_w77oIE6UKLeKgnteph4NaoocvjzcLiBX_N/exec";
+
+    // ============================================================
+    // CORE HELPERS & NETWORK LAYER (callGAS)
+    // ============================================================
+    function esc(text) {
+        if (text === null || text === undefined) return '';
+        const d = document.createElement('div');
+        d.textContent = String(text);
+        return d.innerHTML;
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function translateError(err, elapsed) {
+        const msg = (err && err.message) || String(err);
+        if (err && err.name === 'AbortError') {
+            return '⏱️ หมดเวลา (' + Math.round(elapsed/1000) + ' วินาที) — Server ใช้เวลานานเกินไป ลองอีกครั้ง';
+        }
+        if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+            return '🌐 การเชื่อมต่อล้มเหลว (Network) — อาจเป็นเพราะอินเทอร์เน็ตหรือ Google Apps Script ไม่พร้อมใช้งาน ลองอีกครั้ง';
+        }
+        if (msg.includes('HTTP 401')) return '🔒 ไม่มีสิทธิ์เข้าถึง — ตรวจสอบ Deployment ตั้ง "Who has access: Anyone"';
+        if (msg.includes('HTTP 403')) return '🚫 ถูกปฏิเสธ (Forbidden) — ตรวจสอบสิทธิ์ Deployment';
+        if (msg.includes('HTTP 404')) return '❓ ไม่พบ Web App URL — Deployment อาจถูกลบ';
+        if (msg.includes('HTTP 500')) return '💥 Server Error — code.gs มีข้อผิดพลาด';
+        if (msg.includes('HTTP 502') || msg.includes('HTTP 503')) {
+            return '⏸️ Google Apps Script ไม่พร้อมใช้งานชั่วคราว ลองใหม่ใน 1-2 นาที';
+        }
+        if (elapsed > 30000) {
+            return '⏱️ ประมวลผลนานเกินไป (' + Math.round(elapsed/1000) + ' วินาที) — ลองลดขอบเขตข้อมูล';
+        }
+        return msg;
+    }
+
+    async function callGAS(fnName, args, options) {
+        options = options || {};
+        const maxRetries = (typeof options.maxRetries === 'number') ? options.maxRetries : 3;
+        const retryDelay = options.retryDelay || 1000;
+        const timeout    = options.timeout    || 45000;
+
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            const startTime = Date.now();
+            let timeoutId = null;
+
+            try {
+                const controller = new AbortController();
+                timeoutId = setTimeout(() => controller.abort(), timeout);
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: fnName, args: args || [] }),
+                    redirect: 'follow',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                timeoutId = null;
+
+                const elapsed = Date.now() - startTime;
+
+                if (response.ok) {
+                    const rawText = await response.text();
+                    if (!rawText || rawText.trim() === '') {
+                        throw new Error('Server ไม่ตอบกลับข้อมูล (Response ว่างเปล่า)');
+                    }
+                    try {
+                        const result = JSON.parse(rawText);
+                        console.log(`✅ [${fnName}] OK (${elapsed}ms)` + (attempt > 1 ? ` [retry ${attempt}]` : ''));
+                        return result;
+                    } catch (parseErr) {
+                        console.error(`❌ [${fnName}] ตอบกลับไม่ใช่ JSON:`, rawText.slice(0, 300));
+                        throw new Error('Response ไม่ใช่ JSON: ' + rawText.slice(0, 100));
+                    }
+                }
+
+                if (response.status >= 500 && attempt < maxRetries) {
+                    console.warn(`⚠️ [${fnName}] HTTP ${response.status} (attempt ${attempt}/${maxRetries}) — จะลองใหม่...`);
+                    lastError = new Error(`HTTP ${response.status} ${response.statusText}`);
+                    await sleep(retryDelay * attempt);
+                    continue;
+                }
+
+                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            } catch (err) {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                const elapsed = Date.now() - startTime;
+                lastError = err;
+
+                const errMsg = (err.message || '').toString();
+                const isAbort     = err.name === 'AbortError';
+                const isNetwork   = /Failed to fetch|NetworkError|Network request failed|load failed/i.test(errMsg);
+                const isServer    = /HTTP 5\d\d/.test(errMsg);
+                const isRetryable = isAbort || isNetwork || isServer;
+
+                if (isRetryable && attempt < maxRetries) {
+                    console.warn(`⚠️ [${fnName}] ${errMsg} (attempt ${attempt}/${maxRetries}) — รอ ${retryDelay * attempt}ms...`);
+                    await sleep(retryDelay * attempt);
+                    continue;
+                }
+
+                if (!isRetryable) {
+                    console.error(`❌ [${fnName}] ล้มเหลว (retry ไม่ช่วย): ${errMsg} (${elapsed}ms)`);
+                    throw new Error(translateError(err, elapsed));
+                }
+
+                console.error(`❌ [${fnName}] ล้มเหลวหลังจากลอง ${maxRetries} ครั้ง (${elapsed}ms):`, err);
+                throw new Error(translateError(err, elapsed));
+            }
+        }
+
+        throw new Error(translateError(lastError, 0));
+    }
 
 /* ============================================================
  *  PUBLIC DASHBOARD LOGIC
@@ -4609,15 +4735,6 @@ function renderPublicFacilitiesTable(facilities) {
 }
 
 
-/* ============================================================
- *  ✅ แก้ showMainApp() ให้ซ่อน Public Dashboard เมื่อ Login สำเร็จ
- *  ============================================================ */
-const _originalShowMainApp = showMainApp;
-showMainApp = function() {
-    document.getElementById('publicDashboard').classList.remove('active');
-    document.getElementById('loginPage').style.display = 'none';
-    _originalShowMainApp.call(this);
-};
 
 /* ============================================================
  *  ✅ เรียกตอนเปิดหน้าเว็บ (init)
@@ -4812,13 +4929,6 @@ function collapseAllVillages() {
         if (el) el.style.display = 'none';
     }
 
-    function esc(text) {
-        if (text === null || text === undefined) return '';
-        const d = document.createElement('div');
-        d.textContent = String(text);
-        return d.innerHTML;
-    }
-
     function formatDate(val) {
         if (!val) return '-';
         const d = new Date(val);
@@ -4914,132 +5024,9 @@ function collapseAllVillages() {
         }
     }
 
-    // ============================================================
-    // เปลี่ยนมาใช้ FETCH API สำหรับคุยกับ GOOGLE APPS SCRIPT
-    // ============================================================
-    
-    // ⚠️ นำ Web App URL ที่เพิ่งคัดลอกมาเมื่อกี้ มาวางที่นี่
-    const API_URL = "https://script.google.com/macros/s/AKfycbwOURwW8llT2-zw5qB7-Q9BtFilNdLXw_w77oIE6UKLeKgnteph4NaoocvjzcLiBX_N/exec";
-
     /* ============================================================
- *  callGAS — เรียก Google Apps Script API พร้อม Retry + Timeout
- * ============================================================ */
-async function callGAS(fnName, args, options) {
-    options = options || {};
-    const maxRetries = (typeof options.maxRetries === 'number') ? options.maxRetries : 3;
-    const retryDelay = options.retryDelay || 1000;   // 1 วินาที
-    const timeout    = options.timeout    || 45000;  // 45 วินาที
-
-    let lastError = null;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const startTime = Date.now();
-        let timeoutId = null;
-
-        try {
-            // ✅ สร้าง AbortController เพื่อ timeout
-            const controller = new AbortController();
-            timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8'
-                },
-                body: JSON.stringify({
-                    action: fnName,
-                    args: args || []
-                }),
-                redirect: 'follow',
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-            timeoutId = null;
-
-            const elapsed = Date.now() - startTime;
-
-            // ==========================================
-            // ✅ HTTP 2xx — สำเร็จ
-            // ==========================================
-            if (response.ok) {
-                const rawText = await response.text();
-
-                if (!rawText || rawText.trim() === '') {
-                    throw new Error('Server ไม่ตอบกลับข้อมูล (Response ว่างเปล่า)');
-                }
-
-                try {
-                    const result = JSON.parse(rawText);
-                    console.log(`✅ [${fnName}] OK (${elapsed}ms)` +
-                                (attempt > 1 ? ` [retry ${attempt}]` : ''));
-                    return result;
-                } catch (parseErr) {
-                    console.error(`❌ [${fnName}] ตอบกลับไม่ใช่ JSON:`, rawText.slice(0, 300));
-                    throw new Error('Response ไม่ใช่ JSON: ' + rawText.slice(0, 100));
-                }
-            }
-
-            // ==========================================
-            // ❌ HTTP 5xx — Retry ได้
-            // ==========================================
-            if (response.status >= 500 && attempt < maxRetries) {
-                console.warn(`⚠️ [${fnName}] HTTP ${response.status} (attempt ${attempt}/${maxRetries}) — จะลองใหม่...`);
-                lastError = new Error(`HTTP ${response.status} ${response.statusText}`);
-                await sleep(retryDelay * attempt);
-                continue;
-            }
-
-            // ==========================================
-            // ❌ HTTP 4xx — Retry ไม่ช่วย → throw ทันที
-            // ==========================================
-            throw new Error(`HTTP ${response.status} ${response.statusText}`);
-
-        } catch (err) {
-            // ✅ Clear timeout ถ้ายังไม่ได้ clear
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-                timeoutId = null;
-            }
-
-            const elapsed = Date.now() - startTime;
-            lastError = err;
-
-            // ==========================================
-            // ✅ ตรวจสอบว่า Retry ได้ไหม
-            // ==========================================
-            const errMsg = (err.message || '').toString();
-            const isAbort     = err.name === 'AbortError';
-            const isNetwork   = /Failed to fetch|NetworkError|Network request failed|load failed/i.test(errMsg);
-            const isServer    = /HTTP 5\d\d/.test(errMsg);
-            const isRetryable = isAbort || isNetwork || isServer;
-
-            // ✅ ถ้า Retry ได้ + ยังไม่ครบ → ลองใหม่
-            if (isRetryable && attempt < maxRetries) {
-                console.warn(`⚠️ [${fnName}] ${errMsg} (attempt ${attempt}/${maxRetries}) — รอ ${retryDelay * attempt}ms...`);
-                await sleep(retryDelay * attempt);
-                continue;
-            }
-
-            // ✅ ถ้า Retry ไม่ได้ (4xx) → throw ทันที ไม่ต้อง loop ต่อ
-            if (!isRetryable) {
-                console.error(`❌ [${fnName}] ล้มเหลว (retry ไม่ช่วย): ${errMsg} (${elapsed}ms)`);
-                throw new Error(translateError(err, elapsed));
-            }
-
-            // ✅ Retry ได้แต่ครบ attempts แล้ว → throw
-            console.error(`❌ [${fnName}] ล้มเหลวหลังจากลอง ${maxRetries} ครั้ง (${elapsed}ms):`, err);
-            throw new Error(translateError(err, elapsed));
-        }
-    }
-
-    // Fallback (ไม่ควรถึงบรรทัดนี้)
-    throw new Error(translateError(lastError, 0));
-}
-
-/* ============================================================
- *  ✅ Audit Log Helper — บันทึกกิจกรรมผู้ใช้
- *  ============================================================ */
+     *  ✅ Audit Log Helper — บันทึกกิจกรรมผู้ใช้
+     *  ============================================================ */
 function logActivity(action, category, details) {
     // ✅ ข้ามถ้ายังไม่ Login
     if (!APP || !APP.currentUser) {
@@ -5072,34 +5059,6 @@ function logActivity(action, category, details) {
     } catch (e) {
         console.warn('logActivity error:', e);
     }
-}
-
-// ✅ Helper: หน่วงเวลา
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// ✅ Helper: แปลง Error เป็นข้อความที่เข้าใจง่าย
-function translateError(err, elapsed) {
-    const msg = (err && err.message) || String(err);
-
-    if (err && err.name === 'AbortError') {
-        return '⏱️ หมดเวลา (' + Math.round(elapsed/1000) + ' วินาที) — Server ใช้เวลานานเกินไป ลองอีกครั้ง';
-    }
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        return '🌐 การเชื่อมต่อล้มเหลว (Network) — อาจเป็นเพราะอินเทอร์เน็ตหรือ Google Apps Script ไม่พร้อมใช้งาน ลองอีกครั้ง';
-    }
-    if (msg.includes('HTTP 401')) return '🔒 ไม่มีสิทธิ์เข้าถึง — ตรวจสอบ Deployment ตั้ง "Who has access: Anyone"';
-    if (msg.includes('HTTP 403')) return '🚫 ถูกปฏิเสธ (Forbidden) — ตรวจสอบสิทธิ์ Deployment';
-    if (msg.includes('HTTP 404')) return '❓ ไม่พบ Web App URL — Deployment อาจถูกลบ';
-    if (msg.includes('HTTP 500')) return '💥 Server Error — code.gs มีข้อผิดพลาด';
-    if (msg.includes('HTTP 502') || msg.includes('HTTP 503')) {
-        return '⏸️ Google Apps Script ไม่พร้อมใช้งานชั่วคราว ลองใหม่ใน 1-2 นาที';
-    }
-    if (elapsed > 30000) {
-        return '⏱️ ประมวลผลนานเกินไป (' + Math.round(elapsed/1000) + ' วินาที) — ลองลดขอบเขตข้อมูล';
-    }
-    return msg;
 }
 
     // ============================================================
@@ -5255,6 +5214,8 @@ async function warmUpBackend() {
     // ============================================================
 
     function showMainApp() {
+        const pubDash = document.getElementById('publicDashboard');
+        if (pubDash) pubDash.classList.remove('active');
         document.getElementById('loginPage').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
 
@@ -5373,7 +5334,8 @@ async function warmUpBackend() {
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
                 { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' },
-                { id: 'coverage', icon: 'fas fa-shield-virus', label: 'ความครอบคลุมวัคซีน' }
+                { id: 'coverage', icon: 'fas fa-shield-virus', label: 'ความครอบคลุมวัคซีน' },
+                { id: 'vaccineRegister', icon: 'fas fa-clipboard-list', label: 'ทะเบียนวัคซีน 0-5 ปี' }
             ];
         } else if (role === 'เจ้าหน้าที่') {
             items = [
@@ -5384,7 +5346,8 @@ async function warmUpBackend() {
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
                 { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' },
-                { id: 'coverage', icon: 'fas fa-shield-virus', label: 'ความครอบคลุมวัคซีน' }
+                { id: 'coverage', icon: 'fas fa-shield-virus', label: 'ความครอบคลุมวัคซีน' },
+                { id: 'vaccineRegister', icon: 'fas fa-clipboard-list', label: 'ทะเบียนวัคซีน 0-5 ปี' }
             ];
         } else {
             items = [
@@ -5540,7 +5503,8 @@ const PAGE_TITLES = {
     trackingForm: 'รายงานการติดตาม',
     officerTracking: 'ติดตามวัคซีนเด็ก',
     report: 'รายงานสรุปการติดตามวัคซีน',
-    coverage: 'ความครอบคลุมวัคซีน'
+    coverage: 'ความครอบคลุมวัคซีน',
+    vaccineRegister: 'ทะเบียนความครอบคลุมวัคซีน 0-5 ปี'
 };
 function navigateTo(page) {
     // ✅ ปิด Bottom Sheet ถ้าเปิดอยู่
@@ -5578,6 +5542,10 @@ function navigateTo(page) {
         case 'coverage': 
             document.getElementById('coveragePage').classList.add('active');
             loadCoveragePage(); 
+            break;
+        case 'vaccineRegister':
+            document.getElementById('vaccineRegisterPage').classList.add('active');
+            loadVaccineRegisterPage();
             break;
         default: loadDashboard(); break;
     }
@@ -10173,9 +10141,19 @@ window.confirmClearOldAppointments = async function() {
         </div>
         <div class="cv-filter-group">
           <label><i class="fas fa-clock"></i> รูปแบบการนับเวลา</label>
-          <select id="cvYearType">
+          <select id="cvYearType" onchange="onCvYearTypeChange()">
             <option value="fiscal">ปีงบประมาณ (ต.ค. - ก.ย.)</option>
             <option value="calendar">ปีปฏิทิน (ม.ค. - ธ.ค.)</option>
+          </select>
+        </div>
+        <div class="cv-filter-group">
+          <label><i class="fas fa-layer-group"></i> ไตรมาส</label>
+          <select id="cvQuarter" onchange="onCvQuarterChange()">
+            <option value="">ทั้งหมด (ทุกไตรมาส)</option>
+            <option value="1">ไตรมาส 1 (ต.ค. - ธ.ค.)</option>
+            <option value="2">ไตรมาส 2 (ม.ค. - มี.ค.)</option>
+            <option value="3">ไตรมาส 3 (เม.ย. - มิ.ย.)</option>
+            <option value="4">ไตรมาส 4 (ก.ค. - ก.ย.)</option>
           </select>
         </div>
         ${facilityFilterHtml}
@@ -10215,6 +10193,38 @@ window.confirmClearOldAppointments = async function() {
   `;
 
   doLoadCoverage();
+}
+
+function onCvYearTypeChange() {
+  const type = document.getElementById('cvYearType')?.value || 'fiscal';
+  const qEl = document.getElementById('cvQuarter');
+  if (!qEl) return;
+  const curVal = qEl.value;
+  if (type === 'fiscal') {
+    qEl.innerHTML = `
+      <option value="">ทั้งหมด (ทุกไตรมาส)</option>
+      <option value="1">ไตรมาส 1 (ต.ค. - ธ.ค.)</option>
+      <option value="2">ไตรมาส 2 (ม.ค. - มี.ค.)</option>
+      <option value="3">ไตรมาส 3 (เม.ย. - มิ.ย.)</option>
+      <option value="4">ไตรมาส 4 (ก.ค. - ก.ย.)</option>
+    `;
+  } else {
+    qEl.innerHTML = `
+      <option value="">ทั้งหมด (ทุกไตรมาส)</option>
+      <option value="1">ไตรมาส 1 (ม.ค. - มี.ค.)</option>
+      <option value="2">ไตรมาส 2 (เม.ย. - มิ.ย.)</option>
+      <option value="3">ไตรมาส 3 (ก.ค. - ก.ย.)</option>
+      <option value="4">ไตรมาส 4 (ต.ค. - ธ.ค.)</option>
+    `;
+  }
+  qEl.value = curVal;
+}
+
+function onCvQuarterChange() {
+  if (APP.coverageData) {
+    const q = document.getElementById('cvQuarter')?.value || '';
+    renderCoverage(APP.coverageData, q);
+  }
 }
 
 async function doLoadCoverage() {
@@ -10260,13 +10270,20 @@ async function doLoadCoverage() {
     return;
   }
   APP.coverageData = res;
-  renderCoverage(res);
+  const selectedQ = document.getElementById('cvQuarter')?.value || '';
+  renderCoverage(res, selectedQ);
 }
 
 /* ============================================================
- *  แสดงผลรายงานความครอบคลุมวัคซีน (เวอร์ชันรวมเกณฑ์กระทรวง + รายหมู่บ้าน)
+ *  แสดงผลรายงานความครอบคลุมวัคซีน (เวอร์ชันรวมเกณฑ์กระทรวง + รายหมู่บ้าน + รองรับเลือกไตรมาส)
  * ============================================================ */
-function renderCoverage(res) {
+function renderCoverage(res, selectedQuarter) {
+  if (selectedQuarter === undefined) {
+    const qEl = document.getElementById('cvQuarter');
+    selectedQuarter = qEl ? qEl.value : '';
+  }
+  const qNum = selectedQuarter ? parseInt(selectedQuarter, 10) : 0;
+
   const color = (p, tgt) => {
     tgt = tgt || 90;
     return p >= tgt ? '#10b981' : (p >= tgt - 10 ? '#f59e0b' : '#ef4444');
@@ -10279,13 +10296,19 @@ function renderCoverage(res) {
   };
 
   /* ============================================================
-   *  ส่วนที่ 1 : STAT CARDS (สรุปทั้งปี)
+   *  ส่วนที่ 1 : STAT CARDS (สรุปภาพรวม หรือ แยกไตรมาส)
    * ============================================================ */
   document.getElementById('cvSummary').innerHTML = res.groups.map((g, i) => {
-    const c = color(g.total.pct, g.targetPct);
+    const stat = (qNum >= 1 && qNum <= 4 && g.quarters && g.quarters[qNum - 1]) 
+                 ? g.quarters[qNum - 1] 
+                 : g.total;
+    const c = color(stat.pct, g.targetPct);
     const icons = ['fa-baby', 'fa-child', 'fa-child-reaching', 'fa-user-graduate'];
-    const isPass = g.total.pass;
-    const isEmpty = g.total.target === 0;
+    const isPass = stat.pass;
+    const isEmpty = !stat.target || stat.target === 0;
+    const qBadge = qNum 
+      ? `<span class="cv-stat-badge" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; margin-right:4px;"><i class="fas fa-layer-group"></i> Q${qNum}</span>` 
+      : '';
 
     return `
       <div class="cv-stat-card" style="--card-accent: ${c};">
@@ -10294,18 +10317,21 @@ function renderCoverage(res) {
             <i class="fas ${icons[i] || 'fa-syringe'}"></i>
             <span>${g.label}</span>
           </div>
-          <span class="cv-stat-badge">เกณฑ์ ${g.targetPct}%</span>
+          <div style="display:flex; align-items:center;">
+            ${qBadge}
+            <span class="cv-stat-badge">เกณฑ์ ${g.targetPct}%</span>
+          </div>
         </div>
         <div class="cv-stat-value">
-          <span class="cv-stat-number">${g.total.pct}%</span>
-          <span class="cv-stat-sub">(${g.total.complete}/${g.total.target} คน)</span>
+          <span class="cv-stat-number">${stat.pct}%</span>
+          <span class="cv-stat-sub">(${stat.complete}/${stat.target} คน)</span>
         </div>
         <div class="cv-stat-footer ${isEmpty ? 'empty' : (isPass ? 'pass' : 'fail')}">
           ${isEmpty
             ? '<i class="fas fa-minus-circle"></i> ไม่มีกลุ่มเป้าหมาย'
             : (isPass
                 ? '<i class="fas fa-check-circle"></i> ผ่านเกณฑ์มาตรฐาน'
-                : `<i class="fas fa-exclamation-circle"></i> ขาดอีก ${g.total.gap} คน`)}
+                : `<i class="fas fa-exclamation-circle"></i> ขาดอีก ${stat.gap} คน`)}
         </div>
       </div>`;
   }).join('');
@@ -10317,7 +10343,10 @@ function renderCoverage(res) {
   if (!APP.charts) APP.charts = {};
 
   const yearLblEl = document.getElementById('cvChartYearLabel');
-  if (yearLblEl) yearLblEl.textContent = res.meta.yearLabel;
+  if (yearLblEl) {
+    const qSuffix = qNum ? ` • เน้นไตรมาส ${qNum}` : ' • ครบทุกไตรมาส';
+    yearLblEl.textContent = res.meta.yearLabel + qSuffix;
+  }
 
   const barColors = ['#667eea', '#0ea5e9', '#10b981', '#8b5cf6'];
 
@@ -10325,15 +10354,22 @@ function renderCoverage(res) {
     data: {
       labels: res.meta.quarters.map(q => 'Q' + q.q),
       datasets: [
-        ...res.groups.map((g, i) => ({
-          type: 'bar',
-          label: g.label,
-          data: g.quarters.map(s => s.pct),
-          backgroundColor: barColors[i % barColors.length],
-          borderRadius: 8,
-          barPercentage: 0.7,
-          categoryPercentage: 0.8
-        })),
+        ...res.groups.map((g, i) => {
+          const baseColor = barColors[i % barColors.length];
+          const bgColors = res.meta.quarters.map((q, idx) => {
+            if (!qNum) return baseColor;
+            return (idx === qNum - 1) ? baseColor : baseColor + '40';
+          });
+          return {
+            type: 'bar',
+            label: g.label,
+            data: g.quarters.map(s => s.pct),
+            backgroundColor: bgColors,
+            borderRadius: 8,
+            barPercentage: 0.7,
+            categoryPercentage: 0.8
+          };
+        }),
         {
           type: 'line', label: 'เกณฑ์ 90%',
           data: res.meta.quarters.map(() => 90),
@@ -10404,7 +10440,7 @@ function renderCoverage(res) {
     <div class="cv-table-header">
       <div class="cv-table-title">
         <i class="fas fa-table"></i>
-        <span>สรุปความครอบคลุม ${res.meta.yearLabel}</span>
+        <span>สรุปความครอบคลุม ${res.meta.yearLabel}${qNum ? ` (เน้นไตรมาส ${qNum})` : ''}</span>
       </div>
       <span class="cv-table-meta"><i class="far fa-clock"></i> อัปเดต: ${res.meta.generatedAt}</span>
     </div>
@@ -10414,14 +10450,29 @@ function renderCoverage(res) {
           <tr>
             <th rowspan="2" class="text-start" style="min-width:130px;">ช่วงอายุ</th>
             <th rowspan="2" style="min-width:70px;">เกณฑ์</th>
-            ${res.meta.quarters.map(q => `
-              <th colspan="3" style="background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);">Q${q.q}
-                <br><small style="font-weight:400; text-transform:none; font-size:10px; color:#94a3b8;">${q.start.slice(0,5)} - ${q.end.slice(0,5)}</small>
-              </th>`).join('')}
+            ${res.meta.quarters.map(q => {
+              const isSel = (q.q === qNum);
+              const thStyle = isSel
+                ? 'background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%); color:#1e40af; border-left:2px solid #3b82f6; border-right:2px solid #3b82f6;'
+                : 'background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);';
+              return `
+              <th colspan="3" style="${thStyle}">
+                Q${q.q}${isSel ? ' <span style="background:#2563eb; color:#fff; font-size:9px; padding:1px 5px; border-radius:4px; font-weight:600; vertical-align:middle;">เลือก</span>' : ''}
+                <br><small style="font-weight:400; text-transform:none; font-size:10px; color:${isSel ? '#1e40af' : '#94a3b8'};">${q.start.slice(0,5)} - ${q.end.slice(0,5)}</small>
+              </th>`;
+            }).join('')}
             <th colspan="4" style="background: linear-gradient(180deg, #f8fafc 0%, #fef3c7 100%);">รวมทั้งปี</th>
           </tr>
           <tr>
-            ${res.meta.quarters.map(() => '<th>เป้า</th><th>ครบ</th><th>%</th>').join('')}
+            ${res.meta.quarters.map(q => {
+              const isSel = (q.q === qNum);
+              const thStyle = isSel ? 'background:#eff6ff; font-weight:700;' : '';
+              return `
+                <th style="${thStyle}">เป้า</th>
+                <th style="${thStyle}">ครบ</th>
+                <th style="${thStyle}">%</th>
+              `;
+            }).join('')}
             <th style="background:#fffbeb;">เป้า</th>
             <th style="background:#fffbeb;">ครบ</th>
             <th style="background:#fffbeb;">%</th>
@@ -10433,15 +10484,18 @@ function renderCoverage(res) {
             <tr>
               <td class="text-start" style="font-weight:600;">${g.label}</td>
               <td><span class="cv-badge-target">${g.targetPct}%</span></td>
-              ${g.quarters.map(s => `
-                <td style="color:#94a3b8;">${s.target}</td>
-                <td>${s.complete}</td>
-                <td>
+              ${g.quarters.map(s => {
+                const isSel = (s.q === qNum);
+                const cellBg = isSel ? 'background:#f0f7ff;' : '';
+                return `
+                <td style="color:#94a3b8; ${cellBg}">${s.target}</td>
+                <td style="${cellBg}">${s.complete}</td>
+                <td style="${cellBg}">
                   ${s.target
                     ? `<span class="cv-badge ${badgeClass(s.pct, g.targetPct)}">${s.pct}%</span>`
                     : '<span class="cv-badge-muted">-</span>'}
-                </td>
-              `).join('')}
+                </td>`;
+              }).join('')}
               <td style="font-weight:700;">${g.total.target}</td>
               <td style="font-weight:700;">${g.total.complete}</td>
               <td><span class="cv-badge ${badgeClass(g.total.pct, g.targetPct)}">${g.total.pct}%</span></td>
@@ -10460,6 +10514,7 @@ function renderCoverage(res) {
       <span><i class="fas fa-circle" style="color:#10b981; font-size:8px;"></i> ผ่านเกณฑ์</span>
       <span><i class="fas fa-circle" style="color:#f59e0b; font-size:8px;"></i> ต่ำกว่าเล็กน้อย</span>
       <span><i class="fas fa-circle" style="color:#ef4444; font-size:8px;"></i> ต่ำกว่าเกณฑ์มาก</span>
+      ${qNum ? `<span style="margin-left:auto; font-weight:600; color:#2563eb;"><i class="fas fa-filter"></i> มุมมองที่เลือก: ไตรมาส ${qNum}</span>` : ''}
     </div>
   </div>`;
 
@@ -10473,7 +10528,7 @@ function renderCoverage(res) {
       <div class="cv-table-header">
         <div class="cv-table-title">
           <i class="fas fa-syringe"></i>
-          <span>${g.label} — รายละเอียดรายวัคซีน</span>
+          <span>${g.label} — รายละเอียดรายวัคซีน${qNum ? ` (เน้นไตรมาส ${qNum})` : ''}</span>
         </div>
         <span class="cv-badge-target">เกณฑ์ ${g.targetPct}%</span>
       </div>
@@ -10483,7 +10538,11 @@ function renderCoverage(res) {
             <tr>
               <th class="text-start" style="min-width:160px;">วัคซีน</th>
               <th style="min-width:70px;">เกณฑ์</th>
-              ${g.quarters.map(s => `<th>Q${s.q}</th>`).join('')}
+              ${g.quarters.map(s => {
+                const isSel = (s.q === qNum);
+                const thStyle = isSel ? 'background:#dbeafe; color:#1e40af; font-weight:700;' : '';
+                return `<th style="${thStyle}">Q${s.q}${isSel ? ' (เลือก)' : ''}</th>`;
+              }).join('')}
             </tr>
           </thead>
           <tbody>
@@ -10494,9 +10553,11 @@ function renderCoverage(res) {
                 <td class="text-start"><span class="cv-vaccine-pill"><i class="fas fa-syringe"></i> ${v}</span></td>
                 <td><span style="font-size:12px; color:#94a3b8; font-weight:600;">${tgt}%</span></td>
                 ${g.quarters.map(s => {
-                  if (!s.target) return '<td><span class="cv-badge-muted">-</span></td>';
+                  const isSel = (s.q === qNum);
+                  const cellBg = isSel ? 'background:#f0f7ff;' : '';
+                  if (!s.target) return `<td style="${cellBg}"><span class="cv-badge-muted">-</span></td>`;
                   const p = s.byVaccinePct[v];
-                  return `<td>
+                  return `<td style="${cellBg}">
                     <span class="cv-badge ${badgeClass(p, tgt)}">
                       ${p}%<span class="cv-badge-gap">(${s.byVaccine[v]}/${s.target})</span>
                     </span>
@@ -10513,18 +10574,18 @@ function renderCoverage(res) {
   /* ============================================================
    *  ส่วนที่ 5 : สรุปรายหมู่บ้าน
    * ============================================================ */
-  html += renderCoverageByVillage(res);
+  html += renderCoverageByVillage(res, qNum);
 
   /* ============================================================
    *  ส่วนที่ 6 : รายชื่อเด็กค้างติดตาม
    * ============================================================ */
-  const nc = res.details.filter(d => d.status === 'ไม่ครบ');
+  const nc = (res.details || []).filter(d => d.status === 'ไม่ครบ' && (!qNum || Number(d.quarter) === qNum));
   html += `
   <div class="cv-table-card">
     <div class="cv-table-header">
       <div class="cv-table-title">
         <i class="fas fa-user-clock" style="color:#ef4444;"></i>
-        <span>รายชื่อเด็กที่ยังไม่ครบวัคซีน</span>
+        <span>รายชื่อเด็กที่ยังไม่ครบวัคซีน ${qNum ? `(ไตรมาส ${qNum})` : ''}</span>
       </div>
       <span class="cv-badge danger" style="font-size:13px;">
         <i class="fas fa-users"></i> ${nc.length} คน
@@ -10579,11 +10640,16 @@ function renderCoverage(res) {
 
 
 /* ============================================================
- *  ตารางสรุปรายหมู่บ้าน (Modern Styling)
+ *  ตารางสรุปรายหมู่บ้าน (Modern Styling + รองรับเลือกไตรมาส)
  * ============================================================ */
-function renderCoverageByVillage(res) {
+function renderCoverageByVillage(res, selectedQuarter) {
+  const qNum = selectedQuarter ? parseInt(selectedQuarter, 10) : 0;
+  const filteredDetails = (qNum >= 1 && qNum <= 4)
+    ? (res.details || []).filter(d => Number(d.quarter) === qNum)
+    : (res.details || []);
+
   const pivot = {};
-  res.details.forEach(d => {
+  filteredDetails.forEach(d => {
     const v = d.village || '-';
     pivot[v] = pivot[v] || {};
     pivot[v][d.group] = pivot[v][d.group] || { t: 0, c: 0 };
@@ -10592,7 +10658,21 @@ function renderCoverageByVillage(res) {
   });
 
   const villages = Object.keys(pivot).sort((a, b) => (+a || 999) - (+b || 999));
-  if (!villages.length) return '';
+  if (!villages.length) {
+    return `
+    <div class="cv-table-card">
+      <div class="cv-table-header">
+        <div class="cv-table-title">
+          <i class="fas fa-map-marked-alt" style="color:#10b981;"></i>
+          <span>สรุปความครอบคลุมรายหมู่บ้าน ${qNum ? `(เฉพาะไตรมาส ${qNum})` : '(ภาพรวมทั้งปี)'}</span>
+        </div>
+      </div>
+      <div style="padding:30px; text-align:center; color:#94a3b8;">
+        <i class="fas fa-info-circle" style="font-size:24px; margin-bottom:8px; display:block;"></i>
+        ไม่พบข้อมูลเด็กในไตรมาสที่เลือก
+      </div>
+    </div>`;
+  }
 
   const badgeClass = (p, tgt) => {
     tgt = tgt || 90;
@@ -10626,7 +10706,7 @@ function renderCoverageByVillage(res) {
     <div class="cv-table-header">
       <div class="cv-table-title">
         <i class="fas fa-map-marked-alt" style="color:#10b981;"></i>
-        <span>สรุปความครอบคลุมรายหมู่บ้าน</span>
+        <span>สรุปความครอบคลุมรายหมู่บ้าน ${qNum ? `(เฉพาะไตรมาส ${qNum})` : '(ภาพรวมทั้งปี)'}</span>
       </div>
       <span class="cv-table-meta">เทียบเกณฑ์กระทรวงสาธารณสุข</span>
     </div>
@@ -10662,15 +10742,19 @@ function renderCoverageByVillage(res) {
  *  EXPORT EXCEL — ส่งออกเป็นไฟล์ .xlsx หลาย Sheet
  * ============================================================ */
 async function exportCoverageExcel() {
-    const res = APP.coverageData;
-    if (!res) {
-        return Swal.fire('แจ้งเตือน', 'กรุณากด "ประมวลผลข้อมูล" ก่อนส่งออก', 'warning');
-    }
-    
-    // ✅ Audit Log
-    logActivity('EXPORT', 'export',
-        `ส่งออก Excel รายงานความครอบคลุม ${res.meta.yearLabel} ` +
-        `(${res.summary?.totalChildren || 0} คน)`);
+  const res = APP.coverageData;
+  if (!res) {
+    return Swal.fire('แจ้งเตือน', 'กรุณากด "ประมวลผลข้อมูล" ก่อนส่งออก', 'warning');
+  }
+
+  const selQ = document.getElementById('cvQuarter')?.value || '';
+  const selQNum = selQ ? parseInt(selQ, 10) : 0;
+  const qLabelText = selQNum ? ` (ไตรมาส ${selQNum})` : ' (ทุกไตรมาส)';
+
+  // ✅ Audit Log
+  logActivity('EXPORT', 'export',
+    `ส่งออก Excel รายงานความครอบคลุม ${res.meta.yearLabel}${qLabelText} ` +
+    `(${res.summary?.totalChildren || 0} คน)`);
 
   showLoading('กำลังสร้างไฟล์ Excel...');
 
@@ -10681,32 +10765,35 @@ async function exportCoverageExcel() {
     /* ---------- Sheet 1: สรุปความครอบคลุม ---------- */
     const summaryRows = [
       ['รายงานความครอบคลุมวัคซีน'],
-      [res.meta.yearLabel],
+      [res.meta.yearLabel + (selQNum ? ` — ไตรมาส ${selQNum}` : ' — ทุกไตรมาส')],
       ['ออกรายงาน: ' + res.meta.generatedAt],
       [],
       ['ช่วงอายุ', 'เกณฑ์ (%)', 'เป้าหมาย (คน)', 'ครบ (คน)', 'ร้อยละ', 'สถานะ']
     ];
 
     res.groups.forEach(g => {
+      const stat = (selQNum >= 1 && selQNum <= 4 && g.quarters && g.quarters[selQNum - 1])
+        ? g.quarters[selQNum - 1]
+        : g.total;
       summaryRows.push([
         g.label,
         g.targetPct,
-        g.total.target,
-        g.total.complete,
-        g.total.pct,
-        g.total.target === 0 ? '-' : (g.total.pass ? 'ผ่านเกณฑ์' : 'ต่ำกว่าเกณฑ์')
+        stat.target,
+        stat.complete,
+        stat.pct,
+        stat.target === 0 ? '-' : (stat.pass ? 'ผ่านเกณฑ์' : 'ต่ำกว่าเกณฑ์')
       ]);
     });
 
     summaryRows.push([]);
-    summaryRows.push(['สรุปรายไตรมาส']);
+    summaryRows.push(['สรุปเปรียบเทียบรายไตรมาส']);
     summaryRows.push(['ช่วงอายุ', 'ไตรมาส', 'ช่วงวันที่', 'เป้าหมาย', 'ครบ', 'ร้อยละ', 'สถานะ']);
 
     res.groups.forEach(g => {
       g.quarters.forEach(s => {
         summaryRows.push([
           g.label,
-          'Q' + s.q,
+          'Q' + s.q + (s.q === selQNum ? ' (เลือก)' : ''),
           s.start + ' ถึง ' + s.end,
           s.target,
           s.complete,
@@ -10720,7 +10807,7 @@ async function exportCoverageExcel() {
 
     // ✅ กำหนดความกว้างคอลัมน์
     ws1['!cols'] = [
-      { wch: 20 }, { wch: 12 }, { wch: 25 },
+      { wch: 20 }, { wch: 14 }, { wch: 25 },
       { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 18 }
     ];
 
@@ -10731,7 +10818,7 @@ async function exportCoverageExcel() {
       if (!g.vaccines || !g.vaccines.length) return;
 
       const vacRows = [
-        [g.label + ' — รายละเอียดรายวัคซีน'],
+        [g.label + ' — รายละเอียดรายวัคซีน' + (selQNum ? ` (เน้นไตรมาส ${selQNum})` : '')],
         ['ออกรายงาน: ' + res.meta.generatedAt],
         [],
         ['วัคซีน', 'เกณฑ์ (%)', 'Q1 (%)', 'Q2 (%)', 'Q3 (%)', 'Q4 (%)']
@@ -10764,8 +10851,12 @@ async function exportCoverageExcel() {
 
     /* ---------- Sheet 3: สรุปรายหมู่บ้าน ---------- */
     if (res.details && res.details.length > 0) {
+      const vilDetails = (selQNum >= 1 && selQNum <= 4)
+        ? res.details.filter(d => Number(d.quarter) === selQNum)
+        : res.details;
+
       const pivot = {};
-      res.details.forEach(d => {
+      vilDetails.forEach(d => {
         const v = d.village || '-';
         pivot[v] = pivot[v] || {};
         pivot[v][d.group] = pivot[v][d.group] || { t: 0, c: 0 };
@@ -10776,7 +10867,7 @@ async function exportCoverageExcel() {
       const villages = Object.keys(pivot).sort((a, b) => (+a || 999) - (+b || 999));
 
       const vilRows = [
-        ['สรุปความครอบคลุมรายหมู่บ้าน'],
+        ['สรุปความครอบคลุมรายหมู่บ้าน' + (selQNum ? ` (ไตรมาส ${selQNum})` : ' (ภาพรวมทั้งปี)')],
         ['ออกรายงาน: ' + res.meta.generatedAt],
         []
       ];
@@ -10830,11 +10921,11 @@ async function exportCoverageExcel() {
 
     /* ---------- Sheet 4: รายชื่อเด็กค้างวัคซีน ---------- */
     if (res.details && res.details.length > 0) {
-      const nc = res.details.filter(d => d.status === 'ไม่ครบ');
+      const nc = res.details.filter(d => d.status === 'ไม่ครบ' && (!selQNum || Number(d.quarter) === selQNum));
 
       if (nc.length > 0) {
         const ncRows = [
-          ['รายชื่อเด็กที่ยังไม่ครบวัคซีน'],
+          ['รายชื่อเด็กที่ยังไม่ครบวัคซีน' + (selQNum ? ` (ไตรมาส ${selQNum})` : '')],
           ['ออกรายงาน: ' + res.meta.generatedAt],
           ['รวม: ' + nc.length + ' คน'],
           [],
@@ -10865,8 +10956,9 @@ async function exportCoverageExcel() {
     }
 
     /* ---------- บันทึกไฟล์ ---------- */
+    const qSuffix = selQNum ? ('_Q' + selQNum) : '';
     const fileName = 'ความครอบคลุมวัคซีน_' +
-                     res.meta.yearLabel.replace(/\s+/g, '_') + '_' +
+                     res.meta.yearLabel.replace(/\s+/g, '_') + qSuffix + '_' +
                      new Date().toISOString().slice(0, 10) + '.xlsx';
 
     XLSX.writeFile(wb, fileName);
@@ -10907,17 +10999,18 @@ async function sendCoverageTG() {
     selectedHcode = u.hcode || '';
   }
 
+  const currentQ = document.getElementById('cvQuarter')?.value || '';
   const r = await Swal.fire({
     title: 'ส่งรายงานไป Telegram',
     html: `
       <div style="text-align:left; font-family:Kanit; font-size:14px;">
         <label style="font-weight:600; display:block; margin-bottom:6px;">ไตรมาสที่ต้องการส่ง:</label>
         <select id="tgQuarter" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0;">
-          <option value="">-- สรุปทุกไตรมาส --</option>
-          <option value="1">ไตรมาส 1</option>
-          <option value="2">ไตรมาส 2</option>
-          <option value="3">ไตรมาส 3</option>
-          <option value="4">ไตรมาส 4</option>
+          <option value="" ${currentQ === '' ? 'selected' : ''}>-- สรุปทุกไตรมาส --</option>
+          <option value="1" ${currentQ === '1' ? 'selected' : ''}>ไตรมาส 1</option>
+          <option value="2" ${currentQ === '2' ? 'selected' : ''}>ไตรมาส 2</option>
+          <option value="3" ${currentQ === '3' ? 'selected' : ''}>ไตรมาส 3</option>
+          <option value="4" ${currentQ === '4' ? 'selected' : ''}>ไตรมาส 4</option>
         </select>
       </div>`,
     showCancelButton: true,
@@ -11382,7 +11475,470 @@ function renderPublicAgeSummaryCards(ageGroups) {
         `;
     }).join('');
 }
+/* ============================================================
+ *  📋 ทะเบียนความครอบคลุมวัคซีน 0-5 ปี
+ *  ============================================================ */
 
+let VR_DATA = [];           // เก็บข้อมูลที่โหลดมา
+let VR_FILTERS = {};        // เก็บตัวกรองปัจจุบัน
+let VR_VACCINE_HEADERS = [];   // เก็บ headers ของวัคซีน
+
+async function loadVaccineRegisterPage() {
+    const page = document.getElementById('vaccineRegisterPage');
+    page.classList.add('active');
+    
+    showLoading('กำลังโหลดทะเบียน...');
+
+    // ✅ โหลด FacilityMap + Villages
+    let facilityMap = {};
+    let villages = [];
+    try {
+        const [fRes, vRes] = await Promise.all([
+            callGAS('getFacilityMap', []),
+            callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode])
+        ]);
+        facilityMap = fRes.success ? fRes.map : {};
+        villages = vRes.success ? vRes.villages : [];
+    } catch (e) {
+        console.error('Load filters error:', e);
+    }
+    
+    hideLoading();
+
+    // ✅ สร้าง Facility Options
+    const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' &&
+                              (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+    const canSelectFacility = (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer);
+    
+    let facilityOptionsHtml = '';
+    if (canSelectFacility) {
+        const opts = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' +
+            Object.keys(facilityMap).map(k =>
+                `<option value="${esc(k)}">${esc(facilityMap[k])}</option>`
+            ).join('');
+        facilityOptionsHtml = `
+            <div class="filter-group">
+                <label>สถานพยาบาล</label>
+                <select id="vrFacility" onchange="cascadeVillageOptions(this.value, 'vrVillage')">
+                    ${opts}
+                </select>
+            </div>`;
+    }
+
+    const villageOptions = '<option value="ทั้งหมด">ทั้งหมด</option>' +
+        villages.map(v => `<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('');
+
+    page.innerHTML = `
+        <div class="page-title">
+            <i class="fas fa-clipboard-list"></i>
+            ทะเบียนความครอบคลุมวัคซีน 0-5 ปี
+        </div>
+
+        <div class="filter-bar">
+            ${facilityOptionsHtml}
+            <div class="filter-group">
+                <label>ค้นหา (HN/ชื่อ-สกุล)</label>
+                <input type="text" id="vrSearch" placeholder="พิมพ์เพื่อค้นหา...">
+            </div>
+            <div class="filter-group">
+                <label>สถานะวัคซีน</label>
+                <select id="vrStatus">
+                    <option value="ทั้งหมด">ทั้งหมด</option>
+                    <option value="ครบตามเกณฑ์">ครบตามเกณฑ์</option>
+                    <option value="ขาดนัด">ขาดนัด</option>
+                    <option value="ปฏิเสธวัคซีน">ปฏิเสธวัคซีน</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>หมู่บ้าน</label>
+                <select id="vrVillage">${villageOptions}</select>
+            </div>
+            <div class="filter-actions">
+                <button class="btn-filter" id="vrSearchBtn">
+                    <i class="fas fa-search"></i> ค้นหา
+                </button>
+                <button class="btn-reset" id="vrResetBtn">
+                    <i class="fas fa-undo"></i> รีเซ็ต
+                </button>
+                <button class="btn-rpt-csv" id="vrExportBtn" 
+                        style="background:#28c76f;">
+                    <i class="fas fa-file-excel"></i> ส่งออก Excel
+                </button>
+                <button class="btn-rpt-csv" id="vrPrintBtn" 
+                        style="background:#17a2b8;">
+                    <i class="fas fa-print"></i> พิมพ์
+                </button>
+            </div>
+        </div>
+
+        <!-- สรุปด้านบน -->
+        <div id="vrSummaryStrip" class="rpt-summary-strip" style="margin-bottom:18px;"></div>
+
+        <!-- ตาราง -->
+        <div class="data-table" style="width:100%; overflow:hidden;">
+            <table id="vrTable" class="display nowrap" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>HN</th>
+                        <th>ชื่อ-สกุล</th>
+                        <th>วันเกิด</th>
+                        <th>อายุ</th>
+                        <th>หมู่บ้าน</th>
+                        <th>หน่วยบริการ</th>
+                        <th>อสม.</th>
+                        <th>สถานะวัคซีน</th>
+                        <th>วัคซีนที่ขาด</th>
+                    </tr>
+                </thead>
+                <tbody id="vrTbody"></tbody>
+            </table>
+        </div>
+    `;
+
+    // ✅ ผูก events
+    document.getElementById('vrSearchBtn').addEventListener('click', doLoadVaccineRegister);
+    document.getElementById('vrResetBtn').addEventListener('click', function() {
+        const fEl = document.getElementById('vrFacility');
+        if (fEl) {
+            fEl.value = 'ทั้งหมด';
+            cascadeVillageOptions('ทั้งหมด', 'vrVillage');
+        }
+        document.getElementById('vrSearch').value = '';
+        document.getElementById('vrStatus').value = 'ทั้งหมด';
+        document.getElementById('vrVillage').value = 'ทั้งหมด';
+        doLoadVaccineRegister();
+    });
+    document.getElementById('vrSearch').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') doLoadVaccineRegister();
+    });
+    document.getElementById('vrExportBtn').addEventListener('click', exportVaccineRegisterExcel);
+    document.getElementById('vrPrintBtn').addEventListener('click', function() {
+        logActivity('PRINT', 'print', 'พิมพ์ทะเบียนความครอบคลุมวัคซีน 0-5 ปี');
+        window.print();
+    });
+
+    // ✅ โหลดข้อมูลครั้งแรก
+    await doLoadVaccineRegister();
+}
+
+
+async function doLoadVaccineRegister() {
+    showLoading('กำลังโหลดข้อมูล...');
+    
+    const facilityEl = document.getElementById('vrFacility');
+    const filters = {
+        hcode: facilityEl ? facilityEl.value : 'ทั้งหมด',
+        search: document.getElementById('vrSearch') ? document.getElementById('vrSearch').value.trim() : '',
+        status: document.getElementById('vrStatus') ? document.getElementById('vrStatus').value : 'ทั้งหมด',
+        village: document.getElementById('vrVillage') ? document.getElementById('vrVillage').value : 'ทั้งหมด',
+        userRole: APP.currentUser.role,
+        userHcode: APP.currentUser.hcode,
+        userSubdistrict: APP.currentUser.subdistrict,
+        userVillage: APP.currentUser.village
+    };
+    
+    VR_FILTERS = filters;
+    
+    try {
+        // ✅ เรียก API ใหม่ที่ให้ข้อมูลวัคซีนทุกตัว
+        const result = await callGAS('getVaccineRegisterData', [filters]);
+        hideLoading();
+        
+        if (!result.success || !result.register) {
+            document.getElementById('vrTbody').innerHTML = 
+                '<tr><td colspan="10" style="text-align:center; padding:40px; color:#dc3545;">' +
+                'ไม่สามารถโหลดข้อมูลได้: ' + esc(result.message || '') + '</td></tr>';
+            return;
+        }
+        
+        VR_DATA = result.register;
+        VR_VACCINE_HEADERS = result.vaccineHeaders || [];
+        
+        renderVRSummary(result.register);
+        renderVRTable(result.register);
+        
+    } catch (e) {
+        hideLoading();
+        console.error('doLoadVaccineRegister error:', e);
+        document.getElementById('vrTbody').innerHTML = 
+            '<tr><td colspan="10" style="text-align:center; padding:40px; color:#dc3545;">' +
+            'เกิดข้อผิดพลาด: ' + esc(e.message) + '</td></tr>';
+    }
+}
+
+function renderVRSummary(children) {
+    const el = document.getElementById('vrSummaryStrip');
+    if (!el) return;
+    
+    const total = children.length;
+    const complete = children.filter(c => c.status === 'ครบตามเกณฑ์' || c.status === 'ตามนัดปกติ').length;
+    const missed = children.filter(c => c.status === 'ขาดนัด').length;
+    const refused = children.filter(c => c.status === 'ปฏิเสธวัคซีน').length;
+    const rate = total > 0 ? Math.round((complete / total) * 1000) / 10 : 0;
+    
+    el.innerHTML = `
+        <div class="rpt-sum-card c-total">
+            <div class="rpt-sum-label"><i class="fas fa-child"></i> ทั้งหมด</div>
+            <div class="rpt-sum-num">${total}</div>
+        </div>
+        <div class="rpt-sum-card c-ontime">
+            <div class="rpt-sum-label"><i class="fas fa-check-circle"></i> ครบเกณฑ์</div>
+            <div class="rpt-sum-num">${complete}</div>
+            <div class="rpt-sum-pct">${rate}%</div>
+        </div>
+        <div class="rpt-sum-card c-missed">
+            <div class="rpt-sum-label"><i class="fas fa-exclamation-circle"></i> ขาดนัด</div>
+            <div class="rpt-sum-num">${missed}</div>
+        </div>
+        <div class="rpt-sum-card c-refused">
+            <div class="rpt-sum-label"><i class="fas fa-times-circle"></i> ปฏิเสธ</div>
+            <div class="rpt-sum-num">${refused}</div>
+        </div>
+    `;
+}
+
+
+function renderVRTable(children) {
+    const tbody = document.getElementById('vrTbody');
+    if (!tbody) return;
+    
+    if (children.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px; color:#94a3b8;">' +
+                         '<i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>ไม่พบข้อมูล</td></tr>';
+        destroyDT('vrTable');
+        initDT('vrTable', { scrollX: true, autoWidth: false, order: [], paging: false });
+        return;
+    }
+    
+    const statusClass = (s) => {
+        if (s === 'ครบตามเกณฑ์' || s === 'ตามนัดปกติ') return 'status-ontime';
+        if (s === 'ขาดนัด') return 'status-missed';
+        if (s === 'ปฏิเสธวัคซีน') return 'status-refused';
+        return 'status-pending';
+    };
+    
+    tbody.innerHTML = children.map((c, i) => `
+        <tr>
+            <td style="text-align:center; color:#94a3b8; font-size:12px;">${i + 1}</td>
+            <td style="font-family:monospace; font-size:12px;">${esc(c.hn || '-')}</td>
+            <td style="font-weight:600; color:#0f172a;">${esc(c.fullname || '-')}</td>
+            <td style="font-size:12px; color:#64748b;">${esc(c.birthDate || '-')}</td>
+            <td style="font-size:12px;">${esc(c.age || '-')}</td>
+            <td style="font-size:12px;">${esc(c.village || '-')}${c.villageName ? ' / ' + esc(c.villageName) : ''}</td>
+            <td style="font-size:12px; color:#667eea;">${esc(c.hname || c.hcode || '-')}</td>
+            <td style="font-size:12px;">${esc(c.asm || '-')}</td>
+            <td>
+                <span class="status-badge ${statusClass(c.status)}">${esc(c.status || '-')}</span>
+            </td>
+            <td style="font-size:11px; color:#b91c1c; max-width:250px;">
+                ${c.missingVaccines ? esc(c.missingVaccines) : '-'}
+            </td>
+        </tr>
+    `).join('');
+    
+    destroyDT('vrTable');
+    initDT('vrTable', {
+        scrollX: true,
+        autoWidth: false,
+        order: [],
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
+        columnDefs: [{ orderable: false, targets: [9] }]
+    });
+}
+
+
+/* ============================================================
+ *  ✅ ส่งออก Excel — ทะเบียนความครอบคลุมวัคซีน 0-5 ปี
+ *  ============================================================ */
+async function exportVaccineRegisterExcel() {
+    if (!VR_DATA || VR_DATA.length === 0) {
+        return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก', 'info');
+    }
+    
+    // ✅ Audit Log
+    logActivity('EXPORT', 'export',
+        `ดาวน์โหลดทะเบียนความครอบคลุมวัคซีน 0-5 ปี (${VR_DATA.length} คน)`);
+    
+    showLoading('กำลังสร้างไฟล์ Excel...');
+    
+    try {
+        const wb = XLSX.utils.book_new();
+        const today = new Date();
+        const thaiDateStr = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()+543}`;
+        
+        // ==========================================
+        // ✅ Sheet 1: ทะเบียน
+        // ==========================================
+        const vaccineHeaders = VR_VACCINE_HEADERS || [];
+        
+        // ✅ Header Row ใหม่ — ตัดกลุ่มอายุ, เพิ่ม hcode หน้าสุด + อสม.
+        const headerRow = [
+            'hcode',        // ✅ เพิ่มหน้าสุด
+            'HN',
+            'ชื่อ-สกุล',
+            'อายุ',
+            'วันเกิด',
+            'บ้านเลขที่',
+            'เบอร์ติดต่อ',
+            'อสม.',         // ✅ เพิ่ม
+            ...vaccineHeaders
+        ];
+        
+        const rows = [
+            ['ทะเบียนความครอบคลุมวัคซีนเด็ก 0-5 ปี'],
+            ['เครือข่ายสุขภาพอำเภอเทพา'],
+            [`วันที่ออกรายงาน: ${thaiDateStr} | ผู้พิมพ์: ${APP.currentUser.fullname || APP.currentUser.username} | รวม: ${VR_DATA.length} คน`],
+            [],
+            headerRow
+        ];
+        
+        // ✅ ข้อมูลแต่ละคน — ตัด ageGroup, เพิ่ม hcode + asm
+        VR_DATA.forEach((c, i) => {
+            const row = [
+                c.hcode || '',          // ✅ hcode หน้าสุด
+                c.hn || '',
+                c.fullname || '',
+                c.age || '',
+                c.birthDate || '',
+                c.houseNumber || '',
+                c.phone || '',
+                c.asm || ''             // ✅ อสม.
+            ];
+            
+            // ✅ วันที่วัคซีนแต่ละตัว
+            vaccineHeaders.forEach(vh => {
+                row.push((c.vaccineDates && c.vaccineDates[vh]) || '');
+            });
+            
+            rows.push(row);
+        });
+        
+        // ✅ สร้าง worksheet
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        
+        // ✅ Merge header rows (3 บรรทัดแรก เป็น title)
+        const totalCols = 8 + vaccineHeaders.length;   // ✅ 8 คอลัมน์หลัก (ไม่มีกลุ่มอายุ)
+        ws['!merges'] = [
+            { s: {r:0,c:0}, e: {r:0,c:totalCols-1} },
+            { s: {r:1,c:0}, e: {r:1,c:totalCols-1} },
+            { s: {r:2,c:0}, e: {r:2,c:totalCols-1} }
+        ];
+        
+        // ✅ กำหนดความกว้างคอลัมน์
+        const cols = [
+            { wch: 10 },  // hcode
+            { wch: 10 },  // HN
+            { wch: 28 },  // ชื่อ-สกุล
+            { wch: 12 },  // อายุ
+            { wch: 12 },  // วันเกิด
+            { wch: 18 },  // บ้านเลขที่
+            { wch: 14 },  // เบอร์ติดต่อ
+            { wch: 18 }   // อสม.
+        ];
+        vaccineHeaders.forEach(() => cols.push({ wch: 11 }));
+        ws['!cols'] = cols;
+        
+        // ✅ Freeze pane
+        ws['!freeze'] = { xSplit: 3, ySplit: 5 };
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'ทะเบียน');
+        
+        // ==========================================
+        // ✅ Sheet 2: สรุปสถานะ
+        // ==========================================
+        const byStatus = {};
+        VR_DATA.forEach(c => {
+            const s = c.status || 'ตามนัดปกติ';
+            if (!byStatus[s]) byStatus[s] = 0;
+            byStatus[s]++;
+        });
+        
+        const statusRows = [
+            ['สรุปสถานะความครอบคลุมวัคซีน'],
+            [`วันที่: ${thaiDateStr}`],
+            [],
+            ['สถานะ', 'จำนวน (คน)', 'ร้อยละ']
+        ];
+        const total = VR_DATA.length;
+        Object.keys(byStatus).forEach(s => {
+            const count = byStatus[s];
+            const pct = total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
+            statusRows.push([s, count, pct + '%']);
+        });
+        statusRows.push(['รวม', total, '100%']);
+        
+        const ws2 = XLSX.utils.aoa_to_sheet(statusRows);
+        ws2['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 12 }];
+        XLSX.utils.book_append_sheet(wb, ws2, 'สรุปสถานะ');
+        
+        // ==========================================
+        // ✅ Sheet 3: เด็กขาดวัคซีน
+        // ==========================================
+        const missedChildren = VR_DATA.filter(c => c.status === 'ขาดนัด');
+        if (missedChildren.length > 0) {
+            const missedRows = [
+                ['รายชื่อเด็กที่ยังไม่ได้รับวัคซีนครบ'],
+                [`รวม: ${missedChildren.length} คน`],
+                [],
+                ['#', 'hcode', 'HN', 'ชื่อ-สกุล', 'อายุ', 'หมู่ที่', 'หน่วยบริการ', 'อสม.', 'วัคซีนที่ขาด']
+            ];
+            missedChildren.forEach((c, i) => {
+                missedRows.push([
+                    i + 1,
+                    c.hcode || '',
+                    c.hn || '',
+                    c.fullname || '',
+                    c.age || '',
+                    c.village || '',
+                    c.hname || '',
+                    c.asm || '',
+                    c.missingVaccines || ''
+                ]);
+            });
+            
+            const ws3 = XLSX.utils.aoa_to_sheet(missedRows);
+            ws3['!cols'] = [
+                { wch: 5 }, { wch: 10 }, { wch: 10 }, { wch: 28 }, { wch: 12 },
+                { wch: 8 }, { wch: 22 }, { wch: 18 }, { wch: 35 }
+            ];
+            XLSX.utils.book_append_sheet(wb, ws3, 'เด็กขาดวัคซีน');
+        }
+        
+        // ==========================================
+        // ✅ บันทึกไฟล์
+        // ==========================================
+        const fileName = 'ทะเบียนความครอบคลุมวัคซีน_ปีงบ' + 
+                        (new Date().getFullYear() + 543) + '_เด็กทั้งหมด_0-5ปี_' +
+                        today.toISOString().slice(0, 10) + '.xlsx';
+        
+        XLSX.writeFile(wb, fileName);
+        
+        hideLoading();
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'ส่งออกสำเร็จ!',
+            html: `
+                <div style="font-family:Kanit; font-size:14px;">
+                    <p>ไฟล์: <strong>${esc(fileName)}</strong></p>
+                    <p style="color:#64748b; font-size:13px; margin-top:8px;">
+                        ${VR_DATA.length} คน × ${vaccineHeaders.length} วัคซีน<br>
+                        มี ${wb.SheetNames.length} Sheet
+                    </p>
+                </div>
+            `,
+            timer: 3000,
+            showConfirmButton: false
+        });
+        
+    } catch (error) {
+        console.error('exportVaccineRegisterExcel error:', error);
+        hideLoading();
+        Swal.fire('ผิดพลาด', 'ไม่สามารถสร้างไฟล์ Excel ได้: ' + error.message, 'error');
+    }
+}
     console.log('✅ ระบบติดตามวัคซีนเด็ก 0-5 ปี พร้อมทำงาน');
 </script>
 </body>
