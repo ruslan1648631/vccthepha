@@ -2844,6 +2844,107 @@
             text-decoration: underline;
         }
 
+        /* ============ CLINIC BATCH & QUICK ACTIONS ============ */
+        .btn-call-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #ecfdf5;
+            color: #047857 !important;
+            border: 1px solid #a7f3d0;
+            padding: 4px 9px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: none !important;
+            transition: all .2s;
+            white-space: nowrap;
+        }
+        .btn-call-pill:hover {
+            background: #10b981;
+            color: #fff !important;
+            border-color: #10b981;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+        }
+        .btn-nav-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #eff6ff;
+            color: #1d4ed8 !important;
+            border: 1px solid #bfdbfe;
+            padding: 4px 9px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: none !important;
+            transition: all .2s;
+            white-space: nowrap;
+        }
+        .btn-nav-pill:hover {
+            background: #2563eb;
+            color: #fff !important;
+            border-color: #2563eb;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+        }
+        .btn-clinic-mode {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #fff;
+            border: none;
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-family: 'Kanit', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+            transition: all .2s;
+        }
+        .btn-clinic-mode:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+        }
+        .clinic-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+        }
+        .clinic-table th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            padding: 10px 12px;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: left;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .clinic-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+        .clinic-table tr:hover td {
+            background: #f8fafc;
+        }
+        .clinic-vac-badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+            border: 1px solid #bae6fd;
+        }
+
         .rpt-row-ontime td {
             background: #f6fff9 !important;
         }
@@ -6216,9 +6317,9 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
         const statusClass = getStatusClass(status);
 
         const phone = child.phone || child.Phone || child['โทรศัพท์'] || child['เบอร์โทร'] || '';
-        const phoneHtml = phone ? '<p><strong><i class="fas fa-phone-alt"></i> โทรศัพท์:</strong> <a href="tel:' + esc(
-            phone) + '" style="color:#28c76f;text-decoration:none;">' + esc(phone) + '</a></p>' :
-            '<p><strong><i class="fas fa-phone-alt"></i> โทรศัพท์:</strong> -</p>';
+        const cleanPhone = phone ? phone.replace(/[^0-9+]/g, '') : '';
+        const phoneHtml = cleanPhone ? '<p style="margin:0;"><strong>โทรศัพท์:</strong> <a href="tel:' + cleanPhone + '" class="btn-call-pill" title="กดเพื่อโทรออก"><i class="fas fa-phone-alt"></i> โทร ' + esc(phone) + '</a></p>' :
+            '<p style="margin:0; color:#94a3b8;"><strong>โทรศัพท์:</strong> -</p>';
 
         const missingVaccines = child.missingVaccines || '';
         const missingVaccinesHtml = (status === 'ขาดนัด' && missingVaccines) ?
@@ -6239,8 +6340,7 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
         const lat = child.lat || null;
         const lng = child.lng || null;
         const gpsLink = (lat && lng) ?
-            '<p><strong><i class="fas fa-map-marked-alt"></i> เปิดแผนที่:</strong> <a href="https://www.openstreetmap.org/?mlat=' +
-            lat + '&mlon=' + lng + '#map=15/' + lat + '/' + lng + '" target="_blank" style="color:#667eea;">ดูเส้นทาง <i class="fas fa-external-link-alt"></i></a></p>' :
+            '<div style="margin-top:6px;"><a href="https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng + '" target="_blank" class="btn-nav-pill" title="เปิด Google Maps นำทาง"><i class="fas fa-directions"></i> นำทาง Google Maps</a></div>' :
             '';
 
         const color = {
@@ -6295,6 +6395,7 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
             Swal.fire('ผิดพลาด', e.message, 'error');
         }
     };
+    window.viewChild = window.viewChildFromMap;
 
     function showChildDetail(c) {
         const vaccineRows = (c.vaccines || []).map(function(vacData) {
@@ -6311,17 +6412,20 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
                 '</tr>';
         });
 
-        const phoneHtml = c.phone && c.phone !== '-' && c.phone !== '' ?
-            '<a href="tel:' + esc(c.phone) + '" class="phone-link"><i class="fas fa-phone-alt"></i> ' + esc(c.phone) + '</a>' : '-';
+        const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
+        const phoneHtml = cleanPhone ?
+            '<a href="tel:' + cleanPhone + '" class="btn-call-pill" title="กดเพื่อโทรออก"><i class="fas fa-phone-alt"></i> โทร ' + esc(c.phone) + '</a>' : '<span style="color:#94a3b8;">-</span>';
 
-        let gpsHtml = '-';
+        let gpsHtml = '<span style="color:#94a3b8;">-</span>';
         if (c.gps && c.gps.includes(',')) {
             const coords = c.gps.split(',');
             const lat = parseFloat(coords[0]);
             const lng = parseFloat(coords[1]);
             if (!isNaN(lat) && !isNaN(lng)) {
-                gpsHtml = '<a href="https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '#map=15/' + lat +
-                    '/' + lng + '" target="_blank" style="color:#667eea;"><i class="fas fa-map-marker-alt"></i> ดูพิกัดบ้าน</a>';
+                gpsHtml = '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' +
+                    '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng + '" target="_blank" class="btn-nav-pill" title="เปิด Google Maps นำทาง"><i class="fas fa-directions"></i> นำทาง Google Maps</a>' +
+                    '<a href="https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '#map=16/' + lat + '/' + lng + '" target="_blank" style="font-size:11px; color:#64748b; text-decoration:none;"><i class="fas fa-map-pin"></i> พิกัด</a>' +
+                    '</div>';
             }
         }
 
@@ -6512,6 +6616,7 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
         document.getElementById('um_username').value = '';
         document.getElementById('um_username').disabled = false;
         document.getElementById('um_password').value = '';
+        document.getElementById('um_password').placeholder = 'อย่างน้อย 6 ตัวอักษร';
         document.getElementById('um_fullname').value = '';
         document.getElementById('um_role').value = 'เจ้าหน้าที่';
         
@@ -6546,7 +6651,8 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
             document.getElementById('userModalOriginal').value = username;
             document.getElementById('um_username').value = u.username;
             document.getElementById('um_username').disabled = true;
-            document.getElementById('um_password').value = u.password;
+            document.getElementById('um_password').value = '';
+            document.getElementById('um_password').placeholder = 'เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน';
             document.getElementById('um_fullname').value = u.fullname;
             document.getElementById('um_role').value = u.role;
             
@@ -6570,6 +6676,14 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
     window.saveUser = async function() {
         const mode = document.getElementById('userModalMode').value;
         const orig = document.getElementById('userModalOriginal').value;
+        const pwdInput = document.getElementById('um_password').value.trim();
+
+        if (mode === 'add' && (!pwdInput || pwdInput.length < 6)) {
+            return Swal.fire('แจ้งเตือน', 'กรุณาระบุรหัสผ่านอย่างน้อย 6 ตัวอักษร', 'warning');
+        }
+        if (mode === 'edit' && pwdInput && pwdInput.length < 6) {
+            return Swal.fire('แจ้งเตือน', 'รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร', 'warning');
+        }
         
         let userStatus = 'register';
         if (document.getElementById('um_status_group').style.display !== 'none') {
@@ -6579,7 +6693,7 @@ const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
         const data = {
             hcode: document.getElementById('um_hcode').value.trim(),
             username: document.getElementById('um_username').value.trim(),
-            password: document.getElementById('um_password').value,
+            password: pwdInput,
             fullname: document.getElementById('um_fullname').value.trim(),
             role: document.getElementById('um_role').value,
             village: document.getElementById('um_village').value.trim() || '-',
@@ -7127,6 +7241,9 @@ window.switchLogTab = function(tab) {
                     }
 
                     const displayName = c.hname !== '-' ? c.hname : (APP.facilityMap[c.hcode] || c.hcode || '-');
+                    const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
+                    const quickCallBtn = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="action-btn" style="color:#10b981;" title="โทร ' + esc(c.phone) + '"><i class="fas fa-phone-alt"></i></a> ' : '';
+                    const quickNavBtn = (c.gps && c.gps.includes(',')) ? '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="action-btn" style="color:#2563eb;" title="นำทาง Google Maps"><i class="fas fa-directions"></i></a> ' : '';
 
                     return '<tr>' +
                         '<td><span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span></td>' +
@@ -7138,7 +7255,9 @@ window.switchLogTab = function(tab) {
                         '<td>' + esc(c.villageName || '-') + '</td>' +
                         '<td>' + esc(c.subdistrict || '-') + '</td>' +
                         '<td>' + statusDisplay + '</td>' +
-                        '<td>' +
+                        '<td style="white-space:nowrap;">' +
+                        quickCallBtn +
+                        quickNavBtn +
                         '<button class="action-btn view" title="รายละเอียด" onclick="viewChildFromMap(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
                          '<select class="status-select" title="เปลี่ยนสถานะ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)" data-childid="' + esc(c.id || c.hn) + '">' +
                         '<option value="">เปลี่ยนสถานะ</option>' + statusOpts +
@@ -7206,7 +7325,7 @@ window.switchLogTab = function(tab) {
                 '</div>' +
                 '</div>' +
                 '<div class="data-table" style="width:100%; overflow:hidden;"><table id="missingTable" class="display nowrap" style="width:100%;">' +
-                '<thead><tr><th>สถานพยาบาล</th><th>HN</th><th>ชื่อ-สกุล</th><th>อายุ</th><th>หมู่ที่</th><th>ชื่อหมู่บ้าน</th><th>อสม. รับผิดชอบ</th><th>สถานะ</th><th>จัดการ</th></tr></thead>' +
+                '<thead><tr><th>สถานพยาบาล</th><th>HN</th><th>ชื่อ-สกุล</th><th>อายุ</th><th>หมู่ที่</th><th>ชื่อหมู่บ้าน</th><th>อสม. รับผิดชอบ</th><th>สถานะ</th><th>ติดต่อ / นำทาง</th><th>จัดการ</th></tr></thead>' +
                 '<tbody id="missingTbody"></tbody>' +
                 '</table></div>';
 
@@ -7265,7 +7384,7 @@ window.switchLogTab = function(tab) {
             destroyDT('missingTable');
 
             if (!result.success || !result.children || result.children.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="no-data"><i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px; color:#10b981;"></i><br>ยอดเยี่ยม! ไม่มีเด็กขาดนัดในขณะนี้</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px; color:#10b981;"></i><br>ยอดเยี่ยม! ไม่มีเด็กขาดนัดในขณะนี้</td></tr>';
                 APP.missingAllRecords = [];
             } else {
                 APP.missingAllRecords = result.children;
@@ -7282,6 +7401,15 @@ window.switchLogTab = function(tab) {
 
                     const displayName = c.hname !== '-' ? c.hname : (APP.facilityMap[c.hcode] || c.hcode || '-');
 
+                    const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
+                    let contactPill = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="btn-call-pill" title="โทรหาผู้ปกครอง (' + esc(c.phone) + ')"><i class="fas fa-phone-alt"></i> ' + esc(c.phone) + '</a>' : '<span style="color:#94a3b8; font-size:12px;">-</span>';
+                    
+                    let navPill = '';
+                    if (c.gps && c.gps.includes(',')) {
+                        navPill = '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="btn-nav-pill" title="นำทาง Google Maps ไปยังบ้านเด็ก"><i class="fas fa-directions"></i> นำทาง</a>';
+                    }
+                    let contactCol = '<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">' + contactPill + (navPill ? navPill : '') + '</div>';
+
                     return '<tr>' +
                         '<td><span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span></td>' +
                         '<td style="font-family:monospace">' + esc(c.hn) + '</td>' +
@@ -7291,6 +7419,7 @@ window.switchLogTab = function(tab) {
                         '<td>' + esc(c.villageName || '-') + '</td>' +
                         '<td class="text-blue-600 font-medium">' + esc(c.asm) + '</td>' +
                         '<td>' + statusDisplay + '</td>' +
+                        '<td>' + contactCol + '</td>' +
                         '<td>' +
                         '<button class="action-btn view" title="รายละเอียด" onclick="viewChild(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
                         '<select class="status-select" title="เปลี่ยนสถานะ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)">' +
@@ -7303,7 +7432,7 @@ window.switchLogTab = function(tab) {
             initDT('missingTable', { scrollX: true, autoWidth: false, order: [[3, 'desc']] });
         } catch (err) {
             hideLoading();
-            document.getElementById('missingTbody').innerHTML = '<tr><td colspan="9" class="no-data" style="color:#dc3545">เกิดข้อผิดพลาด: ' + esc(err.message) + '</td></tr>';
+            document.getElementById('missingTbody').innerHTML = '<tr><td colspan="10" class="no-data" style="color:#dc3545">เกิดข้อผิดพลาด: ' + esc(err.message) + '</td></tr>';
         }
     }
 
@@ -7317,7 +7446,7 @@ window.switchLogTab = function(tab) {
         `ดาวน์โหลดรายชื่อเด็กขาดนัด (${APP.missingAllRecords.length} รายการ)`);
 
         const rows = [];
-        rows.push(['HN', 'ชื่อ-สกุล', 'วันเกิด', 'อายุ', 'บ้านเลขที่', 'หมู่ที่', 'อสม. ผู้รับผิดชอบ', 'สถานะ', 'วัคซีนที่ขาด']);
+        rows.push(['HN', 'ชื่อ-สกุล', 'วันเกิด', 'อายุ', 'บ้านเลขที่', 'หมู่ที่', 'โทรศัพท์', 'พิกัด GPS', 'อสม. ผู้รับผิดชอบ', 'สถานะ', 'วัคซีนที่ขาด']);
 
         APP.missingAllRecords.forEach(function(c) {
             rows.push([
@@ -7327,6 +7456,8 @@ window.switchLogTab = function(tab) {
                 c.age || '',
                 c.houseNumber || '',
                 c.village || '',
+                c.phone || '',
+                c.gps || '',
                 c.asm || '',
                 c.status || '',
                 c.missingVaccines || ''
@@ -7375,8 +7506,15 @@ window.switchLogTab = function(tab) {
                 facilityFilterHtml = `<div class="filter-group"><label>สถานพยาบาล</label><select id="apptFacilityFilter">${facilityOptions}</select></div>`;
             }
 
+            const canClinic = (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS' || APP.currentUser.role === 'เจ้าหน้าที่');
+            const clinicBtnHtml = canClinic ? 
+                '<button class="btn-clinic-mode" onclick="openClinicBatchModal()"><i class="fas fa-syringe"></i> โหมดคลินิกเด็กดี (บันทึกรับวัคซีน)</button>' : '';
+
             page.innerHTML =
-                '<div class="page-title"><i class="fas fa-calendar-alt"></i> รายชื่อนัดวัคซีน</div>' +
+                '<div class="page-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">' +
+                '<div><i class="fas fa-calendar-alt"></i> รายชื่อนัดวัคซีน</div>' +
+                clinicBtnHtml +
+                '</div>' +
                 '<div class="filter-bar">' +
                 facilityFilterHtml +
                 '<div class="filter-group" style="max-width:200px;"><label>ค้นหาตามวันที่นัด</label><input type="date" id="apptDateFilter"></div>' +
@@ -7484,6 +7622,9 @@ window.switchLogTab = function(tab) {
                         return '<span class="status-badge" style="background:#e3f2fd; color:#0284c7; margin-right:4px; margin-bottom:2px; display:inline-block; border: 1px solid #bae6fd;">' + esc(v.trim()) + '</span>';
                     }).join('');
                     trHtml += '<td>' + vacTags + '</td>';
+                } else if (headers[idx] && (headers[idx].toString().includes('โทร') || headers[idx].toString().toLowerCase().includes('phone')) && cell && cell !== '-') {
+                    const cleanPhone = cell.toString().replace(/[^0-9+]/g, '');
+                    trHtml += '<td><a href="tel:' + cleanPhone + '" class="btn-call-pill" title="กดเพื่อโทรออก"><i class="fas fa-phone-alt"></i> ' + esc(cell) + '</a></td>';
                 } else {
                     trHtml += '<td>' + esc(cell) + '</td>';
                 }
@@ -7557,6 +7698,422 @@ window.switchLogTab = function(tab) {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    // ============================================================
+    // DAILY WELL-BABY CLINIC MODE (BATCH VACCINATION)
+    // ============================================================
+    window.APP_CLINIC = {
+        filtered: [],
+        selectedSet: new Set()
+    };
+
+    function ensureClinicBatchModal() {
+        if (document.getElementById('clinicBatchModal')) return;
+
+        const facilityOptions = '<option value="ทั้งหมด">-- ทุกสถานพยาบาล --</option>' + 
+            Object.keys(APP.facilityMap || {}).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+
+        const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+        const showFacilityFilter = (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer);
+
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="clinicBatchModal" class="modal" style="z-index: 9999;">
+                <div class="modal-content" style="max-width: 950px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-top-left-radius: 16px; border-top-right-radius: 16px; padding: 16px 22px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="background: rgba(255,255,255,0.2); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                                <i class="fas fa-syringe"></i>
+                            </span>
+                            <div>
+                                <h3 style="margin:0; font-size: 18px; color:#fff; font-weight: 600;">โหมดคลินิกเด็กดีประจำวัน</h3>
+                                <div style="font-size: 12px; color: rgba(255,255,255,0.85); font-weight: 400;">บันทึกการรับวัคซีนสำหรับเด็กที่มารับบริการพร้อมกันในรอบคลินิก</div>
+                            </div>
+                        </div>
+                        <button class="modal-close" style="color:white; font-size:24px; opacity: 0.9;" onclick="closeClinicBatchModal()">×</button>
+                    </div>
+
+                    <div class="modal-body" style="padding: 20px; overflow-y: auto; flex: 1;">
+                        <!-- Filter Bar inside Modal -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+                            <div class="form-group" style="margin-bottom:0; min-width: 170px;">
+                                <label style="font-size: 12px; font-weight: 600; color: #475569;"><i class="fas fa-calendar-check" style="color:#10b981;"></i> วันที่ฉีดวัคซีนจริง</label>
+                                <input type="date" id="cb_vac_date" style="padding: 7px 10px; font-size: 13px;">
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:0; min-width: 170px;">
+                                <label style="font-size: 12px; font-weight: 600; color: #475569;"><i class="fas fa-calendar-day" style="color:#667eea;"></i> กรองตามวันนัด</label>
+                                <input type="date" id="cb_appt_date" onchange="filterClinicChildren()" style="padding: 7px 10px; font-size: 13px;">
+                            </div>
+
+                            ${showFacilityFilter ? `
+                            <div class="form-group" style="margin-bottom:0; min-width: 180px;">
+                                <label style="font-size: 12px; font-weight: 600; color: #475569;"><i class="fas fa-hospital" style="color:#667eea;"></i> สถานพยาบาล</label>
+                                <select id="cb_facility" onchange="filterClinicChildren()" style="padding: 7px 10px; font-size: 13px;">
+                                    ${facilityOptions}
+                                </select>
+                            </div>` : ''}
+
+                            <div class="form-group" style="margin-bottom:0; flex: 1; min-width: 200px;">
+                                <label style="font-size: 12px; font-weight: 600; color: #475569;"><i class="fas fa-search"></i> ค้นหาด่วน (HN / ชื่อเด็ก)</label>
+                                <input type="text" id="cb_search" placeholder="พิมพ์ชื่อหรือ HN..." oninput="filterClinicChildren()" style="padding: 7px 10px; font-size: 13px;">
+                            </div>
+
+                            <button type="button" class="btn-reset" onclick="resetClinicFilters()" style="padding: 8px 12px; font-size: 13px; height: 38px;">
+                                <i class="fas fa-undo"></i> แสดงทั้งหมด
+                            </button>
+                        </div>
+
+                        <!-- Summary selection strip -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px; flex-wrap: wrap; gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 600; color: #1e293b;">
+                                <input type="checkbox" id="cb_select_all" onchange="toggleSelectAllClinic(this.checked)" style="width: 18px; height: 18px; cursor: pointer; accent-color: #10b981;">
+                                <span>เลือกทั้งหมด (<span id="cb_visible_count">0</span> คน)</span>
+                            </label>
+
+                            <div style="font-size: 13px; color: #475569;">
+                                เลือกแล้ว: <span id="cb_selected_badge" style="background:#ecfdf5; color:#047857; font-weight:700; padding:3px 10px; border-radius:12px; border:1px solid #a7f3d0; font-size:14px;">0</span> คน
+                            </div>
+                        </div>
+
+                        <!-- Table of Children -->
+                        <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; max-height: 380px; overflow-y: auto; background: #fff;">
+                            <table class="clinic-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 45px; text-align: center;">เลือก</th>
+                                        <th>HN</th>
+                                        <th>ชื่อ-สกุล</th>
+                                        <th>อายุ</th>
+                                        <th>หมู่ที่</th>
+                                        <th>วันที่นัด</th>
+                                        <th>วัคซีนที่นัด</th>
+                                        <th>เบอร์โทร</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cb_tbody">
+                                    <tr><td colspan="8" style="text-align:center; padding: 40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดข้อมูล...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Provider and Remarks -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size: 12px; font-weight: 600; color: #475569;">ผู้บันทึก / เจ้าหน้าที่ผู้ให้บริการ</label>
+                                <input type="text" id="cb_provider" value="${esc(APP.currentUser.fullname || APP.currentUser.username)}" style="padding: 8px 12px; font-size: 13px;">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size: 12px; font-weight: 600; color: #475569;">หมายเหตุ (ถ้ามี)</label>
+                                <input type="text" id="cb_remarks" placeholder="เช่น รอบคลินิกเด็กดีประจำสัปดาห์" style="padding: 8px 12px; font-size: 13px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 22px; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                        <button class="btn-cancel" onclick="closeClinicBatchModal()" style="padding: 9px 18px; font-size: 13px;">ปิด</button>
+                        <button class="btn-clinic-mode" id="cb_btn_submit" onclick="submitClinicBatch()" style="padding: 10px 24px; font-size: 14px;">
+                            <i class="fas fa-check-double"></i> บันทึกการฉีดวัคซีน (<span id="cb_btn_count">0</span> คน)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `);
+    }
+
+    async function openClinicBatchModal() {
+        ensureClinicBatchModal();
+
+        const todayIso = new Date().toISOString().slice(0, 10);
+        document.getElementById('cb_vac_date').value = todayIso;
+        document.getElementById('cb_appt_date').value = todayIso;
+        document.getElementById('cb_search').value = '';
+        if (document.getElementById('cb_facility')) {
+            document.getElementById('cb_facility').value = 'ทั้งหมด';
+        }
+        document.getElementById('cb_provider').value = APP.currentUser.fullname || APP.currentUser.username;
+        document.getElementById('cb_remarks').value = '';
+
+        window.APP_CLINIC.selectedSet.clear();
+
+        document.getElementById('clinicBatchModal').classList.add('active');
+
+        // Check if appointments data is loaded
+        if (!APP.apptAllRecords || APP.apptAllRecords.length === 0) {
+            document.getElementById('cb_tbody').innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 40px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> กำลังดึงรายชื่อนัดหมาย...</td></tr>';
+            const filters = {
+                userRole: APP.currentUser.role,
+                userHcode: APP.currentUser.hcode,
+                userSubdistrict: APP.currentUser.subdistrict,
+                userVillage: APP.currentUser.village
+            };
+            try {
+                const res = await callGAS('getAppointments', [filters]);
+                if (res.success) {
+                    APP.apptHeaders = res.headers || [];
+                    APP.apptAllRecords = res.appointments || [];
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        filterClinicChildren();
+    }
+
+    function closeClinicBatchModal() {
+        const m = document.getElementById('clinicBatchModal');
+        if (m) m.classList.remove('active');
+    }
+
+    function resetClinicFilters() {
+        document.getElementById('cb_appt_date').value = '';
+        document.getElementById('cb_search').value = '';
+        if (document.getElementById('cb_facility')) {
+            document.getElementById('cb_facility').value = 'ทั้งหมด';
+        }
+        filterClinicChildren();
+    }
+
+    function filterClinicChildren() {
+        const headers = APP.apptHeaders || [];
+        const rawAppts = APP.apptAllRecords || [];
+
+        const hcodeIdx = findColumnIndex(headers, ['hcode', 'รหัสสถานพยาบาล', 'สถานพยาบาล'], 0);
+        const idIdx = findColumnIndex(headers, ['ID', 'id', 'CID', 'cid']);
+        const hnIdx = findColumnIndex(headers, ['HN', 'รหัส', 'hn'], 2);
+        const nameIdx = findColumnIndex(headers, ['ชื่อ-สกุล', 'ชื่อ', 'ChildName', 'fullname'], 3);
+        const dobIdx = findColumnIndex(headers, ['ว/ด/ปเกิด', 'วันเกิด', 'DOB'], 4);
+        const ageIdx = findColumnIndex(headers, ['อายุ', 'Age'], 5);
+        const vilIdx = findColumnIndex(headers, ['หมู่ที่', 'หมู่'], 7);
+        const phoneIdx = findColumnIndex(headers, ['โทรศัพท์', 'เบอร์โทร', 'phone'], 8);
+        const dateIdx = findColumnIndex(headers, ['วันที่นัด', 'วันนัด', 'วันที่', 'นัดครั้งต่อไป'], 9);
+        const vacIdx = findColumnIndex(headers, ['รหัสวัคซีน', 'วัคซีน', 'vaccine'], 10);
+
+        const filterApptDate = document.getElementById('cb_appt_date') ? document.getElementById('cb_appt_date').value : '';
+        const filterFac = document.getElementById('cb_facility') ? document.getElementById('cb_facility').value : 'ทั้งหมด';
+        const filterSearch = document.getElementById('cb_search') ? document.getElementById('cb_search').value.trim().toLowerCase() : '';
+
+        let thaiApptDate = '';
+        if (filterApptDate) {
+            const d = new Date(filterApptDate);
+            if (!isNaN(d.getTime())) {
+                const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                thaiApptDate = d.getDate() + ' ' + thaiMonths[d.getMonth()] + ' ' + (d.getFullYear() + 543);
+            }
+        }
+
+        const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+
+        let filtered = rawAppts.filter(function(row) {
+            const rowHcode = hcodeIdx !== -1 ? row[hcodeIdx] : '';
+            if (APP.currentUser.role !== 'Admin_Ampur' && !isSpecialOfficer && hcodeIdx >= 0) {
+                if (rowHcode !== APP.currentUser.hcode) return false;
+            }
+            if (filterFac !== 'ทั้งหมด' && hcodeIdx >= 0 && rowHcode !== filterFac) {
+                return false;
+            }
+
+            if (thaiApptDate && dateIdx >= 0) {
+                const rDate = row[dateIdx] ? row[dateIdx].toString().trim() : '';
+                if (!rDate.includes(thaiApptDate)) return false;
+            }
+
+            if (filterSearch) {
+                const rHn = (hnIdx !== -1 && row[hnIdx]) ? row[hnIdx].toString().toLowerCase() : '';
+                const rName = (nameIdx !== -1 && row[nameIdx]) ? row[nameIdx].toString().toLowerCase() : '';
+                if (!rHn.includes(filterSearch) && !rName.includes(filterSearch)) return false;
+            }
+
+            return true;
+        });
+
+        window.APP_CLINIC.filtered = filtered.map(function(row, idx) {
+            const hn = (hnIdx !== -1 && row[hnIdx]) ? row[hnIdx].toString().trim() : '';
+            const id = (idIdx !== -1 && row[idIdx]) ? row[idIdx].toString().trim() : '';
+            const fullname = (nameIdx !== -1 && row[nameIdx]) ? row[nameIdx].toString().trim() : '';
+            const age = (ageIdx !== -1 && row[ageIdx]) ? row[ageIdx].toString().trim() : '-';
+            const village = (vilIdx !== -1 && row[vilIdx]) ? row[vilIdx].toString().trim() : '-';
+            const dateStr = (dateIdx !== -1 && row[dateIdx]) ? row[dateIdx].toString().trim() : '-';
+            const vacRaw = (vacIdx !== -1 && row[vacIdx]) ? row[vacIdx].toString().trim() : '';
+            const phone = (phoneIdx !== -1 && row[phoneIdx]) ? row[phoneIdx].toString().trim() : '';
+            const hcode = (hcodeIdx !== -1 && row[hcodeIdx]) ? row[hcodeIdx].toString().trim() : '';
+            
+            const vacList = vacRaw ? vacRaw.split(',').map(v => v.trim()).filter(Boolean) : [];
+            const uid = hn ? ('hn_' + hn) : (id ? ('id_' + id) : ('row_' + idx));
+
+            return {
+                uid: uid,
+                hn: hn,
+                id: id,
+                fullname: fullname,
+                age: age,
+                village: village,
+                dateStr: dateStr,
+                vaccines: vacList,
+                phone: phone,
+                hcode: hcode
+            };
+        });
+
+        renderClinicTable();
+    }
+
+    function renderClinicTable() {
+        const list = window.APP_CLINIC.filtered || [];
+        const tbody = document.getElementById('cb_tbody');
+        if (!tbody) return;
+
+        document.getElementById('cb_visible_count').textContent = list.length;
+
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:35px; color:#94a3b8;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px; opacity:0.5;"></i><br>ไม่พบนัดหมายตามเงื่อนไขที่เลือก (ลองกดปุ่ม "แสดงทั้งหมด" หรือเลือกวันนัดอื่น)</td></tr>';
+            updateClinicSelectedCount();
+            return;
+        }
+
+        tbody.innerHTML = list.map(function(item) {
+            const isChecked = window.APP_CLINIC.selectedSet.has(item.uid) ? 'checked' : '';
+            const cleanPhone = (item.phone && item.phone !== '-') ? item.phone.replace(/[^0-9+]/g, '') : '';
+            const phoneBtn = cleanPhone ? `<a href="tel:${cleanPhone}" class="btn-call-pill" title="โทร ${esc(item.phone)}"><i class="fas fa-phone-alt"></i> ${esc(item.phone)}</a>` : '-';
+            
+            const vacBadges = item.vaccines.length > 0 ? 
+                item.vaccines.map(v => `<span class="clinic-vac-badge">${esc(v)}</span>`).join('') : '<span style="color:#94a3b8;">-</span>';
+
+            return `
+                <tr style="cursor:pointer;" onclick="toggleClinicRow(event, '${esc(item.uid)}')">
+                    <td style="text-align:center;" onclick="event.stopPropagation()">
+                        <input type="checkbox" class="cb-row-check" data-uid="${esc(item.uid)}" ${isChecked} onchange="onClinicCheckChange('${esc(item.uid)}', this.checked)" style="width:17px; height:17px; cursor:pointer; accent-color:#10b981;">
+                    </td>
+                    <td style="font-family:monospace; font-weight:600; color:#334155;">${esc(item.hn || '-')}</td>
+                    <td style="font-weight:500; color:#0f172a;">${esc(item.fullname)}</td>
+                    <td>${esc(item.age)}</td>
+                    <td>${esc(item.village)}</td>
+                    <td style="white-space:nowrap; color:#64748b; font-size:12px;">${esc(item.dateStr)}</td>
+                    <td>${vacBadges}</td>
+                    <td onclick="event.stopPropagation()">${phoneBtn}</td>
+                </tr>
+            `;
+        }).join('');
+
+        updateClinicSelectedCount();
+    }
+
+    function toggleClinicRow(e, uid) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'A' || e.target.tagName === 'I') return;
+        const isSelected = window.APP_CLINIC.selectedSet.has(uid);
+        onClinicCheckChange(uid, !isSelected);
+        const chk = document.querySelector(`.cb-row-check[data-uid="${uid}"]`);
+        if (chk) chk.checked = !isSelected;
+    }
+
+    function onClinicCheckChange(uid, isChecked) {
+        if (isChecked) {
+            window.APP_CLINIC.selectedSet.add(uid);
+        } else {
+            window.APP_CLINIC.selectedSet.delete(uid);
+        }
+        updateClinicSelectedCount();
+    }
+
+    function toggleSelectAllClinic(checked) {
+        const list = window.APP_CLINIC.filtered || [];
+        list.forEach(function(item) {
+            if (checked) window.APP_CLINIC.selectedSet.add(item.uid);
+            else window.APP_CLINIC.selectedSet.delete(item.uid);
+        });
+        document.querySelectorAll('.cb-row-check').forEach(function(cb) {
+            cb.checked = checked;
+        });
+        updateClinicSelectedCount();
+    }
+
+    function updateClinicSelectedCount() {
+        const count = window.APP_CLINIC.selectedSet.size;
+        const visibleTotal = (window.APP_CLINIC.filtered || []).length;
+        
+        const badge = document.getElementById('cb_selected_badge');
+        if (badge) badge.textContent = count;
+        
+        const btnCount = document.getElementById('cb_btn_count');
+        if (btnCount) btnCount.textContent = count;
+
+        const selectAllCb = document.getElementById('cb_select_all');
+        if (selectAllCb) {
+            selectAllCb.checked = (visibleTotal > 0 && count >= visibleTotal);
+        }
+    }
+
+    async function submitClinicBatch() {
+        const selectedUids = window.APP_CLINIC.selectedSet;
+        if (selectedUids.size === 0) {
+            return Swal.fire('แจ้งเตือน', 'กรุณาเลือกเด็กอย่างน้อย 1 คนที่มารับวัคซีน', 'warning');
+        }
+
+        const allList = window.APP_CLINIC.filtered || [];
+        const selectedRecords = allList.filter(item => selectedUids.has(item.uid));
+
+        const vacDateVal = document.getElementById('cb_vac_date').value || new Date().toISOString().slice(0, 10);
+        const provider = (document.getElementById('cb_provider') ? document.getElementById('cb_provider').value.trim() : '') || APP.currentUser.fullname || APP.currentUser.username;
+        const remarks = document.getElementById('cb_remarks') ? document.getElementById('cb_remarks').value.trim() : '';
+
+        const dObj = new Date(vacDateVal + 'T00:00:00');
+        const thaiDateStr = !isNaN(dObj.getTime()) ? formatThaiDate(dObj, false) : vacDateVal;
+
+        const confirm = await Swal.fire({
+            title: 'ยืนยันบันทึกการฉีดวัคซีน',
+            html: `
+                <div style="text-align:left; font-family:Kanit; font-size:14px; line-height:1.6;">
+                    <p>คุณต้องการบันทึกการรับวัคซีนสำหรับเด็กที่เลือกจำนวน <strong style="color:#059669; font-size:16px;">${selectedRecords.length}</strong> คน</p>
+                    <p><strong>วันที่ฉีด:</strong> <span style="color:#2563eb;">${thaiDateStr}</span></p>
+                    <p><strong>ผู้บันทึก:</strong> ${esc(provider)}</p>
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px; margin-top:12px; font-size:12px; color:#166534;">
+                        <i class="fas fa-info-circle"></i> ระบบจะอัปเดตประวัติวัคซีนในฐานข้อมูล และปรับสถานะนัดหมายให้อัตโนมัติ
+                    </div>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: '<i class="fas fa-check"></i> ยืนยันบันทึก',
+            cancelButtonText: 'ยกเลิก'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        showLoading('กำลังบันทึกข้อมูลคลินิกเด็กดี...');
+        try {
+            const payload = {
+                records: selectedRecords,
+                vaccineDate: vacDateVal,
+                reporter: provider,
+                remarks: remarks,
+                userRole: APP.currentUser.role,
+                userHcode: APP.currentUser.hcode
+            };
+
+            const res = await callGAS('batchRecordVaccination', [payload]);
+            hideLoading();
+
+            if (res.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกสำเร็จ!',
+                    text: res.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+
+                closeClinicBatchModal();
+                doLoadAppointments();
+                logActivity('EDIT', 'clinic', `บันทึกรับวัคซีนคลินิกเด็กดี (${selectedRecords.length} คน) วันที่ ${vacDateVal}`);
+            } else {
+                Swal.fire('ผิดพลาด', res.message, 'error');
+            }
+        } catch (e) {
+            hideLoading();
+            Swal.fire('ผิดพลาด', e.message, 'error');
+        }
     }
 
     // ============================================================
@@ -8031,10 +8588,11 @@ window.switchLogTab = function(tab) {
                             <p><strong>อายุ:</strong> ${esc(child.age)}</p>
                             <p><strong>บ้านเลขที่:</strong> ${esc(child.houseNumber)}</p>
                             <p><strong>หมู่ที่:</strong> ${esc(child.village)}</p>
-                            <p><strong>โทรศัพท์:</strong> ${child.phone ? '<a href="tel:' + esc(child.phone) + '" class="phone-link"><i class="fas fa-phone-alt"></i> ' + esc(child.phone) + '</a>' : '-'}</p>
+                            <p><strong>โทรศัพท์:</strong> ${child.phone && child.phone !== '-' ? '<a href="tel:' + esc(child.phone.replace(/[^0-9+]/g, '')) + '" class="btn-call-pill" title="กดเพื่อโทรออก"><i class="fas fa-phone-alt"></i> โทร ' + esc(child.phone) + '</a>' : '-'}</p>
                             <p><strong>บิดา:</strong> ${esc(child.fatherName || '-')}</p>
                             <p><strong>มารดา:</strong> ${esc(child.motherName || '-')}</p>
                             <p><strong>อสม.ประจำ:</strong> ${esc(child.asm || '-')}</p>
+                            ${child.gps && child.gps.includes(',') ? '<p style="grid-column: 1/-1;"><strong>แผนที่นำทาง:</strong> <a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(child.gps.trim()) + '" target="_blank" class="btn-nav-pill" title="เปิด Google Maps นำทาง"><i class="fas fa-directions"></i> นำทาง Google Maps ไปยังบ้านเด็ก</a></p>' : ''}
                         </div>
                     </div>
                 `;
@@ -8346,6 +8904,10 @@ window.switchLogTab = function(tab) {
             hideLoading();
             if (result.success) {
                 const c = result.child;
+                const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
+                const phonePill = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="btn-call-pill" title="กดเพื่อโทรออก"><i class="fas fa-phone-alt"></i> โทร ' + esc(c.phone) + '</a>' : '-';
+                const navPill = (c.gps && c.gps.includes(',')) ? '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="btn-nav-pill" style="margin-left:6px;"><i class="fas fa-directions"></i> นำทาง</a>' : '';
+
                 infoEl.className = 'child-info-box';
                 infoEl.innerHTML =
                     '<h4><i class="fas fa-child"></i> พบข้อมูลเด็ก</h4>' +
@@ -8355,11 +8917,24 @@ window.switchLogTab = function(tab) {
                     '<p><strong>วันเกิด:</strong> ' + formatDate(c.birthDate) + '</p>' +
                     '<p><strong>อายุ:</strong> ' + esc(c.age) + '</p>' +
                     '<p><strong>บ้านเลขที่:</strong> ' + esc(c.houseNumber) + '</p>' +
-                    '<p><strong>โทรศัพท์:</strong> ' + esc(c.phone || '-') + '</p>' +
+                    '<p><strong>โทรศัพท์:</strong> ' + phonePill + '</p>' +
                     '<p><strong>บิดา:</strong> ' + esc(c.fatherName || '-') + '</p>' +
                     '<p><strong>มารดา:</strong> ' + esc(c.motherName || '-') + '</p>' +
+                    (c.gps && c.gps.includes(',') ? '<p style="grid-column: 1/-1;"><strong>แผนที่นำทาง:</strong> ' + navPill + '</p>' : '') +
                     '</div>';
                 infoEl.style.display = 'block';
+
+                if (c.gps && c.gps.includes(',')) {
+                    const gpsInput = document.getElementById('tr_gps');
+                    if (gpsInput && !gpsInput.value) {
+                        gpsInput.value = c.gps.trim();
+                        const disp = document.getElementById('tr_gpsDisplay');
+                        if (disp) {
+                            disp.innerHTML = '<i class="fas fa-map-marker-alt"></i> พิกัดจากข้อมูลเด็ก: ' + c.gps.trim();
+                            disp.style.display = 'block';
+                        }
+                    }
+                }
             } else {
                 infoEl.style.display = 'none';
                 Swal.fire('ไม่พบข้อมูล', result.message, 'info');
@@ -9742,7 +10317,7 @@ window.confirmClearOldAppointments = async function() {
     // ============================================================
 
     document.addEventListener('click', function(e) {
-        ['userModal', 'villageModal', 'importApptModal', 'importDataModal'].forEach(function(id) {
+        ['userModal', 'villageModal', 'importApptModal', 'importDataModal', 'clinicBatchModal'].forEach(function(id) {
             const m = document.getElementById(id);
             if (m && m.classList.contains('active') && e.target === m) {
                 m.classList.remove('active');
