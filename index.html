@@ -4345,7 +4345,7 @@
                 <div id="officerTrackingPage" class="page"></div>
                 <div id="reportPage" class="page"></div>
                 <div id="coveragePage" class="page"></div>
-                <div id="vaccineRegisterPage" class="page"></div>
+                <div id="duplicateReportPage" class="page"></div>
             </div>
         </div>
     </div>
@@ -4584,7 +4584,7 @@ async function loadPublicDashboard() {
         renderPublicAgeSummaryCards(res.ageGroups);
 
         const updEl = document.getElementById('publicUpdatedAt');
-        if (updEl) updEl.textContent = res.meta.updatedAt;
+        if (updEl && res && res.meta && res.meta.updatedAt) updEl.textContent = res.meta.updatedAt;
 
     } catch (err) {
         loadingEl.innerHTML = `
@@ -5436,7 +5436,7 @@ async function warmUpBackend() {
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
                 { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' },
                 { id: 'coverage', icon: 'fas fa-shield-virus', label: 'ความครอบคลุมวัคซีน' },
-                { id: 'vaccineRegister', icon: 'fas fa-clipboard-list', label: 'ทะเบียนวัคซีน 0-5 ปี' }
+                { id: 'duplicateReport', icon: 'fas fa-clone', label: 'เด็กซ้ำหลายสถานพยาบาล' }
             ];
         } else if (role === 'เจ้าหน้าที่') {
             items = [
@@ -5448,7 +5448,7 @@ async function warmUpBackend() {
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
                 { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' },
                 { id: 'coverage', icon: 'fas fa-shield-virus', label: 'ความครอบคลุมวัคซีน' },
-                { id: 'vaccineRegister', icon: 'fas fa-clipboard-list', label: 'ทะเบียนวัคซีน 0-5 ปี' }
+                { id: 'duplicateReport', icon: 'fas fa-clone', label: 'เด็กซ้ำหลายสถานพยาบาล' }
             ];
         } else {
             items = [
@@ -5605,7 +5605,7 @@ const PAGE_TITLES = {
     officerTracking: 'ติดตามวัคซีนเด็ก',
     report: 'รายงานสรุปการติดตามวัคซีน',
     coverage: 'ความครอบคลุมวัคซีน',
-    vaccineRegister: 'ทะเบียนความครอบคลุมวัคซีน 0-5 ปี'
+    duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล'
 };
 function navigateTo(page) {
     // ✅ ปิด Bottom Sheet ถ้าเปิดอยู่
@@ -5644,9 +5644,9 @@ function navigateTo(page) {
             document.getElementById('coveragePage').classList.add('active');
             loadCoveragePage(); 
             break;
-        case 'vaccineRegister':
-            document.getElementById('vaccineRegisterPage').classList.add('active');
-            loadVaccineRegisterPage();
+        case 'duplicateReport':
+            document.getElementById('duplicateReportPage').classList.add('active');
+            loadDuplicateReportPage();
             break;
         default: loadDashboard(); break;
     }
@@ -10652,14 +10652,17 @@ window.confirmClearOldAppointments = async function() {
   hideLoading();
 
   // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
-  const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' &&
-                            (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
-  const canSelectFacility = (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer);
+  const currentUser = APP.currentUser || {};
+  const userRole = currentUser.role || '';
+  const userHcode = currentUser.hcode || '';
+  const isSpecialOfficer = (userRole === 'เจ้าหน้าที่' &&
+                            (userHcode === '00860' || userHcode === '11390'));
+  const canSelectFacility = (userRole === 'Admin_Ampur' || isSpecialOfficer);
 
   let facilityFilterHtml = '';
   if (canSelectFacility) {
     const facilityOptions = '<option value="">-- ทั้งหมด --</option>' +
-      Object.keys(APP.facilityMap).map(k =>
+      Object.keys(APP.facilityMap || {}).map(k =>
         `<option value="${esc(k)}">${esc(APP.facilityMap[k])} (${esc(k)})</option>`
       ).join('');
     facilityFilterHtml = `
@@ -10668,13 +10671,13 @@ window.confirmClearOldAppointments = async function() {
         <select id="cvFacility">${facilityOptions}</select>
       </div>`;
   } else {
-    const myFacilityName = APP.facilityMap[APP.currentUser.hcode] || APP.currentUser.hcode || '-';
+    const myFacilityName = (APP.facilityMap && APP.facilityMap[userHcode]) || userHcode || '-';
     facilityFilterHtml = `
       <div class="cv-filter-group">
         <label><i class="fas fa-hospital"></i> สถานพยาบาล</label>
         <input type="text" id="cvFacilityDisplay" readonly
-               value="${esc(myFacilityName)} (${esc(APP.currentUser.hcode || '-')})">
-        <input type="hidden" id="cvFacility" value="${esc(APP.currentUser.hcode || '')}">
+               value="${esc(myFacilityName)} (${esc(userHcode || '-')})">
+        <input type="hidden" id="cvFacility" value="${esc(userHcode || '')}">
       </div>`;
   }
 
@@ -10837,16 +10840,21 @@ async function doLoadCoverage() {
   document.getElementById('cvTables').innerHTML =
     '<div class="text-center p-4"><i class="fas fa-spinner fa-spin"></i> กำลังประมวลผล...</div>';
 
-  const res = await callGAS('getVaccineCoverageReport', [filters]);
+  try {
+    const res = await callGAS('getVaccineCoverageReport', [filters]);
 
-  if (!res || !res.success) {
+    if (!res || !res.success) {
+      document.getElementById('cvTables').innerHTML =
+        `<div class="alert alert-danger">${(res && res.message) || 'โหลดข้อมูลไม่สำเร็จ'}</div>`;
+      return;
+    }
+    APP.coverageData = res;
+    const selectedQ = document.getElementById('cvQuarter')?.value || '';
+    renderCoverage(res, selectedQ);
+  } catch (err) {
     document.getElementById('cvTables').innerHTML =
-      `<div class="alert alert-danger">${(res && res.message) || 'โหลดข้อมูลไม่สำเร็จ'}</div>`;
-    return;
+      `<div class="alert alert-danger">เกิดข้อผิดพลาด: ${esc(err.message)}</div>`;
   }
-  APP.coverageData = res;
-  const selectedQ = document.getElementById('cvQuarter')?.value || '';
-  renderCoverage(res, selectedQ);
 }
 
 /* ============================================================
@@ -12050,470 +12058,492 @@ function renderPublicAgeSummaryCards(ageGroups) {
         `;
     }).join('');
 }
+
 /* ============================================================
- *  📋 ทะเบียนความครอบคลุมวัคซีน 0-5 ปี
+ *  🔍 รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (ซ้ำในอำเภอ)
  *  ============================================================ */
+let DUP_DATA = [];
+let DUP_SUMMARY = {};
 
-let VR_DATA = [];           // เก็บข้อมูลที่โหลดมา
-let VR_FILTERS = {};        // เก็บตัวกรองปัจจุบัน
-let VR_VACCINE_HEADERS = [];   // เก็บ headers ของวัคซีน
-
-async function loadVaccineRegisterPage() {
-    const page = document.getElementById('vaccineRegisterPage');
+async function loadDuplicateReportPage() {
+    const page = document.getElementById('duplicateReportPage');
     page.classList.add('active');
-    
-    showLoading('กำลังโหลดทะเบียน...');
 
-    // ✅ โหลด FacilityMap + Villages
+    showLoading('กำลังโหลดตัวกรอง...');
+
     let facilityMap = {};
-    let villages = [];
     try {
-        const [fRes, vRes] = await Promise.all([
-            callGAS('getFacilityMap', []),
-            callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode])
-        ]);
+        const fRes = await callGAS('getFacilityMap', []);
         facilityMap = fRes.success ? fRes.map : {};
-        villages = vRes.success ? vRes.villages : [];
+        APP.facilityMap = facilityMap;
     } catch (e) {
-        console.error('Load filters error:', e);
+        console.error('Load facilityMap error:', e);
     }
-    
+
     hideLoading();
 
-    // ✅ สร้าง Facility Options
-    const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' &&
-                              (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
-    const canSelectFacility = (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer);
-    
-    let facilityOptionsHtml = '';
+    const currentUser = APP.currentUser || {};
+    const userRole = currentUser.role || '';
+    const userHcode = currentUser.hcode || '';
+    const isSpecialOfficer = (userRole === 'เจ้าหน้าที่' &&
+                              (userHcode === '00860' || userHcode === '11390'));
+    const canSelectFacility = (userRole === 'Admin_Ampur' || isSpecialOfficer);
+
+    let facilityFilterHtml = '';
     if (canSelectFacility) {
-        const opts = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' +
-            Object.keys(facilityMap).map(k =>
-                `<option value="${esc(k)}">${esc(facilityMap[k])}</option>`
-            ).join('');
-        facilityOptionsHtml = `
+        const facilityOptions = '<option value="ทั้งหมด">-- ทุกสถานพยาบาล --</option>' +
+            Object.keys(facilityMap).map(k => `<option value="${esc(k)}">${esc(facilityMap[k])}</option>`).join('');
+        facilityFilterHtml = `
             <div class="filter-group">
-                <label>สถานพยาบาล</label>
-                <select id="vrFacility" onchange="cascadeVillageOptions(this.value, 'vrVillage')">
-                    ${opts}
+                <label><i class="fas fa-hospital"></i> สถานพยาบาลที่มีเด็กซ้ำ</label>
+                <select id="dupFacilityFilter">
+                    ${facilityOptions}
                 </select>
-            </div>`;
+            </div>
+        `;
     }
 
-    const villageOptions = '<option value="ทั้งหมด">ทั้งหมด</option>' +
-        villages.map(v => `<option value="${esc(v.name)}">${esc(v.name)}</option>`).join('');
-
     page.innerHTML = `
-        <div class="page-title">
-            <i class="fas fa-clipboard-list"></i>
-            ทะเบียนความครอบคลุมวัคซีน 0-5 ปี
+        <div class="page-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <i class="fas fa-clone"></i> รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (ซ้ำในอำเภอ)
+                <div style="font-size:12px; font-weight:400; color:#64748b; margin-top:4px;">
+                    ตรวจสอบรายชื่อเด็กที่มีข้อมูลผูกอยู่กับสถานพยาบาลมากกว่า 1 แห่งในอำเภอ เพื่อประสานงานและปรับปรุงฐานข้อมูล
+                </div>
+            </div>
         </div>
 
-        <div class="filter-bar">
-            ${facilityOptionsHtml}
-            <div class="filter-group">
-                <label>ค้นหา (HN/ชื่อ-สกุล)</label>
-                <input type="text" id="vrSearch" placeholder="พิมพ์เพื่อค้นหา...">
+        <!-- แถบตัวกรอง -->
+        <div class="filter-bar" style="margin-bottom:20px;">
+            ${facilityFilterHtml}
+            <div class="filter-group" style="min-width:200px;">
+                <label><i class="fas fa-search"></i> ค้นหา (เลขบัตร/ชื่อ-สกุล/HN)</label>
+                <input type="text" id="dupSearch" placeholder="พิมพ์เพื่อค้นหา...">
             </div>
             <div class="filter-group">
-                <label>สถานะวัคซีน</label>
-                <select id="vrStatus">
-                    <option value="ทั้งหมด">ทั้งหมด</option>
-                    <option value="ครบตามเกณฑ์">ครบตามเกณฑ์</option>
-                    <option value="ขาดนัด">ขาดนัด</option>
-                    <option value="ปฏิเสธวัคซีน">ปฏิเสธวัคซีน</option>
+                <label><i class="fas fa-layer-group"></i> จำนวนสถานพยาบาลที่ซ้ำ</label>
+                <select id="dupMinFacilities">
+                    <option value="2">ตั้งแต่ 2 แห่งขึ้นไป</option>
+                    <option value="3">ตั้งแต่ 3 แห่งขึ้นไป</option>
                 </select>
             </div>
             <div class="filter-group">
-                <label>หมู่บ้าน</label>
-                <select id="vrVillage">${villageOptions}</select>
+                <label><i class="fas fa-tasks"></i> เงื่อนไขสถานะ</label>
+                <select id="dupStatusFilter">
+                    <option value="ทั้งหมด">ทั้งหมด</option>
+                    <option value="มีสถานะขัดแย้งกัน">⚠️ สถานะขัดแย้งกัน (เช่น ที่หนึ่งครบ อีกที่หนึ่งขาด)</option>
+                    <option value="มีสถานะขาดนัด">❌ มีสถานพยาบาลที่บันทึกว่า "ขาดนัด"</option>
+                    <option value="ครบตามเกณฑ์ทุกแห่ง">✅ ครบตามเกณฑ์ทุกสถานพยาบาล</option>
+                    <option value="มีสถานะปฏิเสธ">⛔ มีสถานพยาบาลที่บันทึก "ปฏิเสธ"</option>
+                </select>
             </div>
             <div class="filter-actions">
-                <button class="btn-filter" id="vrSearchBtn">
+                <button class="btn-filter" id="dupSearchBtn">
                     <i class="fas fa-search"></i> ค้นหา
                 </button>
-                <button class="btn-reset" id="vrResetBtn">
+                <button class="btn-reset" id="dupResetBtn">
                     <i class="fas fa-undo"></i> รีเซ็ต
                 </button>
-                <button class="btn-rpt-csv" id="vrExportBtn" 
-                        style="background:#28c76f;">
+                <button class="btn-rpt-csv" id="dupExportExcelBtn" style="background:#28c76f;">
                     <i class="fas fa-file-excel"></i> ส่งออก Excel
                 </button>
-                <button class="btn-rpt-csv" id="vrPrintBtn" 
-                        style="background:#17a2b8;">
+                <button class="btn-rpt-csv" id="dupPrintBtn" style="background:#17a2b8;">
                     <i class="fas fa-print"></i> พิมพ์
                 </button>
             </div>
         </div>
 
-        <!-- สรุปด้านบน -->
-        <div id="vrSummaryStrip" class="rpt-summary-strip" style="margin-bottom:18px;"></div>
+        <!-- สรุปสถิติภาพรวมด้านบน -->
+        <div id="dupSummaryStrip" class="rpt-summary-strip" style="margin-bottom:20px;"></div>
 
-        <!-- ตาราง -->
+        <!-- ตารางข้อมูลหลัก -->
         <div class="data-table" style="width:100%; overflow:hidden;">
-            <table id="vrTable" class="display nowrap" style="width:100%;">
+            <table id="dupTable" class="display nowrap" style="width:100%;">
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>HN</th>
-                        <th>ชื่อ-สกุล</th>
-                        <th>วันเกิด</th>
-                        <th>อายุ</th>
-                        <th>หมู่บ้าน</th>
-                        <th>หน่วยบริการ</th>
-                        <th>อสม.</th>
-                        <th>สถานะวัคซีน</th>
-                        <th>วัคซีนที่ขาด</th>
+                        <th style="width:40px; text-align:center;">#</th>
+                        <th style="min-width:200px;">ข้อมูลเด็ก (CID / ชื่อ-สกุล)</th>
+                        <th style="width:100px; text-align:center;">จำนวนแห่ง</th>
+                        <th style="min-width:450px;">รายละเอียดแต่ละสถานพยาบาลที่พบข้อมูล</th>
+                        <th style="width:80px; text-align:center;">ประวัติ</th>
                     </tr>
                 </thead>
-                <tbody id="vrTbody"></tbody>
+                <tbody id="dupTbody"></tbody>
             </table>
         </div>
     `;
 
-    // ✅ ผูก events
-    document.getElementById('vrSearchBtn').addEventListener('click', doLoadVaccineRegister);
-    document.getElementById('vrResetBtn').addEventListener('click', function() {
-        const fEl = document.getElementById('vrFacility');
-        if (fEl) {
-            fEl.value = 'ทั้งหมด';
-            cascadeVillageOptions('ทั้งหมด', 'vrVillage');
-        }
-        document.getElementById('vrSearch').value = '';
-        document.getElementById('vrStatus').value = 'ทั้งหมด';
-        document.getElementById('vrVillage').value = 'ทั้งหมด';
-        doLoadVaccineRegister();
+    // ผูก event listeners
+    document.getElementById('dupSearchBtn').addEventListener('click', doLoadDuplicateReport);
+    document.getElementById('dupResetBtn').addEventListener('click', function() {
+        const facEl = document.getElementById('dupFacilityFilter');
+        if (facEl) facEl.value = 'ทั้งหมด';
+        document.getElementById('dupSearch').value = '';
+        document.getElementById('dupMinFacilities').value = '2';
+        document.getElementById('dupStatusFilter').value = 'ทั้งหมด';
+        doLoadDuplicateReport();
     });
-    document.getElementById('vrSearch').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') doLoadVaccineRegister();
+    document.getElementById('dupSearch').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') doLoadDuplicateReport();
     });
-    document.getElementById('vrExportBtn').addEventListener('click', exportVaccineRegisterExcel);
-    document.getElementById('vrPrintBtn').addEventListener('click', function() {
-        logActivity('PRINT', 'print', 'พิมพ์ทะเบียนความครอบคลุมวัคซีน 0-5 ปี');
+    document.getElementById('dupExportExcelBtn').addEventListener('click', exportDuplicateReportExcel);
+    document.getElementById('dupPrintBtn').addEventListener('click', function() {
+        logActivity('PRINT', 'print', 'พิมพ์รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล');
         window.print();
     });
 
-    // ✅ โหลดข้อมูลครั้งแรก
-    await doLoadVaccineRegister();
+    await doLoadDuplicateReport();
 }
 
+async function doLoadDuplicateReport() {
+    showLoading('กำลังตรวจสอบข้อมูลเด็กซ้ำในอำเภอ...');
 
-async function doLoadVaccineRegister() {
-    showLoading('กำลังโหลดข้อมูล...');
-    
-    const facilityEl = document.getElementById('vrFacility');
+    const facEl = document.getElementById('dupFacilityFilter');
+    const currentUser = APP.currentUser || {};
     const filters = {
-        hcode: facilityEl ? facilityEl.value : 'ทั้งหมด',
-        search: document.getElementById('vrSearch') ? document.getElementById('vrSearch').value.trim() : '',
-        status: document.getElementById('vrStatus') ? document.getElementById('vrStatus').value : 'ทั้งหมด',
-        village: document.getElementById('vrVillage') ? document.getElementById('vrVillage').value : 'ทั้งหมด',
-        userRole: APP.currentUser.role,
-        userHcode: APP.currentUser.hcode,
-        userSubdistrict: APP.currentUser.subdistrict,
-        userVillage: APP.currentUser.village
+        hcode: facEl ? facEl.value : 'ทั้งหมด',
+        search: document.getElementById('dupSearch') ? document.getElementById('dupSearch').value.trim() : '',
+        minFacilities: document.getElementById('dupMinFacilities') ? document.getElementById('dupMinFacilities').value : '2',
+        status: document.getElementById('dupStatusFilter') ? document.getElementById('dupStatusFilter').value : 'ทั้งหมด',
+        userRole: currentUser.role || '',
+        userHcode: currentUser.hcode || '',
+        userSubdistrict: currentUser.subdistrict || '',
+        userVillage: currentUser.village || ''
     };
-    
-    VR_FILTERS = filters;
-    
+
     try {
-        // ✅ เรียก API ใหม่ที่ให้ข้อมูลวัคซีนทุกตัว
-        const result = await callGAS('getVaccineRegisterData', [filters]);
-        hideLoading();
-        
-        if (!result.success || !result.register) {
-            document.getElementById('vrTbody').innerHTML = 
-                '<tr><td colspan="10" style="text-align:center; padding:40px; color:#dc3545;">' +
-                'ไม่สามารถโหลดข้อมูลได้: ' + esc(result.message || '') + '</td></tr>';
+        const result = await callGAS('getDuplicateChildrenReport', [filters]);
+
+        if (!result || !result.success) {
+            destroyDT('dupTable');
+            document.getElementById('dupTbody').innerHTML = 
+                '<tr><td colspan="5" style="text-align:center; padding:40px; color:#dc3545;">' +
+                'ไม่สามารถโหลดข้อมูลได้: ' + esc((result && result.message) || 'เกิดข้อผิดพลาดในการโหลดข้อมูล') + '</td></tr>';
             return;
         }
-        
-        VR_DATA = result.register;
-        VR_VACCINE_HEADERS = result.vaccineHeaders || [];
-        
-        renderVRSummary(result.register);
-        renderVRTable(result.register);
-        
+
+        DUP_DATA = result.duplicateChildren || [];
+        DUP_SUMMARY = result.summary || {};
+
+        renderDuplicateSummary(DUP_SUMMARY);
+        renderDuplicateTable(DUP_DATA);
+
+        logActivity('VIEW', 'view', `ตรวจสอบเด็กซ้ำในอำเภอ พบ ${DUP_DATA.length} คน`);
+
     } catch (e) {
-        hideLoading();
-        console.error('doLoadVaccineRegister error:', e);
-        document.getElementById('vrTbody').innerHTML = 
-            '<tr><td colspan="10" style="text-align:center; padding:40px; color:#dc3545;">' +
+        console.error('doLoadDuplicateReport error:', e);
+        destroyDT('dupTable');
+        document.getElementById('dupTbody').innerHTML = 
+            '<tr><td colspan="5" style="text-align:center; padding:40px; color:#dc3545;">' +
             'เกิดข้อผิดพลาด: ' + esc(e.message) + '</td></tr>';
+    } finally {
+        hideLoading();
     }
 }
 
-function renderVRSummary(children) {
-    const el = document.getElementById('vrSummaryStrip');
+function renderDuplicateSummary(sm) {
+    const el = document.getElementById('dupSummaryStrip');
     if (!el) return;
-    
-    const total = children.length;
-    const complete = children.filter(c => c.status === 'ครบตามเกณฑ์' || c.status === 'ตามนัดปกติ').length;
-    const missed = children.filter(c => c.status === 'ขาดนัด').length;
-    const refused = children.filter(c => c.status === 'ปฏิเสธวัคซีน').length;
-    const rate = total > 0 ? Math.round((complete / total) * 1000) / 10 : 0;
-    
+
+    const totalChildren = sm.totalChildren || 0;
+    const totalRecords = sm.totalRecords || 0;
+    const facilitiesCount = sm.involvedFacilitiesCount || 0;
+    const conflictCount = sm.conflictCount || 0;
+    const missedCount = sm.missedCount || 0;
+
     el.innerHTML = `
         <div class="rpt-sum-card c-total">
-            <div class="rpt-sum-label"><i class="fas fa-child"></i> ทั้งหมด</div>
-            <div class="rpt-sum-num">${total}</div>
-        </div>
-        <div class="rpt-sum-card c-ontime">
-            <div class="rpt-sum-label"><i class="fas fa-check-circle"></i> ครบเกณฑ์</div>
-            <div class="rpt-sum-num">${complete}</div>
-            <div class="rpt-sum-pct">${rate}%</div>
+            <div class="rpt-sum-label"><i class="fas fa-users-slash"></i> เด็กที่พบข้อมูลซ้ำ</div>
+            <div class="rpt-sum-num">${totalChildren} <span style="font-size:14px; font-weight:normal; color:#64748b;">คน</span></div>
+            <div class="rpt-sum-pct">${totalRecords} รายการในฐานข้อมูล</div>
         </div>
         <div class="rpt-sum-card c-missed">
-            <div class="rpt-sum-label"><i class="fas fa-exclamation-circle"></i> ขาดนัด</div>
-            <div class="rpt-sum-num">${missed}</div>
+            <div class="rpt-sum-label"><i class="fas fa-hospital-alt"></i> สถานพยาบาลที่มีเด็กซ้ำ</div>
+            <div class="rpt-sum-num">${facilitiesCount} <span style="font-size:14px; font-weight:normal; color:#64748b;">แห่ง</span></div>
+            <div class="rpt-sum-pct">ในเครือข่ายอำเภอเทพา</div>
         </div>
         <div class="rpt-sum-card c-refused">
-            <div class="rpt-sum-label"><i class="fas fa-times-circle"></i> ปฏิเสธ</div>
-            <div class="rpt-sum-num">${refused}</div>
+            <div class="rpt-sum-label"><i class="fas fa-exclamation-triangle"></i> ข้อมูลสถานะขัดแย้งกัน</div>
+            <div class="rpt-sum-num">${conflictCount} <span style="font-size:14px; font-weight:normal; color:#64748b;">คน</span></div>
+            <div class="rpt-sum-pct">เช่น ที่หนึ่งครบ อีกที่ขาดนัด</div>
+        </div>
+        <div class="rpt-sum-card c-ontime">
+            <div class="rpt-sum-label"><i class="fas fa-user-clock"></i> มีสถานะขาดนัดอย่างน้อย 1 แห่ง</div>
+            <div class="rpt-sum-num">${missedCount} <span style="font-size:14px; font-weight:normal; color:#64748b;">คน</span></div>
+            <div class="rpt-sum-pct">ต้องตรวจสอบการรับวัคซีนจริง</div>
         </div>
     `;
 }
 
-
-function renderVRTable(children) {
-    const tbody = document.getElementById('vrTbody');
+function renderDuplicateTable(children) {
+    const tbody = document.getElementById('dupTbody');
     if (!tbody) return;
-    
-    if (children.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px; color:#94a3b8;">' +
-                         '<i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>ไม่พบข้อมูล</td></tr>';
-        destroyDT('vrTable');
-        initDT('vrTable', { scrollX: true, autoWidth: false, order: [], paging: false });
+
+    if (!children || children.length === 0) {
+        destroyDT('dupTable');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align:center; padding:40px; color:#10b981;">
+                    <i class="fas fa-check-circle fa-3x" style="margin-bottom:12px; display:inline-block;"></i>
+                    <div style="font-size:16px; font-weight:600; color:#0f172a;">ไม่พบข้อมูลเด็กซ้ำตามเงื่อนไขที่เลือก</div>
+                    <div style="font-size:13px; color:#64748b; margin-top:4px;">ยอดเยี่ยม! ฐานข้อมูลมีความถูกต้อง ไม่พบรายการเด็กที่มีชื่อซ้ำซ้อนข้ามสถานพยาบาล</div>
+                </td>
+            </tr>
+        `;
         return;
     }
-    
-    const statusClass = (s) => {
-        if (s === 'ครบตามเกณฑ์' || s === 'ตามนัดปกติ') return 'status-ontime';
-        if (s === 'ขาดนัด') return 'status-missed';
-        if (s === 'ปฏิเสธวัคซีน') return 'status-refused';
-        return 'status-pending';
-    };
-    
-    tbody.innerHTML = children.map((c, i) => `
-        <tr>
-            <td style="text-align:center; color:#94a3b8; font-size:12px;">${i + 1}</td>
-            <td style="font-family:monospace; font-size:12px;">${esc(c.hn || '-')}</td>
-            <td style="font-weight:600; color:#0f172a;">${esc(c.fullname || '-')}</td>
-            <td style="font-size:12px; color:#64748b;">${esc(c.birthDate || '-')}</td>
-            <td style="font-size:12px;">${esc(c.age || '-')}</td>
-            <td style="font-size:12px;">${esc(c.village || '-')}${c.villageName ? ' / ' + esc(c.villageName) : ''}</td>
-            <td style="font-size:12px; color:#667eea;">${esc(c.hname || c.hcode || '-')}</td>
-            <td style="font-size:12px;">${esc(c.asm || '-')}</td>
-            <td>
-                <span class="status-badge ${statusClass(c.status)}">${esc(c.status || '-')}</span>
-            </td>
-            <td style="font-size:11px; color:#b91c1c; max-width:250px;">
-                ${c.missingVaccines ? esc(c.missingVaccines) : '-'}
-            </td>
-        </tr>
-    `).join('');
-    
-    destroyDT('vrTable');
-    initDT('vrTable', {
+
+    tbody.innerHTML = children.map((c, i) => {
+        const conflictBadge = c.isConflict ? 
+            `<div style="margin-top:6px;"><span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; border-radius:6px; padding:3px 8px; font-weight:600;"><i class="fas fa-exclamation-triangle"></i> สถานะขัดแย้งกันระหว่างสถานพยาบาล</span></div>` : '';
+
+        const recordsHtml = (c.records || []).map(r => {
+            const facName = r.hname || (APP.facilityMap && APP.facilityMap[r.hcode]) || r.hcode || 'ไม่ระบุสถานพยาบาล';
+            const cleanPhone = (r.phone && r.phone !== '-') ? r.phone.replace(/[^0-9+]/g, '') : '';
+            const phonePill = cleanPhone ? `<a href="tel:${cleanPhone}" class="btn-call-pill" title="โทรหาผู้ปกครอง (${esc(r.phone)})"><i class="fas fa-phone-alt"></i> ${esc(r.phone)}</a>` : '';
+            const navPill = (r.gps && r.gps.includes(',')) ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(r.gps.trim())}" target="_blank" class="btn-nav-pill" title="นำทาง Google Maps"><i class="fas fa-directions"></i> นำทาง</a>` : '';
+
+            const statusBadge = `<span class="status-badge ${getStatusClass(r.status)}">${esc(r.status)}</span>`;
+            const missedVac = (r.status === 'ขาดนัด' && r.missingVaccines) ? 
+                `<div style="font-size:11px; color:#dc2626; margin-top:4px; line-height:1.3; background:#fff1f2; padding:3px 8px; border-radius:4px; display:inline-block;"><i class="fas fa-syringe"></i> ขาด: ${esc(r.missingVaccines)}</div>` : '';
+
+            return `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin-bottom:8px; display:flex; flex-direction:column; gap:4px; transition:border-color .2s;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                        <div style="font-weight:600; color:#1e293b; font-size:13px;">
+                            <i class="fas fa-hospital" style="color:#667eea; margin-right:4px;"></i>
+                            <span style="color:#4f46e5;">[${esc(r.hcode)}]</span> ${esc(facName)}
+                            <span style="font-weight:normal; font-size:12px; color:#64748b; margin-left:6px;">(HN: <strong>${esc(r.hn || '-')}</strong>)</span>
+                        </div>
+                        <div>${statusBadge}</div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; font-size:12px; color:#475569; margin-top:2px;">
+                        <div>
+                            <i class="fas fa-map-marker-alt" style="color:#94a3b8;"></i> บ้านเลขที่ ${esc(r.houseNumber || '-')} หมู่ ${esc(r.village || '-')}${r.villageName ? ' (' + esc(r.villageName) + ')' : ''} ${r.subdistrict ? 'ต.' + esc(r.subdistrict) : ''}
+                            ${r.asm && r.asm !== '-' ? `<span style="margin-left:8px; color:#64748b;"><i class="fas fa-user-nurse" style="color:#10b981;"></i> อสม. ${esc(r.asm)}</span>` : ''}
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            ${phonePill}
+                            ${navPill}
+                        </div>
+                    </div>
+                    ${missedVac}
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <tr>
+                <td style="text-align:center; color:#94a3b8; font-size:12px; vertical-align:middle;">${i + 1}</td>
+                <td style="vertical-align:top; padding:12px 14px;">
+                    <div style="font-weight:600; color:#0f172a; font-size:14px;">${esc(c.fullname)}</div>
+                    <div style="font-family:monospace; font-size:12px; color:#475569; margin-top:2px;"><i class="far fa-id-card"></i> ${esc(c.id || '-')}</div>
+                    <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                        อายุ: <strong>${esc(c.age || '-')}</strong> | เกิด: ${esc(c.birthDate || '-')}
+                    </div>
+                    ${conflictBadge}
+                </td>
+                <td style="text-align:center; vertical-align:middle;">
+                    <span style="display:inline-flex; align-items:center; gap:5px; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe;">
+                        <i class="fas fa-layer-group"></i> ${c.facilityCount} แห่ง
+                    </span>
+                </td>
+                <td style="vertical-align:top; padding:10px 14px;">
+                    ${recordsHtml}
+                </td>
+                <td style="text-align:center; vertical-align:middle;">
+                    <button class="action-btn view" title="ดูรายละเอียดประวัติการฉีดวัคซีน" onclick="viewChild('${esc(c.id || (c.records[0] && c.records[0].hn) || '')}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    destroyDT('dupTable');
+    initDT('dupTable', {
         scrollX: true,
         autoWidth: false,
-        order: [],
+        order: [[2, 'desc']],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "ทั้งหมด"]],
-        columnDefs: [{ orderable: false, targets: [9] }]
+        columnDefs: [{ orderable: false, targets: [3, 4] }]
     });
 }
 
-
 /* ============================================================
- *  ✅ ส่งออก Excel — ทะเบียนความครอบคลุมวัคซีน 0-5 ปี
+ *  ✅ ส่งออก Excel — รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล
  *  ============================================================ */
-async function exportVaccineRegisterExcel() {
-    if (!VR_DATA || VR_DATA.length === 0) {
+async function exportDuplicateReportExcel() {
+    if (!DUP_DATA || DUP_DATA.length === 0) {
         return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก', 'info');
     }
-    
-    // ✅ Audit Log
+
     logActivity('EXPORT', 'export',
-        `ดาวน์โหลดทะเบียนความครอบคลุมวัคซีน 0-5 ปี (${VR_DATA.length} คน)`);
-    
+        `ดาวน์โหลดรายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (${DUP_DATA.length} คน)`);
+
     showLoading('กำลังสร้างไฟล์ Excel...');
-    
+
     try {
         const wb = XLSX.utils.book_new();
         const today = new Date();
-        const thaiDateStr = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()+543}`;
-        
+        const thaiDateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear() + 543}`;
+
         // ==========================================
-        // ✅ Sheet 1: ทะเบียน
+        // ✅ Sheet 1: ทะเบียนสรุปเด็กซ้ำรายคน
         // ==========================================
-        const vaccineHeaders = VR_VACCINE_HEADERS || [];
-        
-        // ✅ Header Row ใหม่ — ตัดกลุ่มอายุ, เพิ่ม hcode หน้าสุด + อสม.
-        const headerRow = [
-            'hcode',        // ✅ เพิ่มหน้าสุด
-            'HN',
-            'ชื่อ-สกุล',
-            'อายุ',
-            'วันเกิด',
-            'บ้านเลขที่',
-            'เบอร์ติดต่อ',
-            'อสม.',         // ✅ เพิ่ม
-            ...vaccineHeaders
-        ];
-        
-        const rows = [
-            ['ทะเบียนความครอบคลุมวัคซีนเด็ก 0-5 ปี'],
-            ['เครือข่ายสุขภาพอำเภอเทพา'],
-            [`วันที่ออกรายงาน: ${thaiDateStr} | ผู้พิมพ์: ${APP.currentUser.fullname || APP.currentUser.username} | รวม: ${VR_DATA.length} คน`],
+        const sheet1Rows = [
+            ['รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (ซ้ำในอำเภอ)'],
+            ['เครือข่ายสุขภาพอำเภอเทพา จังหวัดสงขลา'],
+            [`วันที่ออกรายงาน: ${thaiDateStr} | ผู้พิมพ์: ${(APP.currentUser && (APP.currentUser.fullname || APP.currentUser.username)) || 'ผู้ใช้งาน'} | เด็กที่พบซ้ำ: ${DUP_DATA.length} คน`],
             [],
-            headerRow
+            ['#', 'เลขบัตรประชาชน (CID)', 'ชื่อ-สกุล', 'วันเกิด', 'อายุ', 'จำนวนสถานพยาบาลที่พบ', 'สถานพยาบาลที่พบข้อมูล', 'สถานะขัดแย้ง', 'มีสถานะขาดนัด']
         ];
-        
-        // ✅ ข้อมูลแต่ละคน — ตัด ageGroup, เพิ่ม hcode + asm
-        VR_DATA.forEach((c, i) => {
-            const row = [
-                c.hcode || '',          // ✅ hcode หน้าสุด
-                c.hn || '',
+
+        DUP_DATA.forEach((c, i) => {
+            const facListStr = c.records.map(r => `[${r.hcode}] ${r.hname || (APP.facilityMap && APP.facilityMap[r.hcode]) || r.hcode} (HN: ${r.hn || '-'} - ${r.status})`).join(' | ');
+            sheet1Rows.push([
+                i + 1,
+                c.id || '',
                 c.fullname || '',
-                c.age || '',
                 c.birthDate || '',
-                c.houseNumber || '',
-                c.phone || '',
-                c.asm || ''             // ✅ อสม.
-            ];
-            
-            // ✅ วันที่วัคซีนแต่ละตัว
-            vaccineHeaders.forEach(vh => {
-                row.push((c.vaccineDates && c.vaccineDates[vh]) || '');
-            });
-            
-            rows.push(row);
+                c.age || '',
+                c.facilityCount || 2,
+                facListStr,
+                c.isConflict ? 'ขัดแย้ง' : 'สอดคล้อง',
+                c.hasMissed ? 'มีขาดนัด' : 'ไม่มีขาดนัด'
+            ]);
         });
-        
-        // ✅ สร้าง worksheet
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        
-        // ✅ Merge header rows (3 บรรทัดแรก เป็น title)
-        const totalCols = 8 + vaccineHeaders.length;   // ✅ 8 คอลัมน์หลัก (ไม่มีกลุ่มอายุ)
-        ws['!merges'] = [
-            { s: {r:0,c:0}, e: {r:0,c:totalCols-1} },
-            { s: {r:1,c:0}, e: {r:1,c:totalCols-1} },
-            { s: {r:2,c:0}, e: {r:2,c:totalCols-1} }
+
+        const ws1 = XLSX.utils.aoa_to_sheet(sheet1Rows);
+        ws1['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }
         ];
-        
-        // ✅ กำหนดความกว้างคอลัมน์
-        const cols = [
-            { wch: 10 },  // hcode
-            { wch: 10 },  // HN
-            { wch: 28 },  // ชื่อ-สกุล
+        ws1['!cols'] = [
+            { wch: 6 },   // #
+            { wch: 18 },  // CID
+            { wch: 26 },  // ชื่อ-สกุล
+            { wch: 14 },  // วันเกิด
             { wch: 12 },  // อายุ
-            { wch: 12 },  // วันเกิด
-            { wch: 18 },  // บ้านเลขที่
-            { wch: 14 },  // เบอร์ติดต่อ
-            { wch: 18 }   // อสม.
+            { wch: 22 },  // จำนวนสถานพยาบาล
+            { wch: 60 },  // สถานพยาบาล
+            { wch: 14 },  // สถานะขัดแย้ง
+            { wch: 16 }   // ขาดนัด
         ];
-        vaccineHeaders.forEach(() => cols.push({ wch: 11 }));
-        ws['!cols'] = cols;
-        
-        // ✅ Freeze pane
-        ws['!freeze'] = { xSplit: 3, ySplit: 5 };
-        
-        XLSX.utils.book_append_sheet(wb, ws, 'ทะเบียน');
-        
+        XLSX.utils.book_append_sheet(wb, ws1, 'สรุปเด็กซ้ำรายคน');
+
         // ==========================================
-        // ✅ Sheet 2: สรุปสถานะ
+        // ✅ Sheet 2: รายละเอียดแยกแต่ละสถานพยาบาล
         // ==========================================
-        const byStatus = {};
-        VR_DATA.forEach(c => {
-            const s = c.status || 'ตามนัดปกติ';
-            if (!byStatus[s]) byStatus[s] = 0;
-            byStatus[s]++;
-        });
-        
-        const statusRows = [
-            ['สรุปสถานะความครอบคลุมวัคซีน'],
+        const sheet2Rows = [
+            ['รายละเอียดเด็กซ้ำแยกรายสถานพยาบาล (Data List)'],
             [`วันที่: ${thaiDateStr}`],
             [],
-            ['สถานะ', 'จำนวน (คน)', 'ร้อยละ']
+            ['#', 'เลขบัตรประชาชน', 'ชื่อ-สกุล', 'อายุ', 'รหัสสถานพยาบาล', 'ชื่อสถานพยาบาล', 'HN', 'บ้านเลขที่', 'หมู่ที่', 'ตำบล', 'เบอร์โทร', 'อสม. ผู้รับผิดชอบ', 'สถานะวัคซีน', 'วัคซีนที่ขาด']
         ];
-        const total = VR_DATA.length;
-        Object.keys(byStatus).forEach(s => {
-            const count = byStatus[s];
-            const pct = total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
-            statusRows.push([s, count, pct + '%']);
-        });
-        statusRows.push(['รวม', total, '100%']);
-        
-        const ws2 = XLSX.utils.aoa_to_sheet(statusRows);
-        ws2['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 12 }];
-        XLSX.utils.book_append_sheet(wb, ws2, 'สรุปสถานะ');
-        
-        // ==========================================
-        // ✅ Sheet 3: เด็กขาดวัคซีน
-        // ==========================================
-        const missedChildren = VR_DATA.filter(c => c.status === 'ขาดนัด');
-        if (missedChildren.length > 0) {
-            const missedRows = [
-                ['รายชื่อเด็กที่ยังไม่ได้รับวัคซีนครบ'],
-                [`รวม: ${missedChildren.length} คน`],
-                [],
-                ['#', 'hcode', 'HN', 'ชื่อ-สกุล', 'อายุ', 'หมู่ที่', 'หน่วยบริการ', 'อสม.', 'วัคซีนที่ขาด']
-            ];
-            missedChildren.forEach((c, i) => {
-                missedRows.push([
-                    i + 1,
-                    c.hcode || '',
-                    c.hn || '',
+
+        let recordIdx = 1;
+        DUP_DATA.forEach(c => {
+            (c.records || []).forEach(r => {
+                const facName = r.hname || (APP.facilityMap && APP.facilityMap[r.hcode]) || r.hcode || '';
+                sheet2Rows.push([
+                    recordIdx++,
+                    c.id || '',
                     c.fullname || '',
                     c.age || '',
-                    c.village || '',
-                    c.hname || '',
-                    c.asm || '',
-                    c.missingVaccines || ''
+                    r.hcode || '',
+                    facName,
+                    r.hn || '',
+                    r.houseNumber || '',
+                    r.village || '',
+                    r.subdistrict || '',
+                    r.phone || '',
+                    r.asm || '',
+                    r.status || '',
+                    r.missingVaccines || ''
                 ]);
             });
-            
-            const ws3 = XLSX.utils.aoa_to_sheet(missedRows);
-            ws3['!cols'] = [
-                { wch: 5 }, { wch: 10 }, { wch: 10 }, { wch: 28 }, { wch: 12 },
-                { wch: 8 }, { wch: 22 }, { wch: 18 }, { wch: 35 }
-            ];
-            XLSX.utils.book_append_sheet(wb, ws3, 'เด็กขาดวัคซีน');
-        }
-        
+        });
+
+        const ws2 = XLSX.utils.aoa_to_sheet(sheet2Rows);
+        ws2['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 13 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 13 } }
+        ];
+        ws2['!cols'] = [
+            { wch: 6 },   // #
+            { wch: 18 },  // CID
+            { wch: 26 },  // ชื่อ-สกุล
+            { wch: 12 },  // อายุ
+            { wch: 14 },  // HCODE
+            { wch: 26 },  // HNAME
+            { wch: 12 },  // HN
+            { wch: 12 },  // บ้านเลขที่
+            { wch: 8 },   // หมู่
+            { wch: 14 },  // ตำบล
+            { wch: 14 },  // โทรศัพท์
+            { wch: 20 },  // อสม.
+            { wch: 14 },  // สถานะ
+            { wch: 30 }   // วัคซีนที่ขาด
+        ];
+        XLSX.utils.book_append_sheet(wb, ws2, 'รายละเอียดแยกรายแห่ง');
+
         // ==========================================
-        // ✅ บันทึกไฟล์
+        // ✅ Sheet 3: สรุปสถิติแยกตามสถานพยาบาล
         // ==========================================
-        const fileName = 'ทะเบียนความครอบคลุมวัคซีน_ปีงบ' + 
-                        (new Date().getFullYear() + 543) + '_เด็กทั้งหมด_0-5ปี_' +
-                        today.toISOString().slice(0, 10) + '.xlsx';
-        
+        const sheet3Rows = [
+            ['สถิติจำนวนเด็กซ้ำแยกตามสถานพยาบาล'],
+            [`วันที่: ${thaiDateStr}`],
+            [],
+            ['รหัสสถานพยาบาล', 'ชื่อสถานพยาบาล', 'จำนวนเด็กที่พบซ้ำ (คน)']
+        ];
+
+        const facBreakdown = DUP_SUMMARY.facilityBreakdown || {};
+        Object.keys(facBreakdown).forEach(hc => {
+            const facName = (APP.facilityMap && APP.facilityMap[hc]) || hc || 'ไม่ระบุ';
+            sheet3Rows.push([hc, facName, facBreakdown[hc]]);
+        });
+
+        const ws3 = XLSX.utils.aoa_to_sheet(sheet3Rows);
+        ws3['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }
+        ];
+        ws3['!cols'] = [{ wch: 16 }, { wch: 32 }, { wch: 22 }];
+        XLSX.utils.book_append_sheet(wb, ws3, 'สถิติตามสถานพยาบาล');
+
+        // ==========================================
+        // ✅ บันทึกและดาวน์โหลดไฟล์
+        // ==========================================
+        const fileName = 'รายงานตรวจสอบเด็กซ้ำหลายสถานพยาบาล_' + today.toISOString().slice(0, 10) + '.xlsx';
         XLSX.writeFile(wb, fileName);
-        
+
         hideLoading();
-        
+
         Swal.fire({
             icon: 'success',
-            title: 'ส่งออกสำเร็จ!',
+            title: 'ส่งออกไฟล์สำเร็จ!',
             html: `
                 <div style="font-family:Kanit; font-size:14px;">
                     <p>ไฟล์: <strong>${esc(fileName)}</strong></p>
                     <p style="color:#64748b; font-size:13px; margin-top:8px;">
-                        ${VR_DATA.length} คน × ${vaccineHeaders.length} วัคซีน<br>
-                        มี ${wb.SheetNames.length} Sheet
+                        รวมเด็กที่พบข้อมูลซ้ำ ${DUP_DATA.length} คน (มี ${wb.SheetNames.length} แผ่นงาน)
                     </p>
                 </div>
             `,
             timer: 3000,
             showConfirmButton: false
         });
-        
-    } catch (error) {
-        console.error('exportVaccineRegisterExcel error:', error);
+
+    } catch (err) {
+        console.error('exportDuplicateReportExcel error:', err);
         hideLoading();
-        Swal.fire('ผิดพลาด', 'ไม่สามารถสร้างไฟล์ Excel ได้: ' + error.message, 'error');
+        Swal.fire('ผิดพลาด', 'ไม่สามารถส่งออกไฟล์ Excel ได้: ' + err.message, 'error');
     }
 }
+
     console.log('✅ ระบบติดตามวัคซีนเด็ก 0-5 ปี พร้อมทำงาน');
 </script>
 </body>
