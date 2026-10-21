@@ -5087,9 +5087,29 @@ function collapseAllVillages() {
     }
 
     function getRoleClass(role) {
-        if (role === 'Admin' || role === 'Admin_Ampur' || role === 'Admin_HOS') return 'role-admin';
-        if (role === 'เจ้าหน้าที่') return 'role-officer';
+        const r = String(role || '').toLowerCase().trim();
+        if (r === 'admin' || r === 'admin_ampur' || r === 'admin_hos') return 'role-admin';
+        if (r === 'เจ้าหน้าที่') return 'role-officer';
         return 'role-vhv';
+    }
+
+    function isAdminAmpurUser() {
+        if (!APP.currentUser || !APP.currentUser.role) return false;
+        const r = String(APP.currentUser.role).toLowerCase().trim();
+        return r === 'admin_ampur' || r === 'admin';
+    }
+
+    function isAdminHOSUser() {
+        if (!APP.currentUser || !APP.currentUser.role) return false;
+        const r = String(APP.currentUser.role).toLowerCase().trim();
+        return r === 'admin_hos';
+    }
+
+    function isSpecialOfficerUser() {
+        if (!APP.currentUser) return false;
+        const r = String(APP.currentUser.role || '').toLowerCase().trim();
+        const h = String(APP.currentUser.hcode || '').trim();
+        return r === 'เจ้าหน้าที่' && (h === '00860' || h === '11390');
     }
 
     function statCard(color, icon, label, num, unit) {
@@ -5376,6 +5396,7 @@ async function warmUpBackend() {
     APP.currentUser = null;
     APP.selectedFiles = [];
     APP.charts = {};
+    APP.selectedDashboardFacility = 'ทั้งหมด';
     document.getElementById('appContainer').style.display = 'none';
     document.getElementById('loginPage').style.display = 'flex';
     document.getElementById('loginUsername').value = '';
@@ -5416,9 +5437,11 @@ async function warmUpBackend() {
     function renderSidebarMenu() {
         if (!APP.currentUser) return;
         const role = APP.currentUser.role;
+        const isAdminAmpur = isAdminAmpurUser();
+        const isAdminHOS = isAdminHOSUser();
         let items = [];
 
-        if (role === 'Admin_Ampur' || role === 'Admin_HOS') {
+        if (isAdminAmpur || isAdminHOS) {
             items = [
                 { sep: 'ภาพรวม' },
                 { id: 'dashboard', icon: 'fas fa-chart-line', label: 'Dashboard' },
@@ -5782,11 +5805,25 @@ function updateBottomNavActive(page) {
             });
         }
 
+        const isAdminAmpur = isAdminAmpurUser();
+        const isSpecialOfficer = isSpecialOfficerUser();
+
+        // สถานพยาบาลที่เลือกบน Dashboard (ถ้า Admin_Ampur หรือเจ้าหน้าที่พิเศษ ไม่ได้เลือกเฉพาะ ให้เป็น 'ทั้งหมด')
+        const selectedDashboardFacility = (isAdminAmpur || isSpecialOfficer)
+            ? (APP.selectedDashboardFacility || 'ทั้งหมด')
+            : (APP.currentUser.hcode || 'ทั้งหมด');
+
         // ============================================================
         // ✅ STEP 3: โหลด Dashboard Stats (หนัก) — retry มากกว่า
         // ============================================================
         const result = await callGAS('getDashboardStats',
-            [APP.currentUser.role, APP.currentUser.village, APP.currentUser.hcode, APP.currentUser.subdistrict],
+            [
+                APP.currentUser.role,
+                isAdminAmpur ? 'ทั้งหมด' : APP.currentUser.village,
+                isAdminAmpur ? '' : APP.currentUser.hcode,
+                isAdminAmpur ? '' : APP.currentUser.subdistrict,
+                selectedDashboardFacility
+            ],
             { maxRetries: 4, retryDelay: 1500, timeout: 60000 }
         );
 
@@ -5807,15 +5844,28 @@ function updateBottomNavActive(page) {
         const statusData = result.statusData || {};
         const facilityCoverage = result.facilityCoverage || [];
 
-        // ✅ สร้าง Dropdown ตัวกรองสถานพยาบาล (ถ้ามีสิทธิ์)
+        // ✅ สร้าง Dropdown ตัวกรองสถานพยาบาลสำหรับแดชบอร์ด & แผนที่ (ถ้ามีสิทธิ์)
+        let dashFacilitySelectorHtml = '';
         let mapFacilityDropdownHtml = '';
-        const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && 
-                                  (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
-        if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
-            const facilityOptions = '<option value="ทั้งหมด">แสดงทุกสถานพยาบาล</option>' + 
+        if (isAdminAmpur || isSpecialOfficer) {
+            const curSelected = APP.selectedDashboardFacility || 'ทั้งหมด';
+            const facilityOptions = '<option value="ทั้งหมด"' + (curSelected === 'ทั้งหมด' ? ' selected' : '') + '>🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)</option>' + 
                 Object.keys(APP.facilityMap).map(k => 
-                    `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`
+                    `<option value="${esc(k)}"${curSelected === k ? ' selected' : ''}>${esc(APP.facilityMap[k])}</option>`
                 ).join('');
+            
+            dashFacilitySelectorHtml = `
+                <div style="display:inline-flex; align-items:center; background:#fff; padding:6px 14px; border-radius:10px; border:1px solid #cbd5e1; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+                    <label for="dashFacilityFilter" style="font-size:13px; font-weight:600; color:#334155; margin-right:8px; margin-bottom:0; display:flex; align-items:center; gap:6px;">
+                        <i class="fas fa-hospital-alt" style="color:#667eea; font-size:14px;"></i> สถานพยาบาล:
+                    </label>
+                    <select id="dashFacilityFilter" onchange="onDashboardFacilityChange(this.value)" 
+                            style="border:none; outline:none; background:transparent; font-family:'Kanit',sans-serif; font-size:13px; font-weight:600; color:#1e293b; cursor:pointer;">
+                        ${facilityOptions}
+                    </select>
+                </div>
+            `;
+
             mapFacilityDropdownHtml = `
                 <select id="mapFacilityFilter" onchange="initLeafletMap()" 
                         style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; 
@@ -5829,9 +5879,12 @@ function updateBottomNavActive(page) {
         // ✅ STEP 5: แทนที่ Skeleton ด้วย UI จริง
         // ============================================================
         page.innerHTML = `
-            <div class="page-title"><i class="fas fa-chart-line"></i> ภาพรวมระบบ</div>
-            <div style="text-align:right; margin-bottom:15px; color:#888; font-size:13px;">
-                <i class="fas fa-calendar-day"></i> ${dateStr}
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 15px;">
+                <div class="page-title" style="margin-bottom:0;"><i class="fas fa-chart-line"></i> ภาพรวมระบบ</div>
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    ${dashFacilitySelectorHtml}
+                    <div style="color:#888; font-size:13px;"><i class="fas fa-calendar-day"></i> ${dateStr}</div>
+                </div>
             </div>
 
             <div class="stats-grid">
@@ -6050,6 +6103,11 @@ function updateBottomNavActive(page) {
         };
     }
 
+    window.onDashboardFacilityChange = function(facilityCode) {
+        APP.selectedDashboardFacility = facilityCode;
+        loadDashboard();
+    };
+
     window.filterVillageChartByFacility = function(hcode, hname) {
         const filteredData = APP.dashboardVillageData.filter(v => v.hcode === hcode);
         renderVillageVerticalBar(filteredData, APP.dashboardVillageColors);
@@ -6157,17 +6215,18 @@ function updateBottomNavActive(page) {
                 facilityFilterEl.value = forceHcode;
             }
             
-            const selectedFacility = facilityFilterEl ? facilityFilterEl.value : 'ทั้งหมด';
+            const selectedFacility = facilityFilterEl ? facilityFilterEl.value : (APP.selectedDashboardFacility || 'ทั้งหมด');
 
+            const isMapAdminAmpur = isAdminAmpurUser();
             const filters = {
-    village: (APP.currentUser.role !== 'Admin' && APP.currentUser.village !== '-') ? APP.currentUser.village : 'ทั้งหมด',
-    userRole: APP.currentUser.role,      
-    userHcode: APP.currentUser.hcode,    
-    userSubdistrict: APP.currentUser.subdistrict,
-    userVillage: APP.currentUser.village, 
-    hcode: selectedFacility 
-};
-const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
+                village: (!isMapAdminAmpur && APP.currentUser.village && APP.currentUser.village !== '-') ? APP.currentUser.village : 'ทั้งหมด',
+                userRole: APP.currentUser.role,      
+                userHcode: isMapAdminAmpur ? '' : APP.currentUser.hcode,    
+                userSubdistrict: isMapAdminAmpur ? '' : APP.currentUser.subdistrict,
+                userVillage: isMapAdminAmpur ? '' : APP.currentUser.village, 
+                hcode: selectedFacility 
+            };
+            const childrenResult = await callGAS('getAllChildrenForMap', [filters]);
 
             const mapDiv = document.getElementById('childMap');
             if (!mapDiv) return;
@@ -7115,9 +7174,9 @@ window.switchLogTab = function(tab) {
             const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
                 Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
 
-            const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+            const isSpecialOfficer = isSpecialOfficerUser();
             let facilityFilterHtml = ''; 
-            if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
+            if (isAdminAmpurUser() || isSpecialOfficer) {
                 facilityFilterHtml = `<div class="filter-group"><label>สถานพยาบาล</label><select id="cFacility" onchange="cascadeVillageOptions(this.value, 'cVillage')">${facilityOptions}</select></div>`;
             }
 
@@ -7302,9 +7361,9 @@ window.switchLogTab = function(tab) {
             const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
                 Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
 
-            const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+            const isSpecialOfficer = isSpecialOfficerUser();
             let facilityFilterHtml = ''; 
-            if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
+            if (isAdminAmpurUser() || isSpecialOfficer) {
                 facilityFilterHtml = `<div class="filter-group"><label>สถานพยาบาล</label><select id="mFacility" onchange="cascadeVillageOptions(this.value, 'mVillage')">${facilityOptions}</select></div>`;
             }
 
@@ -7501,12 +7560,12 @@ window.switchLogTab = function(tab) {
                 Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
 
             let facilityFilterHtml = '';
-            const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
-            if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
+            const isSpecialOfficer = isSpecialOfficerUser();
+            if (isAdminAmpurUser() || isSpecialOfficer) {
                 facilityFilterHtml = `<div class="filter-group"><label>สถานพยาบาล</label><select id="apptFacilityFilter">${facilityOptions}</select></div>`;
             }
 
-            const canClinic = (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS' || APP.currentUser.role === 'เจ้าหน้าที่');
+            const canClinic = (isAdminAmpurUser() || isAdminHOSUser() || APP.currentUser.role === 'เจ้าหน้าที่');
             const clinicBtnHtml = canClinic ? 
                 '<button class="btn-clinic-mode" onclick="openClinicBatchModal()"><i class="fas fa-syringe"></i> โหมดคลินิกเด็กดี (บันทึกรับวัคซีน)</button>' : '';
 
@@ -8140,14 +8199,14 @@ window.switchLogTab = function(tab) {
             APP.facilityMap = fRes.success ? fRes.map : {};
             hideLoading();
 
-            const canManage = (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS' || APP.currentUser.role === 'เจ้าหน้าที่');
+            const canManage = (isAdminAmpurUser() || isAdminHOSUser() || APP.currentUser.role === 'เจ้าหน้าที่');
             
             const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
                 Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
 
             let facilityFilterHtml = '';
-            const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
-            if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
+            const isSpecialOfficer = isSpecialOfficerUser();
+            if (isAdminAmpurUser() || isSpecialOfficer) {
                 facilityFilterHtml = `<div class="filter-group" style="max-width: 250px;"><label>สถานพยาบาล</label><select id="calFacilityFilter" onchange="renderCalendarEvents()">${facilityOptions}</select></div>`;
             }
             
@@ -8193,8 +8252,8 @@ window.switchLogTab = function(tab) {
         appts.forEach(function(a) {
             let hcode = hcodeIdx !== -1 ? a[hcodeIdx] : '';
 
-            const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
-            if (APP.currentUser.role !== 'Admin_Ampur' && !isSpecialOfficer && hcodeIdx !== -1) {
+            const isSpecialOfficer = isSpecialOfficerUser();
+            if (!isAdminAmpurUser() && !isSpecialOfficer && hcodeIdx !== -1) {
                 if (hcode !== APP.currentUser.hcode) return;
             }
 
@@ -9079,9 +9138,9 @@ window.switchLogTab = function(tab) {
 
         const lockVillage = (APP.currentUser.role === 'เจ้าหน้าที่' && APP.currentUser.village && APP.currentUser.village !== '-') ? APP.currentUser.village : '';
 
-        const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
+        const isSpecialOfficer = isSpecialOfficerUser();
         let facilityFilterHtml = '';
-        if (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer) {
+        if (isAdminAmpurUser() || isSpecialOfficer) {
             const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
                 Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
             facilityFilterHtml = '<div class="rpt-fg"><label><i class="fas fa-hospital"></i> สถานพยาบาล</label>' +
@@ -10655,9 +10714,8 @@ window.confirmClearOldAppointments = async function() {
   const currentUser = APP.currentUser || {};
   const userRole = currentUser.role || '';
   const userHcode = currentUser.hcode || '';
-  const isSpecialOfficer = (userRole === 'เจ้าหน้าที่' &&
-                            (userHcode === '00860' || userHcode === '11390'));
-  const canSelectFacility = (userRole === 'Admin_Ampur' || isSpecialOfficer);
+  const isSpecialOfficer = isSpecialOfficerUser();
+  const canSelectFacility = (isAdminAmpurUser() || isSpecialOfficer);
 
   let facilityFilterHtml = '';
   if (canSelectFacility) {
@@ -10809,9 +10867,8 @@ async function doLoadCoverage() {
   const u = APP.currentUser || {};
   
   // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
-  const isSpecialOfficer = (u.role === 'เจ้าหน้าที่' &&
-                            (u.hcode === '00860' || u.hcode === '11390'));
-  const canSelectFacility = (u.role === 'Admin_Ampur' || isSpecialOfficer);
+  const isSpecialOfficer = isSpecialOfficerUser();
+  const canSelectFacility = (isAdminAmpurUser() || isSpecialOfficer);
 
   // ✅ ดึงค่า hcode จาก Dropdown (ถ้าเลือกได้) หรือจาก user (ถ้าล็อกไว้)
   let selectedHcode = '';
@@ -11570,9 +11627,8 @@ async function sendCoverageTG() {
   }
 
   const u = APP.currentUser || {};
-  const isSpecialOfficer = (u.role === 'เจ้าหน้าที่' &&
-                            (u.hcode === '00860' || u.hcode === '11390'));
-  const canSelectFacility = (u.role === 'Admin_Ampur' || isSpecialOfficer);
+  const isSpecialOfficer = isSpecialOfficerUser();
+  const canSelectFacility = (isAdminAmpurUser() || isSpecialOfficer);
 
   let selectedHcode = '';
   const facilityEl = document.getElementById('cvFacility');
@@ -11670,9 +11726,8 @@ async function toggleTrendView() {
   const u = APP.currentUser || {};
 
   // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
-  const isSpecialOfficer = (u.role === 'เจ้าหน้าที่' &&
-                            (u.hcode === '00860' || u.hcode === '11390'));
-  const canSelectFacility = (u.role === 'Admin_Ampur' || isSpecialOfficer);
+  const isSpecialOfficer = isSpecialOfficerUser();
+  const canSelectFacility = (isAdminAmpurUser() || isSpecialOfficer);
 
   let selectedHcode = '';
   const facilityEl = document.getElementById('cvFacility');
@@ -12094,9 +12149,8 @@ async function loadDuplicateReportPage() {
     const currentUser = APP.currentUser || {};
     const userRole = currentUser.role || '';
     const userHcode = currentUser.hcode || '';
-    const isSpecialOfficer = (userRole === 'เจ้าหน้าที่' &&
-                              (userHcode === '00860' || userHcode === '11390'));
-    const canSelectFacility = (userRole === 'Admin_Ampur' || isSpecialOfficer);
+    const isSpecialOfficer = isSpecialOfficerUser();
+    const canSelectFacility = (isAdminAmpurUser() || isSpecialOfficer);
 
     let facilityFilterHtml = '';
     if (canSelectFacility) {
