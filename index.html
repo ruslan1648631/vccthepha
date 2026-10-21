@@ -4091,6 +4091,387 @@
         display: none !important;
     }
 }
+
+/* ============================================================
+   MINI APPOINTMENT SLIP (ใบนัดวัคซีนขนาดพกพา) STYLES
+   ============================================================ */
+.btn-print-batch-slip {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: white !important;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13px;
+    font-family: 'Kanit', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+}
+.btn-print-batch-slip:hover {
+    background: linear-gradient(135deg, #0369a1, #075985);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(2, 132, 199, 0.35);
+}
+
+.mini-slip-card {
+    font-family: 'Kanit', sans-serif;
+    color: #0f172a;
+    background: #ffffff;
+    border: 1.5px dashed #64748b;
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    position: relative;
+    line-height: 1.35;
+    font-size: 12.5px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+    page-break-inside: avoid;
+}
+
+.mini-slip-cut-line {
+    font-size: 9.5px;
+    color: #94a3b8;
+    text-align: center;
+    letter-spacing: 1.5px;
+    margin-bottom: 5px;
+    user-select: none;
+}
+.mini-slip-cut-line-bottom {
+    font-size: 9.5px;
+    color: #94a3b8;
+    text-align: center;
+    letter-spacing: 1.5px;
+    margin-top: 6px;
+    user-select: none;
+}
+
+.mini-slip-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+}
+
+.mini-slip-logo {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    background: #0284c7;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.mini-slip-header-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.mini-slip-hospital {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mini-slip-title {
+    font-size: 11px;
+    color: #0284c7;
+    font-weight: 600;
+}
+
+.mini-slip-child-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 7px 9px;
+    margin-bottom: 6px;
+}
+
+.mini-slip-child-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 3px;
+}
+
+.mini-slip-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 8px;
+    font-size: 11.5px;
+    color: #334155;
+}
+
+.mini-slip-meta-grid .full-row {
+    grid-column: span 2;
+}
+
+.mini-slip-appt-box {
+    background: #eff6ff;
+    border: 1.5px solid #0284c7;
+    border-radius: 6px;
+    padding: 7px 9px;
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+.mini-slip-appt-badge {
+    display: inline-block;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 10px;
+    margin-bottom: 3px;
+    letter-spacing: 0.3px;
+}
+
+.mini-slip-appt-date {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0369a1;
+    margin-bottom: 2px;
+}
+
+.mini-slip-appt-sub {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.mini-slip-vac-section {
+    margin-bottom: 6px;
+}
+
+.mini-slip-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mini-slip-vac-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.mini-slip-vac-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    padding: 3px 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.mini-slip-vac-code {
+    font-weight: 700;
+    font-size: 11px;
+    color: #0284c7;
+    background: #e0f2fe;
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.mini-slip-vac-name {
+    font-size: 10.5px;
+    color: #334155;
+    line-height: 1.2;
+}
+
+.mini-slip-reminders {
+    background: #fffbeb;
+    border: 1px solid #fef3c7;
+    border-radius: 5px;
+    padding: 5px 7px;
+    margin-bottom: 6px;
+    font-size: 10.5px;
+    color: #78350f;
+    line-height: 1.3;
+}
+
+.mini-slip-reminder-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 2px;
+}
+.mini-slip-reminder-item:last-child {
+    margin-bottom: 0;
+}
+.mini-slip-reminder-item i {
+    color: #d97706;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.mini-slip-footer {
+    border-top: 1px dashed #cbd5e1;
+    padding-top: 5px;
+    font-size: 10.5px;
+    color: #475569;
+}
+
+.mini-slip-contact {
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 2px;
+    text-align: center;
+}
+
+.mini-slip-issued {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.5px;
+    color: #64748b;
+    margin-bottom: 3px;
+}
+
+.mini-slip-barcode-wrap {
+    text-align: center;
+    margin-top: 3px;
+}
+
+.mini-slip-barcode-lines {
+    height: 20px;
+    width: 130px;
+    margin: 0 auto 2px;
+    background: repeating-linear-gradient(90deg, #1e293b 0, #1e293b 2px, transparent 2px, transparent 4px, #1e293b 4px, #1e293b 7px, transparent 7px, transparent 8px, #1e293b 8px, #1e293b 9px, transparent 9px, transparent 12px);
+}
+
+.mini-slip-barcode-text {
+    font-family: monospace;
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    color: #475569;
+}
+
+/* Modal styling for Slip Controls & Live Preview */
+.mini-slip-modal-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 18px;
+}
+
+@media (max-width: 768px) {
+    .mini-slip-modal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   MINI APPOINTMENT SLIP PRINT ISOLATION
+   ============================================================ */
+#miniSlipPrintArea {
+    display: none;
+}
+
+@media print {
+    body.printing-slip {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body.printing-slip * {
+        visibility: hidden !important;
+    }
+
+    body.printing-slip #miniSlipPrintArea,
+    body.printing-slip #miniSlipPrintArea * {
+        visibility: visible !important;
+    }
+
+    body.printing-slip #miniSlipPrintArea {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        z-index: 999999 !important;
+    }
+
+    /* Single / Thermal Mode */
+    .mini-slip-thermal-container {
+        width: 76mm;
+        margin: 0 auto;
+        padding: 0;
+    }
+
+    .mini-slip-thermal-container .mini-slip-card {
+        width: 76mm !important;
+        max-width: 76mm !important;
+        margin: 0 0 8mm 0 !important;
+        page-break-inside: avoid !important;
+        page-break-after: always !important;
+        box-shadow: none !important;
+        border: 1.5px dashed #000 !important;
+    }
+
+    /* A4 Mode: 4 per page in a 2x2 grid */
+    .mini-slip-a4-container {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .mini-slip-a4-page {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6mm !important;
+        padding: 6mm !important;
+        width: 100% !important;
+        min-height: 275mm !important;
+        box-sizing: border-box !important;
+        page-break-inside: avoid !important;
+        page-break-after: always !important;
+    }
+
+    .mini-slip-a4-page.last-page {
+        page-break-after: auto !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        page-break-inside: avoid !important;
+        box-shadow: none !important;
+        border: 1.5px dashed #334155 !important;
+        background: #ffffff !important;
+    }
+}
     </style>
 </head>
 <body>
@@ -6502,9 +6883,12 @@ function updateBottomNavActive(page) {
                 '<div><small style="color:#64748b; font-size:12px;">บิดา</small><div style="font-weight:500;">' + esc(c.fatherName || '-') + '</div></div>' +
                 '<div><small style="color:#64748b; font-size:12px;">มารดา</small><div style="font-weight:500;">' + esc(c.motherName || '-') + '</div></div>' +
                 '</div>' +
-                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">' +
                 '<strong style="font-size:15px; color:#0f172a;"><i class="fas fa-syringe" style="color:#667eea;"></i> ประวัติการรับวัคซีนทั้งหมด</strong>' +
+                '<div style="display:flex; align-items:center; gap:8px;">' +
+                '<button class="action-btn" style="color:#0284c7; background:#e0f2fe; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500;" onclick="openSlipForChildFromDetail(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-print"></i> พิมพ์ใบนัด</button>' +
                 '<span style="font-size:12px; color:#64748b;">รวม ' + vaccineRows.length + ' รายการ</span>' +
+                '</div>' +
                 '</div>' +
                 '<div style="max-height:220px;overflow-y:auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 12px;">' +
                 (vaccineRows.length > 0 ?
@@ -7581,6 +7965,7 @@ window.switchLogTab = function(tab) {
                 '<button class="btn-filter" onclick="doLoadAppointments()"><i class="fas fa-search"></i> ค้นหา</button>' +
                 '<button class="btn-reset" onclick="if(document.getElementById(\'apptFacilityFilter\')) document.getElementById(\'apptFacilityFilter\').value=\'ทั้งหมด\'; document.getElementById(\'apptDateFilter\').value=\'\'; doLoadAppointments();"><i class="fas fa-undo"></i> แสดงทั้งหมด</button>' +
                 '<button class="btn-rpt-csv" onclick="exportApptCsv()"><i class="fas fa-file-csv"></i> ส่งออกไฟล์ CSV</button>' +
+                '<button class="btn-print-batch-slip" onclick="openBatchPrintMiniSlipsModal()"><i class="fas fa-print"></i> พิมพ์ใบนัดตามตัวกรอง</button>' +
                 '</div>' +
                 '</div>' +
                 '<div id="apptsTableWrap" style="width: 100%;"></div>';
@@ -7659,6 +8044,7 @@ window.switchLogTab = function(tab) {
 
         APP.apptHeaders = headers;
         APP.apptAllRecords = appts;
+        APP.apptCurrentRendered = appts;
 
         const theadHTML = '<tr>' + headers.map(function(h, idx) { 
             if (isHiddenCol(idx, h)) return ''; 
@@ -7666,9 +8052,9 @@ window.switchLogTab = function(tab) {
             if (displayH === 'hcode' || displayH === 'รหัสสถานพยาบาล') displayH = 'สถานพยาบาล';
             if (displayH === 'รหัสวัคซีน') displayH = 'วัคซีน';
             return '<th style="white-space: nowrap;">' + esc(displayH) + '</th>'; 
-        }).join('') + '</tr>';
+        }).join('') + '<th style="white-space: nowrap; text-align:center;">พิมพ์ใบนัด</th></tr>';
 
-        const tbodyHTML = appts.map(function(row) {
+        const tbodyHTML = appts.map(function(row, rIdx) {
             let trHtml = '<tr>';
             for (let idx = 0; idx < headers.length; idx++) {
                 if (isHiddenCol(idx, headers[idx])) continue; 
@@ -7688,6 +8074,9 @@ window.switchLogTab = function(tab) {
                     trHtml += '<td>' + esc(cell) + '</td>';
                 }
             }
+            trHtml += '<td style="text-align:center; white-space:nowrap;">' +
+                      '<button class="action-btn" style="color:#0284c7; background:#e0f2fe; padding:4px 9px; border-radius:6px; font-weight:500;" title="พิมพ์ใบนัดขนาดพกพา" onclick="openMiniSlipModalByRowIndex(' + rIdx + ')"><i class="fas fa-print"></i> ใบนัด</button>' +
+                      '</td>';
             trHtml += '</tr>';
             return trHtml;
         }).join('');
@@ -7758,6 +8147,803 @@ window.switchLogTab = function(tab) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
+
+    // ============================================================
+    // MINI APPOINTMENT SLIP (ใบนัดวัคซีนขนาดพกพา) ENGINE
+    // ============================================================
+    const THAI_VACCINE_CATALOG_FALLBACK = {
+        'BCG': 'วัคซีนป้องกันวัณโรค (แรกเกิด)',
+        'HBV1': 'วัคซีนตับอักเสบบี เข็มที่ 1 (แรกเกิด)',
+        'HBV2': 'วัคซีนตับอักเสบบี เข็มที่ 2 (1 เดือน)',
+        'DTP-HB-Hib1': 'วัคซีนรวม 5 โรค (คอตีบ-บาดทะยัก-ไอกรน-ตับอักเสบบี-ฮิบ) เข็มที่ 1 (2 เดือน)',
+        'DTP-HB-Hib2': 'วัคซีนรวม 5 โรค (คอตีบ-บาดทะยัก-ไอกรน-ตับอักเสบบี-ฮิบ) เข็มที่ 2 (4 เดือน)',
+        'DTP-HB-Hib3': 'วัคซีนรวม 5 โรค (คอตีบ-บาดทะยัก-ไอกรน-ตับอักเสบบี-ฮิบ) เข็มที่ 3 (6 เดือน)',
+        'OPV1': 'วัคซีนหยอดโปลิโอ ครั้งที่ 1 (2 เดือน)',
+        'OPV2': 'วัคซีนหยอดโปลิโอ ครั้งที่ 2 (4 เดือน)',
+        'OPV3': 'วัคซีนหยอดโปลิโอ ครั้งที่ 3 (6 เดือน)',
+        'OPV4': 'วัคซีนหยอดโปลิโอ ครั้งที่ 4 (1 ปี 6 เดือน)',
+        'OPV5': 'วัคซีนหยอดโปลิโอ ครั้งที่ 5 (4 ปี)',
+        'IPV': 'วัคซีนฉีดโปลิโอ (4 เดือน)',
+        'IPV1': 'วัคซีนฉีดโปลิโอ เข็มที่ 1 (2 เดือน)',
+        'IPV2': 'วัคซีนฉีดโปลิโอ เข็มที่ 2 (4 เดือน)',
+        'ROTA1': 'วัคซีนหยอดโรต้า ครั้งที่ 1 (2 เดือน)',
+        'ROTA2': 'วัคซีนหยอดโรต้า ครั้งที่ 2 (4 เดือน)',
+        'ROTA3': 'วัคซีนหยอดโรต้า ครั้งที่ 3 (6 เดือน)',
+        'MMR1': 'วัคซีนหัด-คางทูม-หัดเยอรมัน เข็มที่ 1 (9-12 เดือน)',
+        'MMR2': 'วัคซีนหัด-คางทูม-หัดเยอรมัน เข็มที่ 2 (1 ปี 6 เดือน)',
+        'JE1': 'วัคซีนไข้สมองอักเสบเจอี เข็มที่ 1 (1 ปี)',
+        'JE2': 'วัคซีนไข้สมองอักเสบเจอี เข็มที่ 2 (1 ปี 6 เดือน - 2 ปี)',
+        'DTP4': 'วัคซีนคอตีบ-บาดทะยัก-ไอกรน ครั้งที่ 4 (1 ปี 6 เดือน)',
+        'DTP5': 'วัคซีนคอตีบ-บาดทะยัก-ไอกรน ครั้งที่ 5 (4 ปี)',
+        'FLU': 'วัคซีนไข้หวัดใหญ่ตามฤดูกาล'
+    };
+
+    function lookupThaiVaccineName(code) {
+        if (!code) return '';
+        const c = String(code).trim();
+        if (APP.vaccineCatalog && Array.isArray(APP.vaccineCatalog)) {
+            const found = APP.vaccineCatalog.find(v => v.code && v.code.toUpperCase() === c.toUpperCase());
+            if (found && found.name) return found.name;
+        }
+        return THAI_VACCINE_CATALOG_FALLBACK[c] || THAI_VACCINE_CATALOG_FALLBACK[c.toUpperCase()] || c;
+    }
+
+    function formatThaiCID(cid) {
+        if (!cid || cid === '-') return '-';
+        const clean = String(cid).replace(/\D/g, '');
+        if (clean.length === 13) {
+            return clean.charAt(0) + '-' + clean.slice(1, 5) + '-' + clean.slice(5, 10) + '-' + clean.slice(10, 12) + '-' + clean.charAt(12);
+        }
+        return cid;
+    }
+
+    function parseApptRowToSlipData(row, headers) {
+        headers = headers || APP.apptHeaders || [];
+        const getVal = (cols, defaultVal) => {
+            const idx = findColumnIndex(headers, cols);
+            return (idx !== -1 && row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== '') ? String(row[idx]).trim() : (defaultVal || '-');
+        };
+
+        const hcode = getVal(['hcode', 'รหัสสถานพยาบาล', 'สถานพยาบาล'], APP.currentUser ? APP.currentUser.hcode : '');
+        const facName = (APP.facilityMap && APP.facilityMap[hcode]) ? APP.facilityMap[hcode] : (hcode ? ('รหัสสถานพยาบาล ' + hcode) : 'หน่วยบริการสาธารณสุข');
+
+        return {
+            hcode: hcode,
+            facilityName: facName,
+            hn: getVal(['HN', 'รหัส', 'hn']),
+            fullname: getVal(['ชื่อ-สกุล', 'ชื่อ', 'ChildName', 'fullname']),
+            dob: getVal(['ว/ด/ปเกิด', 'วันเกิด', 'dob', 'DOB']),
+            age: getVal(['อายุ', 'age']),
+            houseNumber: getVal(['บ้านเลขที่', 'บ้าน']),
+            village: getVal(['หมู่ที่', 'หมู่', 'village']),
+            phone: getVal(['โทรศัพท์', 'เบอร์โทร', 'phone', 'tel']),
+            apptDate: getVal(['วันที่นัด', 'วันนัด', 'วันที่', 'นัดครั้งต่อไป']),
+            vacCode: getVal(['รหัสวัคซีน', 'วัคซีน', 'vaccine']),
+            vacName: getVal(['ชื่อวัคซีน'], ''),
+            cid: getVal(['CID', 'เลขบัตร', 'ID', 'id']),
+            rawRow: row
+        };
+    }
+
+    function renderMiniSlipHtml(slipData, options) {
+        options = options || {};
+        const timeSlot = options.timeSlot || '08:30 - 11:30 น. (ช่วงเช้า)';
+        const venue = options.venue || 'คลินิกเด็กดี (Well Baby Clinic)';
+        const contactPhone = options.phone || (slipData.phone && slipData.phone !== '-' ? slipData.phone : (APP.currentUser && APP.currentUser.phone ? APP.currentUser.phone : '-'));
+        const customNote = options.note || '';
+
+        // แยกรายการวัคซีน
+        const vacCodes = slipData.vacCode ? String(slipData.vacCode).split(',').map(v => v.trim()).filter(Boolean) : [];
+        let vacItemsHtml = '';
+        if (vacCodes.length > 0) {
+            vacItemsHtml = vacCodes.map(code => {
+                const thaiName = lookupThaiVaccineName(code);
+                return `
+                    <div class="mini-slip-vac-item">
+                        <span class="mini-slip-vac-code">${esc(code)}</span>
+                        <span class="mini-slip-vac-name">${esc(thaiName)}</span>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            vacItemsHtml = `<div class="mini-slip-vac-item"><span class="mini-slip-vac-name" style="color:#64748b;">(ตามที่เจ้าหน้าที่ระบุในสมุดสีชมพู)</span></div>`;
+        }
+
+        const formattedCID = formatThaiCID(slipData.cid);
+        const todayStr = (function() {
+            const d = new Date();
+            const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            return d.getDate() + ' ' + thaiMonths[d.getMonth()] + ' ' + (d.getFullYear() + 543);
+        })();
+
+        const issuerName = (APP.currentUser && (APP.currentUser.fullname || APP.currentUser.username)) ? APP.currentUser.fullname || APP.currentUser.username : 'เจ้าหน้าที่คลินิก';
+        const barcodeCode = slipData.hn && slipData.hn !== '-' ? slipData.hn : (slipData.cid && slipData.cid !== '-' ? slipData.cid : 'APPT');
+
+        const addressStr = (slipData.houseNumber && slipData.houseNumber !== '-') 
+            ? ('บ้านเลขที่ ' + slipData.houseNumber + (slipData.village && slipData.village !== '-' ? ' หมู่ ' + slipData.village : ''))
+            : (slipData.village && slipData.village !== '-' ? 'หมู่ ' + slipData.village : '-');
+
+        const customNoteHtml = customNote ? `
+            <div class="mini-slip-reminder-item">
+                <i class="fas fa-info-circle"></i> <strong>หมายเหตุ:</strong> ${esc(customNote)}
+            </div>
+        ` : '';
+
+        return `
+            <div class="mini-slip-card">
+                <div class="mini-slip-cut-line">
+                    <i class="fas fa-cut"></i> ----------------------------------------------------
+                </div>
+                
+                <div class="mini-slip-header">
+                    <div class="mini-slip-logo">
+                        <i class="fas fa-notes-medical"></i>
+                    </div>
+                    <div class="mini-slip-header-text">
+                        <div class="mini-slip-hospital">${esc(slipData.facilityName || 'คลินิกสร้างเสริมภูมิคุ้มกัน')}</div>
+                        <div class="mini-slip-title">ใบนัดรับวัคซีนเด็กดี (Well Baby Clinic)</div>
+                    </div>
+                </div>
+
+                <div class="mini-slip-child-box">
+                    <div class="mini-slip-child-name">
+                        <i class="fas fa-child" style="color:#0284c7; margin-right:4px;"></i>${esc(slipData.fullname || 'ไม่ระบุชื่อ')}
+                    </div>
+                    <div class="mini-slip-meta-grid">
+                        <div><strong>HN:</strong> ${esc(slipData.hn || '-')}</div>
+                        <div><strong>เลขบัตร:</strong> ${esc(formattedCID)}</div>
+                        <div><strong>วันเกิด:</strong> ${esc(slipData.dob || '-')}</div>
+                        <div><strong>อายุ:</strong> ${esc(slipData.age || '-')}</div>
+                        <div class="full-row"><strong>ที่อยู่:</strong> ${esc(addressStr)}</div>
+                        <div class="full-row"><strong>โทรศัพท์:</strong> ${esc(slipData.phone || '-')}</div>
+                    </div>
+                </div>
+
+                <div class="mini-slip-appt-box">
+                    <div class="mini-slip-appt-badge">กำหนดเวลานัดหมาย</div>
+                    <div class="mini-slip-appt-date">
+                        <i class="far fa-calendar-check" style="margin-right:4px;"></i>${esc(slipData.apptDate || '-')}
+                    </div>
+                    <div class="mini-slip-appt-sub">
+                        <span><i class="far fa-clock" style="color:#0284c7;"></i> ${esc(timeSlot)}</span>
+                        <span><i class="fas fa-map-marker-alt" style="color:#ef4444;"></i> ${esc(venue)}</span>
+                    </div>
+                </div>
+
+                <div class="mini-slip-vac-section">
+                    <div class="mini-slip-section-title">
+                        <i class="fas fa-syringe" style="color:#0284c7;"></i> รายการวัคซีนที่นัดรับในครั้งนี้:
+                    </div>
+                    <div class="mini-slip-vac-list">
+                        ${vacItemsHtml}
+                    </div>
+                </div>
+
+                <div class="mini-slip-reminders">
+                    <div class="mini-slip-reminder-item">
+                        <i class="fas fa-book-medical"></i> <strong>กรุณานำ "สมุดสีชมพู" มาด้วยทุกครั้ง</strong>
+                    </div>
+                    <div class="mini-slip-reminder-item">
+                        <i class="fas fa-temperature-high"></i> หากเด็กมีไข้หรือไม่สบาย ให้เลื่อนการฉีดและแจ้งเจ้าหน้าที่
+                    </div>
+                    <div class="mini-slip-reminder-item">
+                        <i class="fas fa-baby"></i> ควรให้นมหรืออาหารเด็กก่อนมารับวัคซีน
+                    </div>
+                    ${customNoteHtml}
+                </div>
+
+                <div class="mini-slip-footer">
+                    <div class="mini-slip-contact">
+                        <i class="fas fa-phone-alt" style="color:#0284c7; margin-right:4px;"></i>สอบถาม / แจ้งเลื่อนนัด: <strong>${esc(contactPhone)}</strong>
+                    </div>
+                    <div class="mini-slip-issued">
+                        <span>ผู้นัด: ${esc(issuerName)}</span>
+                        <span>วันที่ออกใบนัด: ${esc(todayStr)}</span>
+                    </div>
+                    <div class="mini-slip-barcode-wrap">
+                        <div class="mini-slip-barcode-lines"></div>
+                        <div class="mini-slip-barcode-text">*${esc(barcodeCode)}*</div>
+                    </div>
+                </div>
+
+                <div class="mini-slip-cut-line-bottom">
+                    ---------------------------------------------------- <i class="fas fa-cut"></i>
+                </div>
+            </div>
+        `;
+    }
+
+    function ensureMiniSlipModal() {
+        if (document.getElementById('miniSlipModal')) return;
+
+        const defaultPhone = (APP.currentUser && APP.currentUser.phone && APP.currentUser.phone !== '-') ? APP.currentUser.phone : '';
+
+        const modalHtml = `
+            <div id="miniSlipModal" class="modal" style="z-index: 9999;">
+                <div class="modal-content" style="max-width: 860px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; border-top-left-radius: 16px; border-top-right-radius: 16px; padding: 14px 20px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="background: rgba(255,255,255,0.2); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                                <i class="fas fa-print"></i>
+                            </span>
+                            <div>
+                                <h3 style="margin:0; font-size: 17px; color:#fff; font-weight: 600;">พิมพ์ใบนัดวัคซีนขนาดพกพา (Printable Mini Slip)</h3>
+                                <div style="font-size: 11.5px; color: rgba(255,255,255,0.85); font-weight: 400;">สำหรับแนบในสมุดสีชมพู หรือพิมพ์ด้วยเครื่องพิมพ์สลิป/A4</div>
+                            </div>
+                        </div>
+                        <button class="modal-close" style="color:white; font-size:24px; opacity: 0.9;" onclick="closeMiniSlipModal()">×</button>
+                    </div>
+
+                    <div class="modal-body" style="padding: 18px 20px; overflow-y: auto; flex: 1;">
+                        <div class="mini-slip-modal-grid">
+                            <!-- Controls Column -->
+                            <div class="mini-slip-controls" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px;">
+                                <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 12px; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-sliders-h" style="color: #0284c7;"></i> ตั้งค่าก่อนสั่งพิมพ์
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 11px;">
+                                    <label style="font-size: 12px; font-weight: 600; color: #475569;">ช่วงเวลานัดหมาย</label>
+                                    <select id="slipTimeSlot" onchange="onSlipSettingChange()" style="width: 100%; padding: 7px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12.5px;">
+                                        <option value="08:30 - 11:30 น. (ช่วงเช้า)" selected>08:30 - 11:30 น. (ช่วงเช้า)</option>
+                                        <option value="08:30 - 10:00 น. (คิวเช้า 1)">08:30 - 10:00 น. (คิวเช้า 1)</option>
+                                        <option value="10:00 - 11:30 น. (คิวเช้า 2)">10:00 - 11:30 น. (คิวเช้า 2)</option>
+                                        <option value="13:00 - 15:30 น. (ช่วงบ่าย)">13:00 - 15:30 น. (ช่วงบ่าย)</option>
+                                        <option value="custom">ระบุเวลาเอง...</option>
+                                    </select>
+                                    <input type="text" id="slipTimeSlotCustom" placeholder="เช่น 09:00 - 10:30 น." style="display: none; margin-top: 5px; width: 100%; padding: 6px 9px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;" oninput="onSlipSettingChange()">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 11px;">
+                                    <label style="font-size: 12px; font-weight: 600; color: #475569;">สถานที่นัดหมาย</label>
+                                    <select id="slipVenue" onchange="onSlipSettingChange()" style="width: 100%; padding: 7px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12.5px;">
+                                        <option value="คลินิกเด็กดี (Well Baby Clinic)" selected>คลินิกเด็กดี (Well Baby Clinic)</option>
+                                        <option value="ห้องสร้างเสริมภูมิคุ้มกันโรค">ห้องสร้างเสริมภูมิคุ้มกันโรค</option>
+                                        <option value="จุดบริการวัคซีน รพ.สต.">จุดบริการวัคซีน รพ.สต.</option>
+                                        <option value="custom">ระบุสถานที่เอง...</option>
+                                    </select>
+                                    <input type="text" id="slipVenueCustom" placeholder="เช่น อาคารบริการปฐมภูมิ ชั้น 1" style="display: none; margin-top: 5px; width: 100%; padding: 6px 9px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;" oninput="onSlipSettingChange()">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 11px;">
+                                    <label style="font-size: 12px; font-weight: 600; color: #475569;">เบอร์ติดต่อสถานพยาบาล / เลื่อนนัด</label>
+                                    <input type="text" id="slipPhone" value="${esc(defaultPhone)}" placeholder="เช่น 074-371111 หรือ เบอร์ รพ.สต." style="width: 100%; padding: 6px 9px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12.5px;" oninput="onSlipSettingChange()">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 11px;">
+                                    <label style="font-size: 12px; font-weight: 600; color: #475569;">คำแนะนำพิเศษเพิ่มเติม (ถ้ามี)</label>
+                                    <input type="text" id="slipCustomNote" placeholder="เช่น งดไข่ก่อนฉีด 1 วัน / รับที่อาคารใหม่" style="width: 100%; padding: 6px 9px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;" oninput="onSlipSettingChange()">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 6px;">
+                                    <label style="font-size: 12px; font-weight: 600; color: #475569;">รูปแบบกระดาษที่จะพิมพ์</label>
+                                    <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+                                        <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 11.5px; cursor: pointer; background: #fff; padding: 7px 9px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                                            <input type="radio" name="slipLayoutChoice" value="a4" checked onchange="onSlipSettingChange()" style="margin-top: 2px; accent-color: #0284c7;">
+                                            <div>
+                                                <strong>กระดาษ A4 (พร้อมเส้นตัด ✂)</strong>
+                                                <div style="font-size: 10.5px; color: #64748b;">พิมพ์ลงกระดาษ A4 พับ/ตัดแนบในสมุดสีชมพู</div>
+                                            </div>
+                                        </label>
+                                        <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 11.5px; cursor: pointer; background: #fff; padding: 7px 9px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                                            <input type="radio" name="slipLayoutChoice" value="thermal" onchange="onSlipSettingChange()" style="margin-top: 2px; accent-color: #0284c7;">
+                                            <div>
+                                                <strong>สลิปความร้อน (Thermal 80mm)</strong>
+                                                <div style="font-size: 10.5px; color: #64748b;">เครื่องพิมพ์ใบเสร็จความร้อนขนาดพกพา</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Live Preview Column -->
+                            <div class="mini-slip-preview-col" style="background: #f1f5f9; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; align-items: center;">
+                                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; color: #64748b; font-weight: 600;">
+                                    <span><i class="far fa-eye" style="margin-right: 4px;"></i> ตัวอย่างก่อนพิมพ์ (Live Preview)</span>
+                                    <span style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 11px;">ขนาดพกพา</span>
+                                </div>
+                                <div id="miniSlipPreviewArea" style="width: 100%; display: flex; justify-content: center; overflow-y: auto; max-height: 480px; padding: 4px 0;">
+                                    <!-- Rendered Card -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="padding: 12px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                        <button class="btn-cancel" onclick="closeMiniSlipModal()">ปิด</button>
+                        <button class="btn-print-batch-slip" onclick="doPrintSingleSlip()" style="padding: 8px 18px; font-size: 13.5px;">
+                            <i class="fas fa-print"></i> พิมพ์ใบนัดนี้
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    function onSlipSettingChange() {
+        const timeSelect = document.getElementById('slipTimeSlot');
+        const timeCustom = document.getElementById('slipTimeSlotCustom');
+        if (timeSelect && timeCustom) {
+            timeCustom.style.display = timeSelect.value === 'custom' ? 'block' : 'none';
+        }
+
+        const venueSelect = document.getElementById('slipVenue');
+        const venueCustom = document.getElementById('slipVenueCustom');
+        if (venueSelect && venueCustom) {
+            venueCustom.style.display = venueSelect.value === 'custom' ? 'block' : 'none';
+        }
+
+        if (!window.CURRENT_MINI_SLIP_DATA) return;
+
+        const options = getSlipModalOptions();
+        const previewArea = document.getElementById('miniSlipPreviewArea');
+        if (previewArea) {
+            previewArea.innerHTML = renderMiniSlipHtml(window.CURRENT_MINI_SLIP_DATA, options);
+        }
+    }
+
+    function getSlipModalOptions() {
+        const timeSelect = document.getElementById('slipTimeSlot');
+        const timeCustom = document.getElementById('slipTimeSlotCustom');
+        const timeSlot = (timeSelect && timeSelect.value === 'custom' && timeCustom) 
+            ? (timeCustom.value.trim() || '08:30 - 11:30 น.')
+            : (timeSelect ? timeSelect.value : '08:30 - 11:30 น. (ช่วงเช้า)');
+
+        const venueSelect = document.getElementById('slipVenue');
+        const venueCustom = document.getElementById('slipVenueCustom');
+        const venue = (venueSelect && venueSelect.value === 'custom' && venueCustom)
+            ? (venueCustom.value.trim() || 'คลินิกเด็กดี')
+            : (venueSelect ? venueSelect.value : 'คลินิกเด็กดี (Well Baby Clinic)');
+
+        const phoneInput = document.getElementById('slipPhone');
+        const phone = phoneInput ? phoneInput.value.trim() : '';
+
+        const noteInput = document.getElementById('slipCustomNote');
+        const note = noteInput ? noteInput.value.trim() : '';
+
+        const layoutRadio = document.querySelector('input[name="slipLayoutChoice"]:checked');
+        const layout = layoutRadio ? layoutRadio.value : 'a4';
+
+        return {
+            timeSlot: timeSlot,
+            venue: venue,
+            phone: phone,
+            note: note,
+            layout: layout
+        };
+    }
+
+    window.openMiniSlipModalByRowIndex = function(rIdx) {
+        ensureMiniSlipModal();
+        const appts = APP.apptCurrentRendered || APP.apptAllRecords || [];
+        const row = appts[rIdx];
+        if (!row) {
+            return Swal.fire('ผิดพลาด', 'ไม่พบข้อมูลนัดหมายแถวที่เลือก', 'error');
+        }
+
+        const slipData = parseApptRowToSlipData(row, APP.apptHeaders);
+        window.CURRENT_MINI_SLIP_DATA = slipData;
+
+        // ถ้ามีเบอร์โทรใน record แต่ slipPhone ว่าง ให้เติมอัตโนมัติ
+        const phoneInput = document.getElementById('slipPhone');
+        if (phoneInput && !phoneInput.value && slipData.phone && slipData.phone !== '-') {
+            phoneInput.value = slipData.phone;
+        }
+
+        onSlipSettingChange();
+        document.getElementById('miniSlipModal').classList.add('active');
+    };
+
+    window.openSlipForChildFromDetail = function(idOrHn) {
+        Swal.close();
+        ensureMiniSlipModal();
+
+        // ค้นหาใน APP.apptAllRecords ก่อนว่ามีนัดหมายอยู่แล้วหรือไม่
+        const appts = APP.apptAllRecords || [];
+        const headers = APP.apptHeaders || [];
+        const hnIdx = findColumnIndex(headers, ['HN', 'รหัส', 'hn']);
+        const cidIdx = findColumnIndex(headers, ['CID', 'เลขบัตร', 'ID', 'id']);
+
+        let foundRow = null;
+        for (let i = 0; i < appts.length; i++) {
+            const r = appts[i];
+            const rHn = hnIdx !== -1 ? String(r[hnIdx]).trim() : '';
+            const rCid = cidIdx !== -1 ? String(r[cidIdx]).trim() : '';
+            if ((rHn && rHn === String(idOrHn).trim()) || (rCid && rCid === String(idOrHn).trim())) {
+                foundRow = r;
+                break;
+            }
+        }
+
+        if (foundRow) {
+            const slipData = parseApptRowToSlipData(foundRow, headers);
+            window.CURRENT_MINI_SLIP_DATA = slipData;
+        } else {
+            // สร้าง Slip Data เบื้องต้นจาก child detail
+            const facName = (APP.facilityMap && APP.facilityMap[APP.currentUser.hcode]) ? APP.facilityMap[APP.currentUser.hcode] : 'คลินิกเด็กดี';
+            window.CURRENT_MINI_SLIP_DATA = {
+                hcode: APP.currentUser.hcode || '',
+                facilityName: facName,
+                hn: idOrHn,
+                fullname: 'เด็ก (HN: ' + idOrHn + ')',
+                dob: '-',
+                age: '-',
+                houseNumber: '-',
+                village: '-',
+                phone: '-',
+                apptDate: 'ตามนัดหมายครั้งต่อไป',
+                vacCode: 'วัคซีนตามเกณฑ์',
+                vacName: '',
+                cid: idOrHn
+            };
+        }
+
+        onSlipSettingChange();
+        document.getElementById('miniSlipModal').classList.add('active');
+    };
+
+    window.closeMiniSlipModal = function() {
+        const m = document.getElementById('miniSlipModal');
+        if (m) m.classList.remove('active');
+    };
+
+    window.doPrintSingleSlip = function() {
+        if (!window.CURRENT_MINI_SLIP_DATA) return;
+        const options = getSlipModalOptions();
+        const slipHtml = renderMiniSlipHtml(window.CURRENT_MINI_SLIP_DATA, options);
+        triggerPrintSlips([slipHtml], options.layout);
+    };
+
+    // ============================================================
+    // BATCH PRINT MINI SLIPS (พิมพ์ใบนัดชุด)
+    // ============================================================
+    function ensureMiniBatchSlipModal() {
+        if (document.getElementById('miniBatchSlipModal')) return;
+
+        const defaultPhone = (APP.currentUser && APP.currentUser.phone && APP.currentUser.phone !== '-') ? APP.currentUser.phone : '';
+
+        const modalHtml = `
+            <div id="miniBatchSlipModal" class="modal" style="z-index: 9999;">
+                <div class="modal-content" style="max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; border-top-left-radius: 16px; border-top-right-radius: 16px; padding: 14px 20px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="background: rgba(255,255,255,0.2); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                                <i class="fas fa-print"></i>
+                            </span>
+                            <div>
+                                <h3 style="margin:0; font-size: 17px; color:#fff; font-weight: 600;">พิมพ์ใบนัดวัคซีนเป็นชุด (Batch Print Mini Slips)</h3>
+                                <div style="font-size: 11.5px; color: rgba(255,255,255,0.85); font-weight: 400;">จัดพิมพ์ใบนัดขนาดพกพาพร้อมกันหลายรายการ (4 ใบต่อแผ่น A4 หรือสลิปความร้อน)</div>
+                            </div>
+                        </div>
+                        <button class="modal-close" style="color:white; font-size:24px; opacity: 0.9;" onclick="closeMiniBatchSlipModal()">×</button>
+                    </div>
+
+                    <div class="modal-body" style="padding: 16px 20px; overflow-y: auto; flex: 1;">
+                        <!-- Batch Settings Bar -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;">
+                            <div style="font-weight: 600; font-size: 13px; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-cog" style="color: #0284c7;"></i> ตั้งค่าที่ใช้ร่วมกันสำหรับใบนัดทั้งหมด
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+                                <div>
+                                    <label style="font-size: 11.5px; font-weight: 600; color: #475569;">ช่วงเวลานัด</label>
+                                    <select id="batchSlipTime" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;">
+                                        <option value="08:30 - 11:30 น. (ช่วงเช้า)">08:30 - 11:30 น. (ช่วงเช้า)</option>
+                                        <option value="08:30 - 10:00 น. (คิวเช้า 1)">08:30 - 10:00 น. (คิวเช้า 1)</option>
+                                        <option value="10:00 - 11:30 น. (คิวเช้า 2)">10:00 - 11:30 น. (คิวเช้า 2)</option>
+                                        <option value="13:00 - 15:30 น. (ช่วงบ่าย)">13:00 - 15:30 น. (ช่วงบ่าย)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 11.5px; font-weight: 600; color: #475569;">สถานที่นัด</label>
+                                    <input type="text" id="batchSlipVenue" value="คลินิกเด็กดี (Well Baby Clinic)" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11.5px; font-weight: 600; color: #475569;">เบอร์ติดต่อสถานพยาบาล</label>
+                                    <input type="text" id="batchSlipPhone" value="${esc(defaultPhone)}" placeholder="เบอร์โทรติดต่อเลื่อนนัด" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11.5px; font-weight: 600; color: #475569;">รูปแบบกระดาษ</label>
+                                    <select id="batchSlipLayout" onchange="updateBatchSummary()" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;">
+                                        <option value="a4" selected>กระดาษ A4 (4 ใบ/หน้า พร้อมเส้นตัด ✂)</option>
+                                        <option value="thermal">สลิปความร้อน 80mm ต่อเนื่อง (Thermal Roll)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selection Header Bar -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12.5px; cursor: pointer;">
+                                    <input type="checkbox" id="batchSelectAll" checked onchange="toggleBatchSelectAll(this.checked)" style="width: 16px; height: 16px; accent-color: #0284c7;">
+                                    เลือกทั้งหมด
+                                </label>
+                                <span id="batchSelectedCountBadge" style="background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 600;">
+                                    เลือก 0 / 0 รายการ
+                                </span>
+                            </div>
+                            <div id="batchPaperEstBadge" style="font-size: 12px; color: #475569; font-weight: 500;">
+                                ใช้กระดาษ A4 ประมาณ 0 แผ่น
+                            </div>
+                        </div>
+
+                        <!-- Selection Table -->
+                        <div style="max-height: 360px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;" id="batchSlipsTable">
+                                <thead style="background: #f8fafc; position: sticky; top: 0; z-index: 1; border-bottom: 1px solid #e2e8f0;">
+                                    <tr>
+                                        <th style="padding: 7px 10px; width: 40px; text-align: center;">เลือก</th>
+                                        <th style="padding: 7px 10px; text-align: left;">วันนัด</th>
+                                        <th style="padding: 7px 10px; text-align: left;">HN</th>
+                                        <th style="padding: 7px 10px; text-align: left;">ชื่อ-สกุล</th>
+                                        <th style="padding: 7px 10px; text-align: left;">อายุ</th>
+                                        <th style="padding: 7px 10px; text-align: left;">วัคซีน</th>
+                                        <th style="padding: 7px 10px; text-align: left;">สถานพยาบาล</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="batchSlipsTbody">
+                                    <!-- Rows populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="padding: 12px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                        <button class="btn-cancel" onclick="closeMiniBatchSlipModal()">ปิด</button>
+                        <button class="btn-print-batch-slip" id="batchPrintConfirmBtn" onclick="doPrintBatchSlips()" style="padding: 8px 18px; font-size: 13.5px;">
+                            <i class="fas fa-print"></i> พิมพ์ใบนัดที่เลือก
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    window.openBatchPrintMiniSlipsModal = function(customList) {
+        ensureMiniBatchSlipModal();
+        let list = customList;
+        if (!list) {
+            list = (APP.apptCurrentRendered && APP.apptCurrentRendered.length > 0) ? APP.apptCurrentRendered : (APP.apptAllRecords || []);
+        }
+
+        if (!list || list.length === 0) {
+            return Swal.fire('แจ้งเตือน', 'ไม่พบรายการนัดหมายสำหรับสั่งพิมพ์ใบนัด', 'info');
+        }
+
+        window.CURRENT_BATCH_SLIPS_DATA = list.map(item => {
+            if (Array.isArray(item)) {
+                return parseApptRowToSlipData(item, APP.apptHeaders);
+            }
+            return item;
+        });
+
+        const tbody = document.getElementById('batchSlipsTbody');
+        if (!tbody) return;
+
+        tbody.innerHTML = window.CURRENT_BATCH_SLIPS_DATA.map((slip, idx) => {
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9; cursor: pointer;" onclick="toggleBatchRowCheckbox(event, ${idx})">
+                    <td style="padding: 6px 10px; text-align: center;" onclick="event.stopPropagation()">
+                        <input type="checkbox" class="batch-slip-check" data-idx="${idx}" checked onchange="updateBatchSummary()" style="width: 15px; height: 15px; accent-color: #0284c7; cursor: pointer;">
+                    </td>
+                    <td style="padding: 6px 10px; color: #0284c7; font-weight: 500; white-space: nowrap;">${esc(slip.apptDate || '-')}</td>
+                    <td style="padding: 6px 10px; font-family: monospace; font-weight: 600;">${esc(slip.hn || '-')}</td>
+                    <td style="padding: 6px 10px; font-weight: 500; color: #0f172a;">${esc(slip.fullname || '-')}</td>
+                    <td style="padding: 6px 10px; color: #64748b;">${esc(slip.age || '-')}</td>
+                    <td style="padding: 6px 10px;"><span class="status-badge" style="background:#e0f2fe; color:#0284c7;">${esc(slip.vacCode || '-')}</span></td>
+                    <td style="padding: 6px 10px; color: #475569; font-size: 11.5px;">${esc(slip.facilityName || '-')}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const selectAllBox = document.getElementById('batchSelectAll');
+        if (selectAllBox) selectAllBox.checked = true;
+
+        updateBatchSummary();
+        document.getElementById('miniBatchSlipModal').classList.add('active');
+    };
+
+    window.toggleBatchRowCheckbox = function(e, idx) {
+        if (e.target.tagName === 'INPUT') return;
+        const chk = document.querySelector(`.batch-slip-check[data-idx="${idx}"]`);
+        if (chk) {
+            chk.checked = !chk.checked;
+            updateBatchSummary();
+        }
+    };
+
+    window.toggleBatchSelectAll = function(isChecked) {
+        const checkboxes = document.querySelectorAll('.batch-slip-check');
+        checkboxes.forEach(c => c.checked = isChecked);
+        updateBatchSummary();
+    };
+
+    window.updateBatchSummary = function() {
+        const checkboxes = document.querySelectorAll('.batch-slip-check');
+        let selectedCount = 0;
+        checkboxes.forEach(c => { if (c.checked) selectedCount++; });
+
+        const countBadge = document.getElementById('batchSelectedCountBadge');
+        if (countBadge) {
+            countBadge.textContent = 'เลือก ' + selectedCount + ' / ' + checkboxes.length + ' รายการ';
+        }
+
+        const layoutSelect = document.getElementById('batchSlipLayout');
+        const layout = layoutSelect ? layoutSelect.value : 'a4';
+
+        const estBadge = document.getElementById('batchPaperEstBadge');
+        if (estBadge) {
+            if (layout === 'a4') {
+                const sheets = Math.ceil(selectedCount / 4);
+                estBadge.innerHTML = `<i class="far fa-file-alt"></i> ใช้กระดาษ A4 ประมาณ <strong>${sheets}</strong> แผ่น (4 ใบ/แผ่น)`;
+            } else {
+                estBadge.innerHTML = `<i class="fas fa-receipt"></i> ความยาวสลิปความร้อนประมาณ <strong>${selectedCount * 12}</strong> ซม.`;
+            }
+        }
+
+        const confirmBtn = document.getElementById('batchPrintConfirmBtn');
+        if (confirmBtn) {
+            confirmBtn.disabled = (selectedCount === 0);
+            confirmBtn.style.opacity = selectedCount === 0 ? '0.5' : '1';
+        }
+    };
+
+    window.closeMiniBatchSlipModal = function() {
+        const m = document.getElementById('miniBatchSlipModal');
+        if (m) m.classList.remove('active');
+    };
+
+    window.doPrintBatchSlips = function() {
+        if (!window.CURRENT_BATCH_SLIPS_DATA || window.CURRENT_BATCH_SLIPS_DATA.length === 0) return;
+
+        const checkboxes = document.querySelectorAll('.batch-slip-check');
+        const selectedSlips = [];
+        checkboxes.forEach(chk => {
+            if (chk.checked) {
+                const idx = parseInt(chk.getAttribute('data-idx'));
+                if (window.CURRENT_BATCH_SLIPS_DATA[idx]) {
+                    selectedSlips.push(window.CURRENT_BATCH_SLIPS_DATA[idx]);
+                }
+            }
+        });
+
+        if (selectedSlips.length === 0) {
+            return Swal.fire('แจ้งเตือน', 'กรุณาเลือกอย่างน้อย 1 รายการเพื่อพิมพ์', 'warning');
+        }
+
+        const timeSlot = document.getElementById('batchSlipTime') ? document.getElementById('batchSlipTime').value : '08:30 - 11:30 น. (ช่วงเช้า)';
+        const venue = document.getElementById('batchSlipVenue') ? document.getElementById('batchSlipVenue').value.trim() : 'คลินิกเด็กดี';
+        const phone = document.getElementById('batchSlipPhone') ? document.getElementById('batchSlipPhone').value.trim() : '';
+        const layout = document.getElementById('batchSlipLayout') ? document.getElementById('batchSlipLayout').value : 'a4';
+
+        const options = {
+            timeSlot: timeSlot,
+            venue: venue,
+            phone: phone,
+            note: '',
+            layout: layout
+        };
+
+        const slipsHtmlArray = selectedSlips.map(slip => renderMiniSlipHtml(slip, options));
+        closeMiniBatchSlipModal();
+        triggerPrintSlips(slipsHtmlArray, layout);
+    };
+
+    function triggerPrintSlips(slipsHtmlArray, layoutMode) {
+        let printArea = document.getElementById('miniSlipPrintArea');
+        if (!printArea) {
+            printArea = document.createElement('div');
+            printArea.id = 'miniSlipPrintArea';
+            printArea.className = 'mini-slip-print-area';
+            document.body.appendChild(printArea);
+        }
+
+        let finalHtml = '';
+        if (layoutMode === 'thermal') {
+            finalHtml = '<div class="mini-slip-thermal-container">' + slipsHtmlArray.join('') + '</div>';
+        } else {
+            // A4 Multi-slip mode: 4 per page
+            const pages = [];
+            for (let i = 0; i < slipsHtmlArray.length; i += 4) {
+                const pageSlips = slipsHtmlArray.slice(i, i + 4);
+                const isLast = (i + 4 >= slipsHtmlArray.length);
+                pages.push('<div class="mini-slip-a4-page ' + (isLast ? 'last-page' : '') + '">' + pageSlips.join('') + '</div>');
+            }
+            finalHtml = '<div class="mini-slip-a4-container">' + pages.join('') + '</div>';
+        }
+
+        printArea.innerHTML = finalHtml;
+        document.body.classList.add('printing-slip');
+
+        // Audit Log การพิมพ์ใบนัด
+        logActivity('PRINT', 'print', `พิมพ์ใบนัดวัคซีนขนาดพกพา จำนวน ${slipsHtmlArray.length} ใบ (รูปแบบ: ${layoutMode})`);
+
+        setTimeout(function() {
+            window.print();
+            setTimeout(function() {
+                document.body.classList.remove('printing-slip');
+                printArea.innerHTML = '';
+            }, 800);
+        }, 150);
+    }
+
+    // Calendar Hook-in Functions
+    window.openSingleSlipFromCalendar = function(eventIndex, childIdx) {
+        const events = APP.calendarRenderedEvents || [];
+        const ev = events[eventIndex];
+        if (!ev || !ev.extendedProps || !ev.extendedProps.childrenList) return;
+
+        const c = ev.extendedProps.childrenList[childIdx];
+        if (!c) return;
+
+        Swal.close();
+        ensureMiniSlipModal();
+
+        let slipData = null;
+        if (c.rawRow) {
+            slipData = parseApptRowToSlipData(c.rawRow, APP.calendarHeaders);
+        } else {
+            slipData = {
+                hcode: c.hcode || '',
+                facilityName: ev.extendedProps.facilityName || 'คลินิกเด็กดี',
+                hn: c.hn || '-',
+                fullname: c.name || '-',
+                dob: '-',
+                age: '-',
+                houseNumber: '-',
+                village: '-',
+                phone: '-',
+                apptDate: ev.extendedProps.dateStr || '-',
+                vacCode: c.vaccines ? c.vaccines.join(', ') : '',
+                vacName: '',
+                cid: '-'
+            };
+        }
+
+        slipData.apptDate = ev.extendedProps.dateStr || slipData.apptDate;
+        window.CURRENT_MINI_SLIP_DATA = slipData;
+
+        onSlipSettingChange();
+        document.getElementById('miniSlipModal').classList.add('active');
+    };
+
+    window.openBatchPrintFromCalendar = function(eventIndex) {
+        const events = APP.calendarRenderedEvents || [];
+        const ev = events[eventIndex];
+        if (!ev || !ev.extendedProps || !ev.extendedProps.childrenList) return;
+
+        Swal.close();
+
+        const slipList = ev.extendedProps.childrenList.map(c => {
+            if (c.rawRow) {
+                const s = parseApptRowToSlipData(c.rawRow, APP.calendarHeaders);
+                s.apptDate = ev.extendedProps.dateStr || s.apptDate;
+                return s;
+            }
+            return {
+                hcode: c.hcode || '',
+                facilityName: ev.extendedProps.facilityName || 'คลินิกเด็กดี',
+                hn: c.hn || '-',
+                fullname: c.name || '-',
+                dob: '-',
+                age: '-',
+                houseNumber: '-',
+                village: '-',
+                phone: '-',
+                apptDate: ev.extendedProps.dateStr || '-',
+                vacCode: c.vaccines ? c.vaccines.join(', ') : '',
+                vacName: '',
+                cid: '-'
+            };
+        });
+
+        openBatchPrintMiniSlipsModal(slipList);
+    };
 
     // ============================================================
     // DAILY WELL-BABY CLINIC MODE (BATCH VACCINATION)
@@ -8285,7 +9471,14 @@ window.switchLogTab = function(tab) {
             let childKey = hn + '_' + name;
             if (childKey !== '_') {
                 if (!mergedEvents[key].children[childKey]) {
-                    mergedEvents[key].children[childKey] = { hn: hn, name: name, vaccines: [] };
+                    mergedEvents[key].children[childKey] = {
+                        hn: hn,
+                        name: name,
+                        vaccines: [],
+                        rawRow: a,
+                        hcode: hcode,
+                        dateStr: dStr
+                    };
                 }
                 if (vac && !mergedEvents[key].children[childKey].vaccines.includes(vac)) {
                     mergedEvents[key].children[childKey].vaccines.push(vac);
@@ -8305,6 +9498,7 @@ window.switchLogTab = function(tab) {
                 start: item.isoDate,
                 allDay: true,
                 extendedProps: {
+                    eventIndex: index,
                     facilityName: facilityName,
                     dateStr: item.dateStr,
                     count: count,
@@ -8314,6 +9508,8 @@ window.switchLogTab = function(tab) {
                 borderColor: 'transparent'
             };
         });
+
+        APP.calendarRenderedEvents = events;
 
         const calendarEl = document.getElementById('calendarContainer');
         if (!calendarEl) return;
@@ -8348,17 +9544,23 @@ window.switchLogTab = function(tab) {
     }
 
     function showCalendarEventDetail(props, canManage) {
-        let childRows = props.childrenList.map(c => {
+        let childRows = props.childrenList.map((c, cIdx) => {
             let vacStr = c.vaccines.join(', ');
-            return '<div style="font-size:13px; padding: 8px 0; border-bottom: 1px solid #eee;">' +
+            return '<div style="font-size:13px; padding: 8px 0; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
+                    '<div>' +
                     '<strong>' + esc(c.name) + '</strong> (HN: ' + esc(c.hn || '-') + ')' +
                     (vacStr ? '<br><span style="color:#0284c7; background:#e0f2fe; padding: 2px 6px; border-radius: 4px; font-size:11px; display:inline-block; margin-top:4px;">' + esc(vacStr) + '</span>' : '') +
+                    '</div>' +
+                    '<button class="action-btn" style="color:#0284c7; background:#e0f2fe; padding:4px 8px; border-radius:6px; font-size:12px; white-space:nowrap;" title="พิมพ์ใบนัดเด็กคนนี้" onclick="openSingleSlipFromCalendar(' + props.eventIndex + ', ' + cIdx + ')"><i class="fas fa-print"></i></button>' +
                     '</div>';
         }).join('');
 
         let html = '<div style="text-align:left; font-family: Kanit;">' +
-                    '<p style="margin-bottom: 10px; font-size: 15px; color:#555;"><strong>วันที่นัด:</strong> ' + esc(props.dateStr) + '</p>' +
-                    '<div style="background: #f8f9fa; padding: 10px 15px; border-radius: 8px; max-height: 250px; overflow-y: auto;">' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; flex-wrap:wrap; gap:8px;">' +
+                    '<p style="margin:0; font-size: 15px; color:#555;"><strong>วันที่นัด:</strong> ' + esc(props.dateStr) + '</p>' +
+                    '<button class="btn-print-batch-slip" style="padding:4px 10px; font-size:12px;" onclick="openBatchPrintFromCalendar(' + props.eventIndex + ')"><i class="fas fa-print"></i> พิมพ์ทุกคน (' + props.count + ' คน)</button>' +
+                    '</div>' +
+                    '<div style="background: #f8fafc; padding: 10px 15px; border-radius: 8px; max-height: 250px; overflow-y: auto;">' +
                     childRows +
                     '</div>' +
                     '<p style="font-size: 12px; color: #888; margin-top: 15px;">* หากต้องการลบหรือแก้ไขนัดหมาย กรุณาทำที่หน้า "รายชื่อนัดวัคซีน"</p>' +
@@ -8371,7 +9573,7 @@ window.switchLogTab = function(tab) {
             showConfirmButton: true,
             confirmButtonText: 'ปิด',
             confirmButtonColor: '#667eea',
-            width: 500
+            width: 520
         });
     }
 
@@ -12615,5 +13817,9 @@ async function exportDuplicateReportExcel() {
 
     console.log('✅ ระบบติดตามวัคซีนเด็ก 0-5 ปี พร้อมทำงาน');
 </script>
+
+<!-- Mini Appointment Slip Dedicated Print Container -->
+<div id="miniSlipPrintArea" class="mini-slip-print-area"></div>
+
 </body>
 </html>
