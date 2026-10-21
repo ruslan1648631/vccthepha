@@ -5605,7 +5605,7 @@ const PAGE_TITLES = {
     officerTracking: 'ติดตามวัคซีนเด็ก',
     report: 'รายงานสรุปการติดตามวัคซีน',
     coverage: 'ความครอบคลุมวัคซีน',
-    duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล'
+    duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำ)'
 };
 function navigateTo(page) {
     // ✅ ปิด Bottom Sheet ถ้าเปิดอยู่
@@ -12065,6 +12065,15 @@ function renderPublicAgeSummaryCards(ageGroups) {
 let DUP_DATA = [];
 let DUP_SUMMARY = {};
 
+function formatCid(cid) {
+    if (!cid) return '-';
+    const clean = String(cid).replace(/\D/g, '');
+    if (clean.length === 13) {
+        return clean.replace(/^(\d{1})(\d{4})(\d{5})(\d{2})(\d{1})$/, '$1-$2-$3-$4-$5');
+    }
+    return String(cid);
+}
+
 async function loadDuplicateReportPage() {
     const page = document.getElementById('duplicateReportPage');
     page.classList.add('active');
@@ -12106,9 +12115,9 @@ async function loadDuplicateReportPage() {
     page.innerHTML = `
         <div class="page-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
-                <i class="fas fa-clone"></i> รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (ซ้ำในอำเภอ)
+                <i class="fas fa-clone"></i> รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำในอำเภอ)
                 <div style="font-size:12px; font-weight:400; color:#64748b; margin-top:4px;">
-                    ตรวจสอบรายชื่อเด็กที่มีข้อมูลผูกอยู่กับสถานพยาบาลมากกว่า 1 แห่งในอำเภอ เพื่อประสานงานและปรับปรุงฐานข้อมูล
+                    ตรวจสอบรายชื่อเด็กที่มีเลขบัตรประชาชน (CID 13 หลัก) ซ้ำซ้อนกันในฐานข้อมูลอำเภอเทพา เพื่อประสานงานและปรับปรุงข้อมูลให้ถูกต้อง
                 </div>
             </div>
         </div>
@@ -12116,15 +12125,16 @@ async function loadDuplicateReportPage() {
         <!-- แถบตัวกรอง -->
         <div class="filter-bar" style="margin-bottom:20px;">
             ${facilityFilterHtml}
-            <div class="filter-group" style="min-width:200px;">
-                <label><i class="fas fa-search"></i> ค้นหา (เลขบัตร/ชื่อ-สกุล/HN)</label>
-                <input type="text" id="dupSearch" placeholder="พิมพ์เพื่อค้นหา...">
+            <div class="filter-group" style="min-width:220px;">
+                <label><i class="fas fa-search"></i> ค้นหา (เลขบัตรประชาชน / ชื่อ-สกุล / HN)</label>
+                <input type="text" id="dupSearch" placeholder="พิมพ์เลขบัตร / ชื่อ / HN...">
             </div>
             <div class="filter-group">
                 <label><i class="fas fa-layer-group"></i> จำนวนสถานพยาบาลที่ซ้ำ</label>
                 <select id="dupMinFacilities">
-                    <option value="2">ตั้งแต่ 2 แห่งขึ้นไป</option>
-                    <option value="3">ตั้งแต่ 3 แห่งขึ้นไป</option>
+                    <option value="2">ตั้งแต่ 2 สถานพยาบาลขึ้นไป (ซ้ำข้ามแห่ง)</option>
+                    <option value="1">ซ้ำทั้งหมด (รวมที่ซ้ำใน รพ.สต. เดียวกัน)</option>
+                    <option value="3">ตั้งแต่ 3 สถานพยาบาลขึ้นไป</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -12162,8 +12172,8 @@ async function loadDuplicateReportPage() {
                 <thead>
                     <tr>
                         <th style="width:40px; text-align:center;">#</th>
-                        <th style="min-width:200px;">ข้อมูลเด็ก (CID / ชื่อ-สกุล)</th>
-                        <th style="width:100px; text-align:center;">จำนวนแห่ง</th>
+                        <th style="min-width:220px;">เลขบัตรประชาชน (CID) / ข้อมูลเด็ก</th>
+                        <th style="width:110px; text-align:center;">จำนวนแห่ง / ซ้ำ</th>
                         <th style="min-width:450px;">รายละเอียดแต่ละสถานพยาบาลที่พบข้อมูล</th>
                         <th style="width:80px; text-align:center;">ประวัติ</th>
                     </tr>
@@ -12253,7 +12263,7 @@ function renderDuplicateSummary(sm) {
 
     el.innerHTML = `
         <div class="rpt-sum-card c-total">
-            <div class="rpt-sum-label"><i class="fas fa-users-slash"></i> เด็กที่พบข้อมูลซ้ำ</div>
+            <div class="rpt-sum-label"><i class="fas fa-id-card"></i> เด็กที่มีเลขบัตรซ้ำ</div>
             <div class="rpt-sum-num">${totalChildren} <span style="font-size:14px; font-weight:normal; color:#64748b;">คน</span></div>
             <div class="rpt-sum-pct">${totalRecords} รายการในฐานข้อมูล</div>
         </div>
@@ -12285,8 +12295,8 @@ function renderDuplicateTable(children) {
             <tr>
                 <td colspan="5" style="text-align:center; padding:40px; color:#10b981;">
                     <i class="fas fa-check-circle fa-3x" style="margin-bottom:12px; display:inline-block;"></i>
-                    <div style="font-size:16px; font-weight:600; color:#0f172a;">ไม่พบข้อมูลเด็กซ้ำตามเงื่อนไขที่เลือก</div>
-                    <div style="font-size:13px; color:#64748b; margin-top:4px;">ยอดเยี่ยม! ฐานข้อมูลมีความถูกต้อง ไม่พบรายการเด็กที่มีชื่อซ้ำซ้อนข้ามสถานพยาบาล</div>
+                    <div style="font-size:16px; font-weight:600; color:#0f172a;">ไม่พบข้อมูลเด็กที่มีเลขบัตรประชาชนซ้ำตามเงื่อนไขที่เลือก</div>
+                    <div style="font-size:13px; color:#64748b; margin-top:4px;">ยอดเยี่ยม! ฐานข้อมูลมีความถูกต้อง ไม่พบเลขประจำตัวประชาชนที่บันทึกซ้ำซ้อนข้ามสถานพยาบาล</div>
                 </td>
             </tr>
         `;
@@ -12336,23 +12346,28 @@ function renderDuplicateTable(children) {
             <tr>
                 <td style="text-align:center; color:#94a3b8; font-size:12px; vertical-align:middle;">${i + 1}</td>
                 <td style="vertical-align:top; padding:12px 14px;">
+                    <div style="margin-bottom:6px;">
+                        <span style="font-family:monospace; font-size:13px; font-weight:700; color:#3730a3; background:#e0e7ff; border:1px solid #c7d2fe; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="เลขประจำตัวประชาชน 13 หลัก">
+                            <i class="far fa-id-card"></i> ${esc(formatCid(c.id || c.cleanCid || '-'))}
+                        </span>
+                    </div>
                     <div style="font-weight:600; color:#0f172a; font-size:14px;">${esc(c.fullname)}</div>
-                    <div style="font-family:monospace; font-size:12px; color:#475569; margin-top:2px;"><i class="far fa-id-card"></i> ${esc(c.id || '-')}</div>
                     <div style="font-size:12px; color:#64748b; margin-top:2px;">
                         อายุ: <strong>${esc(c.age || '-')}</strong> | เกิด: ${esc(c.birthDate || '-')}
                     </div>
                     ${conflictBadge}
                 </td>
                 <td style="text-align:center; vertical-align:middle;">
-                    <span style="display:inline-flex; align-items:center; gap:5px; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe;">
-                        <i class="fas fa-layer-group"></i> ${c.facilityCount} แห่ง
+                    <span style="display:inline-flex; flex-direction:column; align-items:center; gap:3px; padding:6px 12px; border-radius:12px; font-size:12px; font-weight:700; background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe;">
+                        <span><i class="fas fa-layer-group"></i> ${c.facilityCount} แห่ง</span>
+                        ${c.recordCount && c.recordCount > c.facilityCount ? `<span style="font-size:10px; font-weight:normal; color:#475569;">(${c.recordCount} รายการ)</span>` : ''}
                     </span>
                 </td>
                 <td style="vertical-align:top; padding:10px 14px;">
                     ${recordsHtml}
                 </td>
                 <td style="text-align:center; vertical-align:middle;">
-                    <button class="action-btn view" title="ดูรายละเอียดประวัติการฉีดวัคซีน" onclick="viewChild('${esc(c.id || (c.records[0] && c.records[0].hn) || '')}')">
+                    <button class="action-btn view" title="ดูรายละเอียดประวัติการฉีดวัคซีน" onclick="viewChild('${esc(c.id || c.cleanCid || (c.records[0] && c.records[0].hn) || '')}')">
                         <i class="fas fa-eye"></i>
                     </button>
                 </td>
@@ -12393,9 +12408,9 @@ async function exportDuplicateReportExcel() {
         // ✅ Sheet 1: ทะเบียนสรุปเด็กซ้ำรายคน
         // ==========================================
         const sheet1Rows = [
-            ['รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (ซ้ำในอำเภอ)'],
+            ['รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำในอำเภอ)'],
             ['เครือข่ายสุขภาพอำเภอเทพา จังหวัดสงขลา'],
-            [`วันที่ออกรายงาน: ${thaiDateStr} | ผู้พิมพ์: ${(APP.currentUser && (APP.currentUser.fullname || APP.currentUser.username)) || 'ผู้ใช้งาน'} | เด็กที่พบซ้ำ: ${DUP_DATA.length} คน`],
+            [`วันที่ออกรายงาน: ${thaiDateStr} | ผู้พิมพ์: ${(APP.currentUser && (APP.currentUser.fullname || APP.currentUser.username)) || 'ผู้ใช้งาน'} | เด็กที่มีเลขบัตรประชาชนซ้ำ: ${DUP_DATA.length} คน`],
             [],
             ['#', 'เลขบัตรประชาชน (CID)', 'ชื่อ-สกุล', 'วันเกิด', 'อายุ', 'จำนวนสถานพยาบาลที่พบ', 'สถานพยาบาลที่พบข้อมูล', 'สถานะขัดแย้ง', 'มีสถานะขาดนัด']
         ];
@@ -12404,7 +12419,7 @@ async function exportDuplicateReportExcel() {
             const facListStr = c.records.map(r => `[${r.hcode}] ${r.hname || (APP.facilityMap && APP.facilityMap[r.hcode]) || r.hcode} (HN: ${r.hn || '-'} - ${r.status})`).join(' | ');
             sheet1Rows.push([
                 i + 1,
-                c.id || '',
+                c.id ? String(c.id) : (c.cleanCid ? String(c.cleanCid) : ''),
                 c.fullname || '',
                 c.birthDate || '',
                 c.age || '',
@@ -12517,7 +12532,7 @@ async function exportDuplicateReportExcel() {
         // ==========================================
         // ✅ บันทึกและดาวน์โหลดไฟล์
         // ==========================================
-        const fileName = 'รายงานตรวจสอบเด็กซ้ำหลายสถานพยาบาล_' + today.toISOString().slice(0, 10) + '.xlsx';
+        const fileName = 'รายงานตรวจสอบเด็กเลขบัตรประชาชนซ้ำ_' + today.toISOString().slice(0, 10) + '.xlsx';
         XLSX.writeFile(wb, fileName);
 
         hideLoading();
