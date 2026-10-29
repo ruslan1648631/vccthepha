@@ -5808,7 +5808,11 @@
 
             for (let c = 0; c < records.length; c += 100) {
                 const chunk = records.slice(c, c + 100);
-                await supabaseClient.from('data').upsert(chunk);
+                const { error } = await supabaseClient.from('data').upsert(chunk);
+                if (error) {
+                    console.error('Import data error:', error);
+                    return { success: false, message: 'นำเข้าข้อมูลเด็กไม่สำเร็จ: ' + (error.message || 'กรุณาตรวจสอบสิทธิ์ RLS ใน Supabase') };
+                }
             }
 
             try {
@@ -5862,7 +5866,11 @@
 
             for (let c = 0; c < records.length; c += 100) {
                 const chunk = records.slice(c, c + 100);
-                await supabaseClient.from('appoint').upsert(chunk);
+                const { error } = await supabaseClient.from('appoint').upsert(chunk);
+                if (error) {
+                    console.error('Import appoint error:', error);
+                    return { success: false, message: 'นำเข้าข้อมูลนัดหมายไม่สำเร็จ: ' + (error.message || 'กรุณาตรวจสอบสิทธิ์ RLS ใน Supabase') };
+                }
             }
 
             try {
