@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- ===== SUPABASE JS SDK ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         /* ============================================================
            GLOBAL STYLES
@@ -4896,9 +4899,371 @@
     };
 
     // ============================================================
+    // OFFICIAL HOSPITALS & FACILITY HELPERS (ดึงข้อมูลจากตาราง hospitals)
+    // ============================================================
+
+    // 🏥 บัญชีรายชื่อสถานพยาบาลทางการ อ.เทพา (ตามตาราง hospitals ใน Supabase)
+    const OFFICIAL_HOSPITALS = {
+        '860': 'สสอ.เทพา',
+        '00860': 'สสอ.เทพา',
+        '9491': 'รพ.สต.ตูหยง',
+        '09491': 'รพ.สต.ตูหยง',
+        '9492': 'รพ.สต.ตาแปด',
+        '09492': 'รพ.สต.ตาแปด',
+        '9493': 'รพ.สต.เกาะสะบ้า',
+        '09493': 'รพ.สต.เกาะสะบ้า',
+        '9494': 'รพ.สต.ลำไพล',
+        '09494': 'รพ.สต.ลำไพล',
+        '9495': 'รพ.สต.ท่าไทร',
+        '09495': 'รพ.สต.ท่าไทร',
+        '9496': 'รพ.สต.ท่าม่วง',
+        '09496': 'รพ.สต.ท่าม่วง',
+        '9497': 'รพ.สต.พรุชิง',
+        '09497': 'รพ.สต.พรุชิง',
+        '9498': 'รพ.สต.วังใหญ่',
+        '09498': 'รพ.สต.วังใหญ่',
+        '9499': 'รพ.สต.สะกอม',
+        '09499': 'รพ.สต.สะกอม',
+        '9500': 'รพ.สต.ท่าแมงลัก',
+        '09500': 'รพ.สต.ท่าแมงลัก',
+        '11915': 'รพ.สต.ทุ่งโดน',
+        '15107': 'PCU2',
+        '15109': 'PCU1'
+    };
+    APP.facilityMap = Object.assign({}, OFFICIAL_HOSPITALS);
+
+    // คืนชื่อสถานพยาบาล โดยอ้างอิงจากตาราง hospitals เป็นหลัก เพื่อความสวยงามและถูกต้อง
+    function getFacilityDisplayName(code, customName) {
+        if (!code || code === 'ทั้งหมด' || code === '-') return customName || code || '-';
+        const c = String(code).trim();
+        const unp = c.replace(/^0+/, '');
+        const pad = c.padStart(5, '0');
+
+        // 1. ตรวจสอบจาก APP.facilityMap (ที่ดึงมาจากตาราง hospitals ใน Supabase) เป็นอันดับแรก
+        if (APP && APP.facilityMap) {
+            if (APP.facilityMap[c] && isNaN(APP.facilityMap[c]) && APP.facilityMap[c] !== c) return APP.facilityMap[c];
+            if (APP.facilityMap[unp] && isNaN(APP.facilityMap[unp]) && APP.facilityMap[unp] !== unp) return APP.facilityMap[unp];
+            if (APP.facilityMap[pad] && isNaN(APP.facilityMap[pad]) && APP.facilityMap[pad] !== pad) return APP.facilityMap[pad];
+        }
+
+        // 2. ตรวจสอบจาก OFFICIAL_HOSPITALS ที่กำหนดตามตาราง hospitals
+        if (OFFICIAL_HOSPITALS[c]) return OFFICIAL_HOSPITALS[c];
+        if (OFFICIAL_HOSPITALS[unp]) return OFFICIAL_HOSPITALS[unp];
+        if (OFFICIAL_HOSPITALS[pad]) return OFFICIAL_HOSPITALS[pad];
+
+        // 3. ถ้าไม่มีในตาราง hospitals จึง fallback ไปใช้ customName
+        if (customName && isNaN(customName) && String(customName).trim() !== c && !/^\d+$/.test(String(customName).trim())) {
+            return String(customName).trim();
+        }
+
+        return customName || code;
+    }
+
+    // อัปเดต APP.facilityMap จากข้อมูลที่โหลดมาจากตาราง hospitals
+    function updateFacilityMap(incomingMap) {
+        const map = (APP && APP.facilityMap && Object.keys(APP.facilityMap).length > 0) ? APP.facilityMap : Object.assign({}, OFFICIAL_HOSPITALS);
+        if (incomingMap && typeof incomingMap === 'object') {
+            Object.keys(incomingMap).forEach(k => {
+                const val = incomingMap[k];
+                if (val && isNaN(val) && val !== k) {
+                    const cleanName = String(val).trim();
+                    map[k] = cleanName;
+                    map[k.replace(/^0+/, '')] = cleanName;
+                    map[k.padStart(5, '0')] = cleanName;
+                } else if (!map[k]) {
+                    map[k] = val || k;
+                }
+            });
+        }
+        APP.facilityMap = map;
+        return map;
+    }
+
+    // สร้างตัวเลือก Dropdown สถานพยาบาลจากตาราง hospitals
+    function buildFacilityDropdownOptions(curSelected, defaultLabel) {
+        const defTxt = defaultLabel || '🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)';
+        let html = `<option value="ทั้งหมด"${(curSelected === 'ทั้งหมด' || !curSelected) ? ' selected' : ''}>${defTxt}</option>`;
+        const map = (APP && APP.facilityMap && Object.keys(APP.facilityMap).length > 0) ? APP.facilityMap : OFFICIAL_HOSPITALS;
+        
+        // คัดกรองหารายการที่ไม่ซ้ำกัน
+        const uniqueList = [];
+        const seenNames = new Set();
+        const seenCodes = new Set();
+
+        Object.keys(map).forEach(k => {
+            const name = map[k];
+            if (!name || name === k || /^\d+$/.test(name)) return;
+            const normCode = k.replace(/^0+/, '');
+            if (!seenNames.has(name) && !seenCodes.has(normCode)) {
+                seenNames.add(name);
+                seenCodes.add(normCode);
+                const displayCode = k.length < 5 ? k.padStart(5, '0') : k;
+                uniqueList.push({ code: k, displayCode: displayCode, name: name });
+            }
+        });
+
+        // เรียงลำดับตามรหัสสถานพยาบาล
+        uniqueList.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+
+        uniqueList.forEach(item => {
+            const isSel = (String(curSelected) === String(item.code) || 
+                           String(curSelected).replace(/^0+/, '') === item.code.replace(/^0+/, '') ||
+                           String(curSelected).padStart(5, '0') === item.displayCode);
+            const labelText = `${item.name} (${item.displayCode})`;
+            html += `<option value="${esc(item.code)}"${isSel ? ' selected' : ''}>${esc(labelText)}</option>`;
+        });
+
+        return html;
+    }
+
+    // ============================================================
+    // VACCINE STATUS EVALUATION ENGINE (คำนวณสถานะวัคซีนเด็ก 4 สถานะ)
+    // ============================================================
+    function parseAgeStrToMonths(ageStr) {
+        if (!ageStr) return -1;
+        const str = String(ageStr).trim();
+        if (str.includes('ไม่ถึง 1 เดือน') || str.includes('แรกเกิด') || str.includes('ไม่ถึง')) return 0.5;
+        let m = 0;
+        let hasVal = false;
+        const yMatch = str.match(/(\d+)\s*ปี/);
+        const mMatch = str.match(/(\d+)\s*เดือน/) || str.match(/(\d+)\s*ด\./);
+        if (yMatch) { m += parseInt(yMatch[1], 10) * 12; hasVal = true; }
+        if (mMatch) { m += parseInt(mMatch[1], 10); hasVal = true; }
+        return hasVal ? m : (parseFloat(str) || -1);
+    }
+
+    function checkChildVaccineGiven(row, targetCodes) {
+        if (!row || typeof row !== 'object') return false;
+        if (!Array.isArray(targetCodes)) targetCodes = [targetCodes];
+        const rowKeys = Object.keys(row);
+        for (let target of targetCodes) {
+            const clnTarget = target.toLowerCase().replace(/[-\s_.]/g, '');
+            for (let k of rowKeys) {
+                const clnK = k.toLowerCase().replace(/[-\s_.]/g, '');
+                if (clnK === clnTarget || (clnTarget.length >= 3 && clnK === clnTarget) || (clnTarget.length >= 4 && clnK.includes(clnTarget)) || (clnK.length >= 4 && clnTarget.includes(clnK))) {
+                    const val = row[k];
+                    if (val !== null && val !== undefined) {
+                        const str = String(val).trim();
+                        if (str !== '' && str !== '-' && str !== '0' && str.toLowerCase() !== 'null' && str.toLowerCase() !== 'false') {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    function evaluateChildVaccineStatus(row, refusedSet) {
+        const rowId = String(row.ID || row.id || row.cid || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '').trim();
+        const rowHn = String(row.HN || row.hn || row['รหัส'] || '').trim();
+        const rowName = String(row['ชื่อ-สกุล'] || row.fullname || row.childname || row['ชื่อ'] || '').trim();
+
+        // 1. ตรวจสอบ "ปฏิเสธวัคซีน" จากประวัติการติดตาม หรือจากฟิลด์ status เดิม
+        if (refusedSet && (
+            (rowId && refusedSet.has(rowId)) ||
+            (rowHn && refusedSet.has(rowHn)) ||
+            (rowName && refusedSet.has(rowName))
+        )) {
+            return { status: 'ปฏิเสธวัคซีน', missingVaccines: '' };
+        }
+        const existingStatus = String(row['สถานะ'] || row.status || '').trim();
+        if (existingStatus === 'ปฏิเสธวัคซีน' || existingStatus === 'ปฏิเสธ') {
+            return { status: 'ปฏิเสธวัคซีน', missingVaccines: '' };
+        }
+
+        // 2. คำนวณอายุเป็นเดือน (รองรับทั้งรูปแบบ พ.ศ./ค.ศ. และ DD/MM/YYYY)
+        const rawBirth = row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.birthdate || row.dob || '';
+        const rawAgeStr = row['อายุ'] || row.age || '';
+        let ageMonths = -1;
+        if (rawBirth && String(rawBirth).trim() !== '-' && String(rawBirth).trim() !== '') {
+            let bdStr = String(rawBirth).trim();
+            const ddmmyyyy = bdStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+            if (ddmmyyyy) {
+                let day = parseInt(ddmmyyyy[1], 10);
+                let month = parseInt(ddmmyyyy[2], 10) - 1;
+                let year = parseInt(ddmmyyyy[3], 10);
+                if (year > 2400) year -= 543;
+                const bd = new Date(year, month, day);
+                const now = new Date();
+                ageMonths = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth());
+                if (now.getDate() < bd.getDate()) ageMonths--;
+            } else {
+                const bd = new Date(bdStr);
+                if (!isNaN(bd.getTime())) {
+                    let year = bd.getFullYear();
+                    if (year > 2400) year -= 543;
+                    const now = new Date();
+                    ageMonths = (now.getFullYear() - year) * 12 + (now.getMonth() - bd.getMonth());
+                    if (now.getDate() < bd.getDate()) ageMonths--;
+                }
+            }
+        }
+        if (ageMonths < 0 && rawAgeStr) {
+            ageMonths = parseAgeStrToMonths(rawAgeStr);
+        }
+
+        // 3. ตรวจสอบ "ครบตามเกณฑ์"
+        const hasDtp5 = checkChildVaccineGiven(row, ['DTP5', 'dtp5']);
+        const hasOpv5 = checkChildVaccineGiven(row, ['OPV5', 'opv5']);
+        if (hasDtp5 || (hasDtp5 && hasOpv5) || existingStatus === 'ครบตามเกณฑ์') {
+            return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
+        }
+
+        // 4. ตรวจสอบ "ขาดนัด" ตามเกณฑ์ช่วงอายุ (สธ.)
+        const CORE_VACCINES = [
+            { code: 'BCG', alts: ['bcg'], minAge: 1 },
+            { code: 'HB1', alts: ['hb1', 'hbv1', 'hb'], minAge: 1 },
+            { code: 'DTP-HB1', alts: ['dtphb1', 'dtp1', 'dtphbvipv1'], minAge: 2 },
+            { code: 'DTP-HB2', alts: ['dtphb2', 'dtp2', 'dtphbvipv2'], minAge: 4 },
+            { code: 'DTP-HB3', alts: ['dtphb3', 'dtp3', 'dtphbvipv3'], minAge: 6 },
+            { code: 'MMR1', alts: ['mmr1', 'mmr'], minAge: 9 },
+            { code: 'LAJE1', alts: ['laje1', 'je1', 'laje', 'laje2', 'je2'], minAge: 12 },
+            { code: 'DTP4', alts: ['dtp4', 'dtphb4'], minAge: 18 },
+            { code: 'MMR2', alts: ['mmr2'], minAge: 30 },
+            { code: 'DTP5', alts: ['dtp5'], minAge: 48 }
+        ];
+
+        const missed = [];
+        if (ageMonths > 0) {
+            for (let v of CORE_VACCINES) {
+                if (ageMonths >= v.minAge) {
+                    const given = checkChildVaccineGiven(row, [v.code, ...v.alts]);
+                    if (!given) {
+                        missed.push(v.code);
+                    }
+                }
+            }
+        }
+
+        if (missed.length > 0) {
+            return { status: 'ขาดนัด', missingVaccines: missed.join(', ') };
+        }
+
+        // 5. ถ้าอายุถึง 5 ปี (60 เดือนขึ้นไป) และไม่มีขาดนัด
+        if (ageMonths >= 60) {
+            return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
+        }
+
+        // 6. ถ้าได้รับครบตามช่วงอายุถึงปัจจุบัน
+        return { status: 'ตามนัดปกติ', missingVaccines: '' };
+    }
+
+    // ============================================================
     // CONFIGURATION & API ENDPOINT
     // ============================================================
     const API_URL = "https://script.google.com/macros/s/AKfycbwOURwW8llT2-zw5qB7-Q9BtFilNdLXw_w77oIE6UKLeKgnteph4NaoocvjzcLiBX_N/exec";
+
+    // ============================================================
+    // SUPABASE CONFIGURATION & CLIENT
+    // ============================================================
+    const SUPABASE_CONFIG = {
+        URL: "https://ioaclozxoinkbrnbtley.supabase.co",
+        ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvYWNsb3p4b2lua2JybmJ0bGV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1NDk4NTUsImV4cCI6MjEwODEyNTg1NX0.xY3PVsmdqX2H3M2wvVsbAYgEoHVwuhFwy3Vagx76naM"
+    };
+
+    let supabaseClient = null;
+    try {
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+            supabaseClient = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+            console.log("⚡ [VCC] Supabase Client initialized successfully!");
+        }
+    } catch (sbErr) {
+        console.warn("⚠️ Supabase Client init failed, will use GAS fallback:", sbErr);
+    }
+
+    // SHA-256 helper for client-side hashing
+    async function sha256Hex(str) {
+        try {
+            const buffer = new TextEncoder().encode(String(str).trim());
+            const digest = await crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch (e) {
+            return String(str).trim();
+        }
+    }
+
+    // Direct Login via Supabase (Fast response: 50-100ms)
+    async function trySupabaseLogin(username, password) {
+        if (!supabaseClient) return null;
+        try {
+            const inputUser = String(username || '').trim();
+            const inputPwd = String(password || '').trim();
+            const inputHash = await sha256Hex(inputPwd);
+
+            // ค้นหา username จากตาราง users (รองรับทั้ง Username และ username)
+            let { data, error } = await supabaseClient
+                .from('users')
+                .select('*')
+                .ilike('Username', inputUser)
+                .limit(1);
+
+            if (error || !data || data.length === 0) {
+                const fb = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .ilike('username', inputUser)
+                    .limit(1);
+                if (fb.data && fb.data.length > 0) {
+                    data = fb.data;
+                    error = null;
+                }
+            }
+
+            if (error) {
+                console.warn('⚠️ Supabase login query returned error:', error.message);
+                return null; // fallback to GAS
+            }
+
+            if (!data || data.length === 0) {
+                return null; // ไม่พบใน Supabase ให้ fallback ไป GAS
+            }
+
+            const row = data[0];
+            const storedPwd = String(row.Password || row.password || '').trim();
+            const isMatch = (storedPwd === inputHash) || (storedPwd === inputPwd);
+
+            if (!isMatch) {
+                return { success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
+            }
+
+            const status = String(row.status || row.Status || 'active').toLowerCase();
+            if (status === 'inactive') {
+                return { success: false, message: 'บัญชีนี้ถูกระงับการใช้งาน' };
+            }
+            if (status === 'register') {
+                return { success: false, message: 'บัญชียังไม่อนุมัติ กรุณารอแอดมินตรวจสอบ (Active)' };
+            }
+
+            const loginUser = {
+                success: true,
+                hcode: String(row.hcode || row.Hcode || '-'),
+                username: String(row.Username || row.username || inputUser),
+                fullname: String(row.Fullname || row.fullname || inputUser),
+                role: String(row.Role || row.role || 'เจ้าหน้าที่'),
+                village: String(row.Village || row.village || '-'),
+                subdistrict: String(row.subdistrict || row.Subdistrict || '-'),
+                source: 'supabase'
+            };
+
+            // บันทึก Access_Log ใน Supabase (Background)
+            try {
+                supabaseClient.from('Access_Log').insert([{
+                    hcode: loginUser.hcode,
+                    username: loginUser.username,
+                    fullname: loginUser.fullname,
+                    role: loginUser.role,
+                    action: 'LOGIN',
+                    created_at: new Date().toISOString()
+                }]).then();
+            } catch (logErr) {}
+
+            return loginUser;
+        } catch (err) {
+            console.warn('⚠️ Supabase login exception, falling back to GAS:', err);
+            return null;
+        }
+    }
 
     // ============================================================
     // CORE HELPERS & NETWORK LAYER (callGAS)
@@ -4935,8 +5300,739 @@
         return msg;
     }
 
+    // ============================================================
+    // SUPABASE DIRECT ACTION DISPATCHER (100% Serverless Backend)
+    // ============================================================
+    async function handleSupabaseAction(fnName, args) {
+        if (!supabaseClient) return null;
+        args = args || [];
+
+        // 1. ดึงข้อมูลผู้ใช้งาน (Users)
+        if (fnName === 'getUsers') {
+            const requestorRole = args[0] || (APP.currentUser ? APP.currentUser.role : '');
+            const requestorHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
+            let query = supabaseClient.from('users').select('*');
+            if (requestorRole === 'Admin_HOS' && requestorHcode && requestorHcode !== '-') {
+                query = query.eq('hcode', requestorHcode);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            const users = (data || []).map(u => ({
+                hcode: u.hcode || '-',
+                username: u.Username || u.username || '-',
+                password: '',
+                fullname: u.Fullname || u.fullname || '-',
+                role: u.Role || u.role || 'เจ้าหน้าที่',
+                village: u.Village || u.village || '-',
+                subdistrict: u.subdistrict || u.Subdistrict || '-',
+                createdAt: formatDateTime(u.CreatedAt || u.created_at),
+                status: (u.status || u.Status || 'active').toLowerCase()
+            }));
+            return { success: true, users };
+        }
+
+        // 2. เพิ่มผู้ใช้งาน (Add User)
+        if (fnName === 'addUser') {
+            const userData = args[0];
+            const hashedPwd = await sha256Hex(userData.password || '123456');
+            const { error } = await supabaseClient.from('users').insert([{
+                hcode: userData.hcode || '-',
+                Username: userData.username,
+                Password: hashedPwd,
+                Fullname: userData.fullname,
+                Role: userData.role || 'เจ้าหน้าที่',
+                Village: userData.village || '-',
+                subdistrict: userData.subdistrict || '-',
+                status: userData.status || 'register',
+                CreatedAt: new Date().toISOString()
+            }]);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'เพิ่มผู้ใช้งานเรียบร้อยแล้ว' };
+        }
+
+        // 3. แก้ไขผู้ใช้งาน (Update User)
+        if (fnName === 'updateUser') {
+            const origUser = args[0];
+            const userData = args[1];
+            const updateObj = {
+                hcode: userData.hcode || '-',
+                Fullname: userData.fullname,
+                Role: userData.role,
+                Village: userData.village || '-',
+                subdistrict: userData.subdistrict || '-',
+                status: userData.status || 'active'
+            };
+            if (userData.password && String(userData.password).trim() !== '') {
+                updateObj.Password = await sha256Hex(String(userData.password).trim());
+            }
+            const { error } = await supabaseClient.from('users').update(updateObj).or(`Username.eq.${origUser},username.eq.${origUser}`);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'อัปเดตผู้ใช้งานเรียบร้อยแล้ว' };
+        }
+
+        // 4. ลบผู้ใช้งาน (Delete User)
+        if (fnName === 'deleteUser') {
+            const username = args[0];
+            const { error } = await supabaseClient.from('users').delete().or(`Username.eq.${username},username.eq.${username}`);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'ลบผู้ใช้งานเรียบร้อยแล้ว' };
+        }
+
+        // 5. อนุมัติผู้ใช้งาน (Activate User)
+        if (fnName === 'activateUserStatus') {
+            const username = args[0];
+            const { error } = await supabaseClient.from('users').update({ status: 'active' }).or(`Username.eq.${username},username.eq.${username}`);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'อนุมัติการใช้งานสำเร็จ' };
+        }
+
+        // 6. ดึงข้อมูลหมู่บ้าน (Villages)
+        if (fnName === 'getVillages') {
+            const requestorRole = args[0] || (APP.currentUser ? APP.currentUser.role : '');
+            const requestorHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
+            const requestorSub = args[2] || (APP.currentUser ? APP.currentUser.subdistrict : '');
+            const requestorVil = args[3] || (APP.currentUser ? APP.currentUser.village : '');
+
+            let query = supabaseClient.from('villages').select('*');
+            if (requestorRole === 'Admin_HOS' && requestorHcode && requestorHcode !== '-') {
+                query = query.eq('hcode', requestorHcode);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            let list = data || [];
+            if (requestorRole === 'อสม.') {
+                if (requestorSub && requestorSub !== '-') {
+                    list = list.filter(v => (v.subdistrict || '').trim() === requestorSub.trim());
+                }
+                if (requestorVil && requestorVil !== '-') {
+                    list = list.filter(v => (v.village_name === requestorVil || v.village_no == requestorVil));
+                }
+            }
+            const villages = list.map(v => ({
+                id: String(v.id || ('VIL_' + (v.village_no || Math.random()))),
+                hcode: v.hcode || '-',
+                village_no: String(v.village_no || '-'),
+                village_name: v.village_name || v.name || '-',
+                subdistrict: v.subdistrict || '-',
+                color: v.color || '#6c757d',
+                icon: v.icon || 'fa-home',
+                createdAt: v.createdAt || v.created_at || '-',
+                name: (v.village_name && v.village_name !== '-') ? v.village_name : ('หมู่ ' + (v.village_no || ''))
+            }));
+            return { success: true, villages };
+        }
+
+        // 7. เพิ่มหมู่บ้าน (Add Village)
+        if (fnName === 'addVillage') {
+            const v = args[0];
+            const newId = 'VIL_' + Date.now();
+            const { error } = await supabaseClient.from('villages').insert([{
+                id: newId,
+                hcode: v.hcode || '-',
+                village_no: v.village_no || '-',
+                village_name: v.village_name || '-',
+                subdistrict: v.subdistrict || '-',
+                color: v.color || '#667eea',
+                icon: v.icon || 'fa-home',
+                createdAt: new Date().toISOString()
+            }]);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'เพิ่มหมู่บ้านเรียบร้อยแล้ว', id: newId };
+        }
+
+        // 8. แก้ไขหมู่บ้าน (Update Village)
+        if (fnName === 'updateVillage') {
+            const vId = args[0];
+            const v = args[1];
+            const { error } = await supabaseClient.from('villages').update({
+                hcode: v.hcode || '-',
+                village_no: v.village_no || '-',
+                village_name: v.village_name || '-',
+                subdistrict: v.subdistrict || '-',
+                color: v.color || '#667eea',
+                icon: v.icon || 'fa-home'
+            }).eq('id', vId);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'อัปเดตหมู่บ้านเรียบร้อยแล้ว' };
+        }
+
+        // 9. ลบหมู่บ้าน (Delete Village)
+        if (fnName === 'deleteVillage') {
+            const vId = args[0];
+            const { error } = await supabaseClient.from('villages').delete().eq('id', vId);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'ลบหมู่บ้านเรียบร้อยแล้ว' };
+        }
+
+        // 10. ดึงรายการแคตตาล็อกวัคซีน (Vaccine Catalog)
+        if (fnName === 'getVaccineCatalog') {
+            const { data, error } = await supabaseClient.from('vaccine_catalog').select('*');
+            if (error) throw error;
+            const catalog = (data || []).map(v => ({
+                code: v.code || v.vaccine_code || '',
+                name: v.name || v.vaccine_name || v.code || '',
+                age_months: String(v.age_months || v.ageMonths || '0'),
+                description: v.description || ''
+            }));
+            return { success: true, catalog };
+        }
+
+        // 11. ดึงแผนที่สถานพยาบาล (Facility Map) — ดึงจากตาราง hospitals (ฟิลด์ hcode, hosname) โดยตรง
+        if (fnName === 'getFacilityMap') {
+            const map = Object.assign({}, OFFICIAL_HOSPITALS);
+            try {
+                // ดึงจากตาราง hospitals ฟิลด์ hosname โดยตรง (ความถูกต้อง 100%)
+                const { data, error } = await supabaseClient
+                    .from('hospitals')
+                    .select('hcode, hosname');
+
+                if (!error && data && data.length > 0) {
+                    data.forEach(h => {
+                        const code = h.hcode !== undefined && h.hcode !== null ? String(h.hcode).trim() : '';
+                        const name = h.hosname ? String(h.hosname).trim() : '';
+                        if (code && name && isNaN(name)) {
+                            map[code] = name;
+                            // ผูกทั้งแบบมี 0 นำหน้า และไม่มี 0 นำหน้า (เช่น 860 และ 00860) ให้เจอชื่อเดียวกันเสมอ
+                            const unp = code.replace(/^0+/, '');
+                            const pad = code.padStart(5, '0');
+                            map[unp] = name;
+                            map[pad] = name;
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('⚡ [Supabase] getFacilityMap from hospitals error:', e);
+            }
+
+            return { success: true, map };
+        }
+
+        // 12. ประวัติการเข้าสู่ระบบ (Access Logs)
+        if (fnName === 'getAccessLogs') {
+            const role = args[0];
+            const hcode = args[1];
+            let query = supabaseClient.from('Access_Log').select('*').order('created_at', { ascending: false }).limit(300);
+            if (role === 'Admin_HOS' && hcode) {
+                query = query.eq('hcode', hcode);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            const logs = (data || []).map(l => ({
+                timestamp: formatDateTime(l.created_at || l.timestamp),
+                username: l.username || '-',
+                fullname: l.fullname || l.username || '-',
+                role: l.role || 'เจ้าหน้าที่',
+                hcode: l.hcode || '-'
+            }));
+            return { success: true, logs };
+        }
+
+        // 13. ประวัติกิจกรรม (Activity Logs)
+        if (fnName === 'getActivityLogs') {
+            const filters = args[0] || {};
+            let query = supabaseClient.from('Activity_Log').select('*').order('created_at', { ascending: false }).limit(400);
+            if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                const unp = String(filters.userHcode).replace(/^0+/, '');
+                const pad = String(filters.userHcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            const logs = (data || []).map(l => ({
+                timestamp: formatDateTime(l.created_at || l.timestamp),
+                username: l.username || '-',
+                fullname: l.fullname || l.username || '-',
+                role: l.role || 'เจ้าหน้าที่',
+                hcode: l.hcode || '-',
+                action: l.action || 'GENERAL',
+                category: l.category || 'general',
+                details: l.details || '-'
+            }));
+            return { success: true, logs };
+        }
+
+        // 14. บันทึกกิจกรรม (Log Activity)
+        if (fnName === 'logActivity') {
+            const l = args[0];
+            if (l) {
+                await supabaseClient.from('Activity_Log').insert([{
+                    username: l.username,
+                    fullname: l.fullname,
+                    role: l.role,
+                    hcode: l.hcode,
+                    action: l.action,
+                    category: l.category || 'general',
+                    details: l.details || '-',
+                    user_agent: l.userAgent || navigator.userAgent.slice(0, 200),
+                    created_at: new Date().toISOString()
+                }]);
+            }
+            return { success: true };
+        }
+
+        // 15. ดึงรายชื่อนัดหมาย (Appointments)
+        if (fnName === 'getAppointments') {
+            const filters = args[0] || {};
+            let query = supabaseClient.from('appoint').select('*').limit(3000);
+            if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                const unp = String(filters.userHcode).replace(/^0+/, '');
+                const pad = String(filters.userHcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                return { success: true, headers: [], appointments: [] };
+            }
+            const headers = Object.keys(data[0]);
+            const appointments = data.map(row => headers.map(h => row[h] !== null && row[h] !== undefined ? String(row[h]) : ''));
+            return { success: true, headers, appointments };
+        }
+
+        // 16. ดึงรายชื่อเด็ก (Children)
+        if (fnName === 'getChildren') {
+            const filters = args[0] || {};
+            let query = supabaseClient.from('data').select('*');
+            if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                const unp = String(filters.hcode).replace(/^0+/, '');
+                const pad = String(filters.hcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
+            } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                const unp = String(filters.userHcode).replace(/^0+/, '');
+                const pad = String(filters.userHcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
+            }
+            const { data, error } = await query.limit(3000);
+            if (error) throw error;
+
+            // ดึงรายชื่อเด็กที่ปฏิเสธวัคซีนจาก VCC_tracking
+            const refusedSet = new Set();
+            try {
+                const { data: tData } = await supabaseClient
+                    .from('VCC_tracking')
+                    .select('cid, hn, fullname, status')
+                    .eq('status', 'ปฏิเสธวัคซีน');
+                if (tData) {
+                    tData.forEach(t => {
+                        if (t.cid) refusedSet.add(String(t.cid).trim());
+                        if (t.hn) refusedSet.add(String(t.hn).trim());
+                        if (t.fullname) refusedSet.add(String(t.fullname).trim());
+                    });
+                }
+            } catch (tErr) {}
+
+            let children = (data || []).map(row => {
+                const evalRes = evaluateChildVaccineStatus(row, refusedSet);
+                const rowId = row.ID || row.id || row.cid || row['เลขบัตร'] || '-';
+                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
+                const rowName = row['ชื่อ-สกุล'] || row.fullname || row.childname || row['ชื่อ'] || '-';
+                const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
+
+                return {
+                    id: rowId,
+                    hn: rowHn,
+                    cid: rowId,
+                    fullname: rowName,
+                    birthDate: row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.birthdate || row.dob || '-',
+                    age: row['อายุ'] || row.age || '-',
+                    houseNumber: row['บ้านเลขที่'] || row.house_no || row.houseNumber || '-',
+                    village: row['หมู่ที่'] || row.village_no || row.village || '-',
+                    villageName: row['ชื่อหมู่บ้าน'] || row.village_name || row.villageName || '-',
+                    subdistrict: row['ตำบล'] || row.subdistrict || '-',
+                    hcode: rowHcode,
+                    hname: getFacilityDisplayName(rowHcode, row.hospital || row.hname || row['สถานพยาบาล']),
+                    asm: row['อสม.'] || row['อสม'] || row.asm || '-',
+                    phone: row['โทรศัพท์'] || row.phone || '-',
+                    gps: row.GPS || row.gps || row['พิกัด'] || row.lat_lng || '-',
+                    status: evalRes.status,
+                    missingVaccines: evalRes.missingVaccines
+                };
+            });
+
+            if (filters.village && filters.village !== 'ทั้งหมด') {
+                children = children.filter(c => c.village === filters.village || c.villageName === filters.village);
+            }
+            if (filters.status && filters.status !== 'ทั้งหมด') {
+                children = children.filter(c => c.status === filters.status);
+            }
+            if (filters.search) {
+                const s = filters.search.toLowerCase();
+                children = children.filter(c => 
+                    (c.fullname && c.fullname.toLowerCase().includes(s)) ||
+                    (c.cid && c.cid.toLowerCase().includes(s)) ||
+                    (c.hn && c.hn.toLowerCase().includes(s))
+                );
+            }
+            return { success: true, children };
+        }
+
+        // 17. บันทึกผลการติดตาม (Save Tracking Report)
+        if (fnName === 'saveTrackingReport' || fnName === 'saveOfficerTracking') {
+            const trackingData = args[0] || {};
+            const { error } = await supabaseClient.from('VCC_tracking').insert([{
+                cid: trackingData.childId || trackingData.cid || '-',
+                hn: trackingData.hn || '-',
+                fullname: trackingData.childName || trackingData.fullname || '-',
+                village: trackingData.village || '-',
+                vaccine: trackingData.vaccine || '-',
+                status: trackingData.status || '-',
+                tracking_date: trackingData.visitDate || new Date().toISOString().slice(0, 10),
+                notes: trackingData.remarks || '-',
+                gps: trackingData.gps || '',
+                reporter: trackingData.reporter || (APP.currentUser ? APP.currentUser.username : '-'),
+                created_at: new Date().toISOString()
+            }]);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'บันทึกข้อมูลการติดตามสำเร็จ' };
+        }
+
+        // 18. ตรวจสอบเด็กซ้ำหลายสถานพยาบาล (Duplicate Children)
+        if (fnName === 'getDuplicateChildren') {
+            const { data, error } = await supabaseClient.from('data').select('*');
+            if (error) throw error;
+            const cidMap = {};
+            (data || []).forEach(row => {
+                const cid = String(row.cid || row.id || '').replace(/\D/g, '');
+                if (!cid || cid.length < 5) return;
+                if (!cidMap[cid]) cidMap[cid] = [];
+                cidMap[cid].push(row);
+            });
+            const duplicateList = [];
+            Object.keys(cidMap).forEach(cid => {
+                const rows = cidMap[cid];
+                const hcodes = [...new Set(rows.map(r => r.hcode).filter(Boolean))];
+                if (hcodes.length > 1) {
+                    const first = rows[0];
+                    duplicateList.push({
+                        key: cid,
+                        id: cid,
+                        cleanCid: cid,
+                        fullname: first.fullname || first.childname || first['ชื่อ-สกุล'] || 'ไม่ระบุชื่อ',
+                        birthDate: first.birthdate || first.dob || '-',
+                        age: first.age || '-',
+                        facilityCount: hcodes.length,
+                        recordCount: rows.length,
+                        distinctHcodes: hcodes,
+                        records: rows.map(r => ({
+                            hcode: r.hcode || '-',
+                            hname: getFacilityDisplayName(r.hcode, r.hospital || r.hname),
+                            subdistrict: r.subdistrict || '-',
+                            village: r.village_no || '-',
+                            villageName: r.village_name || '-',
+                            hn: r.hn || '-',
+                            phone: r.phone || '-',
+                            status: r.status || 'ตามนัดปกติ'
+                        }))
+                    });
+                }
+            });
+            return { success: true, duplicates: duplicateList };
+        }
+
+        // 19. นำเข้าข้อมูลเด็ก 0-5 ปี (Import Data Sheet)
+        if (fnName === 'importDataSheet') {
+            const dataRows = args[0] || [];
+            const userRole = args[1] || '';
+            const userHcode = args[2] || '';
+            if (!dataRows || dataRows.length <= 1) return { success: false, message: 'ไม่มีข้อมูลให้นำเข้า' };
+
+            const headers = dataRows[0].map(h => String(h || '').trim());
+            const records = [];
+            for (let i = 1; i < dataRows.length; i++) {
+                const row = dataRows[i];
+                if (!row || row.length === 0 || !row[0]) continue;
+                const obj = {};
+                headers.forEach((h, colIdx) => {
+                    if (h) {
+                        let val = row[colIdx] !== undefined ? String(row[colIdx]).trim() : '';
+                        const hl = h.toLowerCase();
+                        if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && val && /^\d+$/.test(val) && val.length < 5) {
+                            val = val.padStart(5, '0');
+                        }
+                        if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && val && /^\d+$/.test(val) && val.length > 9 && val.length < 13) {
+                            val = val.padStart(13, '0');
+                        }
+                        obj[h] = val;
+                    }
+                });
+                if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
+                    continue;
+                }
+                records.push(obj);
+            }
+
+            for (let c = 0; c < records.length; c += 100) {
+                const chunk = records.slice(c, c + 100);
+                await supabaseClient.from('data').upsert(chunk);
+            }
+
+            try {
+                await supabaseClient.from('Activity_Log').insert([{
+                    username: APP.currentUser ? APP.currentUser.username : 'admin',
+                    fullname: APP.currentUser ? APP.currentUser.fullname : 'ผู้ดูแลระบบ',
+                    role: userRole || (APP.currentUser ? APP.currentUser.role : 'เจ้าหน้าที่'),
+                    hcode: userHcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
+                    action: 'IMPORT_DATA',
+                    category: 'import',
+                    details: `นำเข้าข้อมูลเด็ก 0-5 ปี สำเร็จ (${records.length} รายการ)`,
+                    created_at: new Date().toISOString()
+                }]);
+            } catch(e) {}
+
+            return { success: true, message: `นำเข้าข้อมูลเด็ก 0-5 ปี สำเร็จทั้งหมด ${records.length} รายการ` };
+        }
+
+        // 20. นำเข้าข้อมูลนัดหมาย (Import Appointments)
+        if (fnName === 'importAppointments') {
+            const dataRows = args[0] || [];
+            const userRole = args[1] || '';
+            const userHcode = args[2] || '';
+            if (!dataRows || dataRows.length <= 1) return { success: false, message: 'ไม่มีข้อมูลให้นำเข้า' };
+
+            const headers = dataRows[0].map(h => String(h || '').trim());
+            const records = [];
+            for (let i = 1; i < dataRows.length; i++) {
+                const row = dataRows[i];
+                if (!row || row.length === 0 || !row[0]) continue;
+                const obj = {};
+                headers.forEach((h, colIdx) => {
+                    if (h) {
+                        let val = row[colIdx] !== undefined ? String(row[colIdx]).trim() : '';
+                        const hl = h.toLowerCase();
+                        if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && val && /^\d+$/.test(val) && val.length < 5) {
+                            val = val.padStart(5, '0');
+                        }
+                        if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && val && /^\d+$/.test(val) && val.length > 9 && val.length < 13) {
+                            val = val.padStart(13, '0');
+                        }
+                        obj[h] = val;
+                    }
+                });
+                if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
+                    continue;
+                }
+                records.push(obj);
+            }
+
+            for (let c = 0; c < records.length; c += 100) {
+                const chunk = records.slice(c, c + 100);
+                await supabaseClient.from('appoint').upsert(chunk);
+            }
+
+            try {
+                await supabaseClient.from('Activity_Log').insert([{
+                    username: APP.currentUser ? APP.currentUser.username : 'admin',
+                    fullname: APP.currentUser ? APP.currentUser.fullname : 'ผู้ดูแลระบบ',
+                    role: userRole || (APP.currentUser ? APP.currentUser.role : 'เจ้าหน้าที่'),
+                    hcode: userHcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
+                    action: 'IMPORT_APPT',
+                    category: 'import',
+                    details: `นำเข้าข้อมูลนัดหมายสำเร็จ (${records.length} รายการ)`,
+                    created_at: new Date().toISOString()
+                }]);
+            } catch(e) {}
+
+            return { success: true, message: `นำเข้าข้อมูลนัดหมายสำเร็จทั้งหมด ${records.length} รายการ` };
+        }
+
+        // 21. ดึงข้อมูลพิกัดเด็กสำหรับแผนที่ (Get All Children For Map)
+        if (fnName === 'getAllChildrenForMap') {
+            const filters = args[0] || {};
+            let query = supabaseClient.from('data').select('*');
+            if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                const unp = String(filters.hcode).replace(/^0+/, '');
+                const pad = String(filters.hcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
+            } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                const unp = String(filters.userHcode).replace(/^0+/, '');
+                const pad = String(filters.userHcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
+            }
+            const { data, error } = await query.limit(3000);
+            if (error) throw error;
+
+            // ดึงรายชื่อเด็กที่ปฏิเสธวัคซีนจาก VCC_tracking (เรียงตามลำดับเวลาเพื่อสถานะล่าสุด)
+            const refusedSet = new Set();
+            try {
+                const { data: tData } = await supabaseClient
+                    .from('VCC_tracking')
+                    .select('cid, hn, fullname, status, created_at')
+                    .order('created_at', { ascending: true });
+                if (tData) {
+                    tData.forEach(t => {
+                        const cid = t.cid ? String(t.cid).trim() : '';
+                        const hn = t.hn ? String(t.hn).trim() : '';
+                        const name = t.fullname ? String(t.fullname).trim() : '';
+                        const st = (t.status || '').trim();
+                        if (st === 'ปฏิเสธวัคซีน') {
+                            if (cid && cid !== '-') refusedSet.add(cid);
+                            if (hn && hn !== '-') refusedSet.add(hn);
+                            if (name && name !== '-') refusedSet.add(name);
+                        } else if (st === 'ตามนัดปกติ' || st === 'ครบตามเกณฑ์') {
+                            if (cid) refusedSet.delete(cid);
+                            if (hn) refusedSet.delete(hn);
+                            if (name) refusedSet.delete(name);
+                        }
+                    });
+                }
+            } catch (tErr) {}
+
+            const children = (data || []).map(row => {
+                let lat = null, lng = null, gpsRaw = '', hasValidGps = false;
+
+                // 1. ตรวจหา lat, lng จากทุกลักษณะคอลัมน์ที่เป็นไปได้
+                for (let k of Object.keys(row)) {
+                    const kl = k.toLowerCase().trim();
+                    if (kl === 'lat' || kl === 'latitude' || kl === 'ละติจูด') {
+                        const v = parseFloat(row[k]);
+                        if (!isNaN(v)) lat = v;
+                    }
+                    if (kl === 'lng' || kl === 'lon' || kl === 'longitude' || kl === 'ลองจิจูด') {
+                        const v = parseFloat(row[k]);
+                        if (!isNaN(v)) lng = v;
+                    }
+                }
+
+                // 2. ถ้ายังไม่ได้ หาจากคอลัมน์ข้อความ เช่น GPS, พิกัด, lat_lng
+                if (lat === null || lng === null) {
+                    for (let k of Object.keys(row)) {
+                        const kl = k.toLowerCase().trim();
+                        if (kl === 'gps' || kl === 'พิกัด' || kl.includes('gps') || kl.includes('lat') || kl.includes('พิกัด')) {
+                            const val = row[k];
+                            if (val !== undefined && val !== null && String(val).trim() !== '' && String(val).trim() !== '-') {
+                                gpsRaw = String(val).trim();
+                                break;
+                            }
+                        }
+                    }
+
+                    if (gpsRaw) {
+                        const match = gpsRaw.match(/(\d+\.\d+)\s*[, ]\s*(\d+\.\d+)/);
+                        if (match) {
+                            lat = parseFloat(match[1]);
+                            lng = parseFloat(match[2]);
+                        } else {
+                            const parts = gpsRaw.replace(/[^\d., -]/g, '').split(',');
+                            if (parts.length >= 2) {
+                                lat = parseFloat(parts[0]);
+                                lng = parseFloat(parts[1]);
+                            }
+                        }
+                    }
+                } else {
+                    gpsRaw = `${lat}, ${lng}`;
+                }
+
+                // 3. ตรวจสอบพิกัดประเทศไทย (Lat: 5-21, Lng: 97-106) และสลับหากสลับตำแหน่งกัน
+                if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+                    if (lat >= 97 && lat <= 106 && lng >= 5 && lng <= 21) {
+                        const tmp = lat;
+                        lat = lng;
+                        lng = tmp;
+                    }
+                    if (lat >= 5 && lat <= 21 && lng >= 97 && lng <= 106) {
+                        hasValidGps = true;
+                    }
+                }
+
+                const rowId = row.ID || row.id || row.cid || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '-';
+                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
+                const rowName = row['ชื่อ-สกุล'] || row.fullname || row.childname || row['ชื่อ'] || '-';
+                const rowVillage = row['หมู่ที่'] || row.village_no || row.village || row['หมู่'] || '-';
+                const rowVilName = row['ชื่อหมู่บ้าน'] || row.village_name || row.villageName || '-';
+                const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
+                const rowSub = row['ตำบล'] || row.subdistrict || row.Subdistrict || '-';
+
+                // คำนวณสถานะวัคซีนเด็กแบบเรียลไทม์ตามเกณฑ์ สธ.
+                const evalRes = evaluateChildVaccineStatus(row, refusedSet);
+
+                return {
+                    id: rowId,
+                    hn: rowHn,
+                    cid: rowId,
+                    fullname: rowName,
+                    village: rowVillage,
+                    villageName: rowVilName,
+                    subdistrict: rowSub,
+                    hcode: rowHcode,
+                    hname: getFacilityDisplayName(rowHcode, row.hospital || row.hname),
+                    gps: gpsRaw,
+                    lat: hasValidGps ? lat : null,
+                    lng: hasValidGps ? lng : null,
+                    hasGps: hasValidGps,
+                    age: row['อายุ'] || row.age || '-',
+                    houseNumber: row['บ้านเลขที่'] || row.house_no || row.houseNumber || '-',
+                    phone: row['โทรศัพท์'] || row.phone || '-',
+                    fatherName: row['ชื่อบิดา'] || row.father || row.fatherName || '-',
+                    motherName: row['ชื่อมารดา'] || row.mother || row.motherName || '-',
+                    asm: row['อสม.'] || row['อสม'] || row.asm || '-',
+                    birthDate: row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.birthdate || row.dob || '-',
+                    status: evalRes.status,
+                    missingVaccines: evalRes.missingVaccines
+                };
+            });
+
+            // กรองเงื่อนไขสิทธิ์การเข้าถึงข้อมูลตาม Role
+            let filteredChildren = children;
+            if (filters.userRole) {
+                const uRole = String(filters.userRole).trim().toLowerCase();
+                const uHcodeUnp = String(filters.userHcode || '').replace(/^0+/, '');
+                const isMapAdminAmpur = (uRole === 'admin_ampur' || uRole === 'admin');
+
+                if (!isMapAdminAmpur) {
+                    if (filters.userRole === 'Admin_HOS') {
+                        filteredChildren = filteredChildren.filter(c => String(c.hcode).replace(/^0+/, '') === uHcodeUnp);
+                    } else if (filters.userRole === 'เจ้าหน้าที่') {
+                        const isSpecialOfficer = (uHcodeUnp === '860' || uHcodeUnp === '11390');
+                        if (!isSpecialOfficer) {
+                            filteredChildren = filteredChildren.filter(c => String(c.hcode).replace(/^0+/, '') === uHcodeUnp);
+                        }
+                    } else if (filters.userRole === 'อสม.') {
+                        if (filters.userSubdistrict && filters.userSubdistrict !== '-') {
+                            filteredChildren = filteredChildren.filter(c => c.subdistrict === filters.userSubdistrict);
+                        }
+                        if (filters.userVillage && filters.userVillage !== '-') {
+                            filteredChildren = filteredChildren.filter(c => c.village === filters.userVillage);
+                        }
+                    }
+                }
+            }
+
+            if (filters.village && filters.village !== 'ทั้งหมด') {
+                filteredChildren = filteredChildren.filter(c => c.village === filters.village || c.villageName === filters.village);
+            }
+
+            if (filters.status && filters.status !== 'ทั้งหมด') {
+                filteredChildren = filteredChildren.filter(c => c.status === filters.status);
+            }
+
+            return { success: true, children: filteredChildren };
+        }
+
+        // สำหรับ Action อื่นๆ ส่ง null เพื่อให้ Fallback ไปยัง GAS
+        return null;
+    }
+
     async function callGAS(fnName, args, options) {
         options = options || {};
+        args = args || [];
+
+        // ⚡ 1. ลองประมวลผลผ่าน Supabase โดยตรง (Ultra-fast direct DB access 50-100ms)
+        if (supabaseClient) {
+            const sbStartTime = Date.now();
+            try {
+                const sbResult = await handleSupabaseAction(fnName, args);
+                if (sbResult !== null && sbResult !== undefined) {
+                    const sbElapsed = Date.now() - sbStartTime;
+                    console.log(`⚡ [Supabase Direct] ${fnName} OK (${sbElapsed}ms)`);
+                    return sbResult;
+                }
+            } catch (sbErr) {
+                console.warn(`⚠️ [Supabase Direct] ${fnName} error, fallback to GAS:`, sbErr);
+            }
+        }
+
+        // 🔄 2. Fallback ไปยัง Google Apps Script (Server)
         const maxRetries = (typeof options.maxRetries === 'number') ? options.maxRetries : 3;
         const retryDelay = options.retryDelay || 1000;
         const timeout    = options.timeout    || 45000;
@@ -5458,7 +6554,7 @@ function renderPublicVillagesGrouped(data) {
                                             <div class="village-item-name">${esc(v.villageName)}</div>
                                             <div class="village-item-facility">
                                                 <i class="fas fa-hospital" style="font-size:10px;"></i>
-                                                ${esc(v.hname || v.hcode || 'ไม่ระบุ')}
+                                                ${esc(getFacilityDisplayName(v.hcode, v.hname))}
                                             </div>
                                         </div>
                                     </div>
@@ -5662,7 +6758,24 @@ function logActivity(action, category, details) {
     
     console.log('📝 logActivity →', action, '|', details);
     
-    // ✅ Fire-and-forget (ไม่รอ response)
+    // ⚡ บันทึกตรงเข้า Supabase Activity_Log (Real-time)
+    if (supabaseClient) {
+        try {
+            supabaseClient.from('Activity_Log').insert([{
+                username: APP.currentUser.username,
+                fullname: APP.currentUser.fullname,
+                role: APP.currentUser.role,
+                hcode: APP.currentUser.hcode,
+                action: action,
+                category: category || 'general',
+                details: details || '-',
+                user_agent: navigator.userAgent.slice(0, 200),
+                created_at: new Date().toISOString()
+            }]).then(function() {}).catch(function(e) { console.warn('Supabase logActivity warn:', e); });
+        } catch (e) {}
+    }
+    
+    // ✅ Fire-and-forget (ไม่รอ response) ไปที่ GAS ด้วย
     try {
         callGAS('logActivity', [{
             username: APP.currentUser.username,
@@ -5744,6 +6857,26 @@ function logActivity(action, category, details) {
 
     showLoading('กำลังเข้าสู่ระบบ...');
 
+    // ⚡ 1. ลอง Login ผ่าน Supabase โดยตรง (ความเร็ว 50-100ms)
+    try {
+        const sbUser = await trySupabaseLogin(username, password);
+        if (sbUser) {
+            hideLoading();
+            if (sbUser.success) {
+                APP.currentUser = sbUser;
+                console.log('⚡ [Supabase] เข้าสู่ระบบสำเร็จ:', sbUser.username, `(${sbUser.role})`);
+                showMainApp();
+                return;
+            } else {
+                errorEl.textContent = sbUser.message || 'เข้าสู่ระบบไม่สำเร็จ';
+                return;
+            }
+        }
+    } catch (sbErr) {
+        console.warn('⚠️ Supabase login bypass, fallback to GAS:', sbErr);
+    }
+
+    // 🔄 2. หาก Supabase ยังไม่พร้อมหรือไม่พบผู้ใช้ ให้ Fallback ไปยัง Google Apps Script (GAS)
     let lastError = null;
     const maxAttempts = 3;
 
@@ -5860,6 +6993,24 @@ async function warmUpBackend() {
     }
 
     async function loadVillageColors() {
+        // ⚡ 1. ลองโหลดจาก Supabase ก่อน (รวดเร็วทันใจ)
+        if (supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient.from('villages').select('*');
+                if (!error && data && data.length > 0) {
+                    data.forEach(function(v) {
+                        const vName = v.village_name || v.name;
+                        if (vName) APP.villageColors[vName] = v.color || '#667eea';
+                    });
+                    console.log(`⚡ [Supabase] โหลดสีหมู่บ้านสำเร็จ (${data.length} รายการ)`);
+                    return;
+                }
+            } catch (sbErr) {
+                console.warn('⚠️ Supabase loadVillageColors error, fallback to GAS:', sbErr);
+            }
+        }
+
+        // 🔄 2. Fallback ไปยัง Google Apps Script
         try {
             const result = await callGAS('getVillages', []);
             if (result.success) {
@@ -5884,7 +7035,24 @@ async function warmUpBackend() {
             userAgent: navigator.userAgent.slice(0, 200)
         };
         
-        // ✅ ยิง log แบบไม่รอ response
+        // ⚡ บันทึก Log ออกจากระบบตรงเข้า Supabase
+        if (supabaseClient) {
+            try {
+                supabaseClient.from('Activity_Log').insert([{
+                    username: logData.username,
+                    fullname: logData.fullname,
+                    role: logData.role,
+                    hcode: logData.hcode,
+                    action: 'LOGOUT',
+                    category: 'auth',
+                    details: 'ออกจากระบบ',
+                    user_agent: logData.userAgent,
+                    created_at: new Date().toISOString()
+                }]).then();
+            } catch (e) {}
+        }
+
+        // ✅ ยิง log แบบไม่รอ response ไปยัง GAS ด้วย
         try {
             fetch(API_URL, {
                 method: 'POST',
@@ -5910,6 +7078,21 @@ async function warmUpBackend() {
 }
 
     async function loadVaccineCatalog() {
+        // ⚡ 1. ลองโหลดจาก Supabase ก่อน
+        if (supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient.from('vaccine_catalog').select('*');
+                if (!error && data && data.length > 0) {
+                    APP.vaccineCatalog = data;
+                    console.log(`⚡ [Supabase] โหลดรายการวัคซีนสำเร็จ (${data.length} รายการ)`);
+                    return;
+                }
+            } catch (sbErr) {
+                console.warn('⚠️ Supabase loadVaccineCatalog error, fallback to GAS:', sbErr);
+            }
+        }
+
+        // 🔄 2. Fallback ไปยัง Google Apps Script
         try {
             const result = await callGAS('getVaccineCatalog', []);
             if (result.success) APP.vaccineCatalog = result.catalog;
@@ -6301,7 +7484,7 @@ function updateBottomNavActive(page) {
             )
         ]);
 
-        APP.facilityMap = facilityResult.success ? facilityResult.map : {};
+        APP.facilityMap = updateFacilityMap(facilityResult.success ? facilityResult.map : {});
 
         const villageColorsMap = {};
         if (villagesResult.success && villagesResult.villages) {
@@ -6354,10 +7537,7 @@ function updateBottomNavActive(page) {
         let mapFacilityDropdownHtml = '';
         if (isAdminAmpur || isSpecialOfficer) {
             const curSelected = APP.selectedDashboardFacility || 'ทั้งหมด';
-            const facilityOptions = '<option value="ทั้งหมด"' + (curSelected === 'ทั้งหมด' ? ' selected' : '') + '>🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)</option>' + 
-                Object.keys(APP.facilityMap).map(k => 
-                    `<option value="${esc(k)}"${curSelected === k ? ' selected' : ''}>${esc(APP.facilityMap[k])}</option>`
-                ).join('');
+            const facilityOptions = buildFacilityDropdownOptions(curSelected, '🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)');
             
             dashFacilitySelectorHtml = `
                 <div style="display:inline-flex; align-items:center; background:#fff; padding:6px 14px; border-radius:10px; border:1px solid #cbd5e1; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
@@ -6551,7 +7731,7 @@ function updateBottomNavActive(page) {
             return;
         }
 
-        const labels = coverageData.map(d => d.name);
+        const labels = coverageData.map(d => getFacilityDisplayName(d.code, d.name));
         const rates = coverageData.map(d => d.rate);
         const onTime = coverageData.map(d => d.onTime);
         const totals = coverageData.map(d => d.total);
@@ -6576,7 +7756,7 @@ function updateBottomNavActive(page) {
                     if (elements && elements.length > 0) {
                         const dataIndex = elements[0].index;
                         const clickedHcode = coverageData[dataIndex].code;
-                        const clickedName = coverageData[dataIndex].name;
+                        const clickedName = getFacilityDisplayName(clickedHcode, coverageData[dataIndex].name);
                         filterVillageChartByFacility(clickedHcode, clickedName);
                     }
                 },
@@ -6617,8 +7797,9 @@ function updateBottomNavActive(page) {
         const filteredData = APP.dashboardVillageData.filter(v => v.hcode === hcode);
         renderVillageVerticalBar(filteredData, APP.dashboardVillageColors);
         
+        const displayName = getFacilityDisplayName(hcode, hname);
         const subTitle = document.getElementById('villageChartSubtitle');
-        if(subTitle) subTitle.innerHTML = `<i class="fas fa-caret-right"></i> เฉพาะ ${esc(hname)}`;
+        if(subTitle) subTitle.innerHTML = `<i class="fas fa-caret-right"></i> เฉพาะ ${esc(displayName)}`;
         
         const resetBtn = document.getElementById('resetVillageFilterBtn');
         if(resetBtn) resetBtn.style.display = 'inline-block';
@@ -6747,7 +7928,11 @@ function updateBottomNavActive(page) {
             });
 
             if (!hasAnyCoords) {
-                mapDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa;">ไม่พบเด็กที่มีพิกัดในระบบ (ในสถานพยาบาลที่เลือก)</div>';
+                if (APP.leafletMap) {
+                    APP.leafletMap.remove();
+                    APP.leafletMap = null;
+                }
+                mapDiv.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; min-height:350px; color:#64748b; font-family:Kanit,sans-serif; background:#f8fafc; border-radius:8px;"><i class="fas fa-map-marker-slash fa-3x" style="color:#cbd5e1; margin-bottom:12px;"></i><div style="font-size:15px; font-weight:600; color:#334155;">ไม่พบเด็กที่มีพิกัดในระบบ (ในสถานพยาบาลที่เลือก)</div><div style="font-size:13px; color:#94a3b8; margin-top:4px;">กรุณาตรวจสอบว่ามีข้อมูลพิกัด (GPS) ในฐานข้อมูล หรือลองเลือกสถานพยาบาลอื่น</div></div>';
                 return;
             }
 
@@ -6786,6 +7971,21 @@ function updateBottomNavActive(page) {
                 'ครบตามเกณฑ์': '#667eea',
                 'ครบ': '#667eea'
             };
+
+            // นับจำนวนเด็กที่มีพิกัดแยกตามแต่ละสถานะ
+            const countsByStatus = {
+                'ตามนัดปกติ': 0,
+                'ขาดนัด': 0,
+                'ปฏิเสธวัคซีน': 0,
+                'ครบตามเกณฑ์': 0
+            };
+            childrenResult.children.forEach(function(c) {
+                if (c.lat && c.lng && !isNaN(parseFloat(c.lat)) && !isNaN(parseFloat(c.lng))) {
+                    if (countsByStatus[c.status] !== undefined) {
+                        countsByStatus[c.status]++;
+                    }
+                }
+            });
 
             const statusFilterEl = document.getElementById('mapStatusFilter');
             const selectedStatus = statusFilterEl ? statusFilterEl.value : 'ทั้งหมด';
@@ -6827,7 +8027,11 @@ function updateBottomNavActive(page) {
             }
 
             if (countDisplayed === 0) {
-                mapDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#ff9f43;">ไม่พบข้อมูลเด็กที่มีพิกัดตามเงื่อนไขที่เลือก</div>';
+                if (APP.leafletMap) {
+                    APP.leafletMap.remove();
+                    APP.leafletMap = null;
+                }
+                mapDiv.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; min-height:350px; color:#64748b; font-family:Kanit,sans-serif; background:#f8fafc; border-radius:8px;"><i class="fas fa-filter fa-3x" style="color:#cbd5e1; margin-bottom:12px;"></i><div style="font-size:15px; font-weight:600; color:#334155;">ไม่พบเด็กที่มีพิกัดตามสถานะที่เลือก</div><div style="font-size:13px; color:#94a3b8; margin-top:4px;">ลองเปลี่ยนตัวกรองสถานะวัคซีนหรือสถานพยาบาล</div></div>';
                 return;
             }
 
@@ -6853,12 +8057,12 @@ function updateBottomNavActive(page) {
                 div.style.fontSize = '12px';
                 div.innerHTML =
                     '<strong style="display:block; margin-bottom:8px;"><i class="fas fa-map-pin"></i> สถานะวัคซีน</strong>' +
-                    '<div><span style="display:inline-block; width:14px; height:14px; background:#28c76f; border-radius:50%; margin-right:8px;"></span> ตามนัดปกติ</div>' +
-                    '<div style="margin-top:5px;"><span style="display:inline-block; width:14px; height:14px; background:#ff9f43; border-radius:50%; margin-right:8px;"></span> ขาดนัด</div>' +
-                    '<div style="margin-top:5px;"><span style="display:inline-block; width:14px; height:14px; background:#ea5455; border-radius:50%; margin-right:8px;"></span> ปฏิเสธวัคซีน</div>' +
-                    '<div style="margin-top:5px;"><span style="display:inline-block; width:14px; height:14px; background:#667eea; border-radius:50%; margin-right:8px;"></span> ครบตามเกณฑ์</div>' +
-                    '<div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px; text-align:center; color:#666; font-size:11px;">' +
-                    'จำนวน: ' + countDisplayed + ' ราย' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:4px;"><span><span style="display:inline-block; width:12px; height:12px; background:#28c76f; border-radius:50%; margin-right:6px; vertical-align:middle;"></span>ตามนัดปกติ</span><strong style="color:#28c76f;">' + (countsByStatus['ตามนัดปกติ'] || 0) + '</strong></div>' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:4px;"><span><span style="display:inline-block; width:12px; height:12px; background:#ff9f43; border-radius:50%; margin-right:6px; vertical-align:middle;"></span>ขาดนัด</span><strong style="color:#ff9f43;">' + (countsByStatus['ขาดนัด'] || 0) + '</strong></div>' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:4px;"><span><span style="display:inline-block; width:12px; height:12px; background:#ea5455; border-radius:50%; margin-right:6px; vertical-align:middle;"></span>ปฏิเสธวัคซีน</span><strong style="color:#ea5455;">' + (countsByStatus['ปฏิเสธวัคซีน'] || 0) + '</strong></div>' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:4px;"><span><span style="display:inline-block; width:12px; height:12px; background:#667eea; border-radius:50%; margin-right:6px; vertical-align:middle;"></span>ครบตามเกณฑ์</span><strong style="color:#667eea;">' + (countsByStatus['ครบตามเกณฑ์'] || 0) + '</strong></div>' +
+                    '<div style="margin-top:8px; border-top:1px solid #eee; padding-top:6px; text-align:center; color:#64748b; font-size:11px;">' +
+                    'กำลังแสดง: <b>' + countDisplayed + '</b> ราย' +
                     '</div>';
                 return div;
             };
@@ -6921,6 +8125,8 @@ function updateBottomNavActive(page) {
             '<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 12px;">' +
             '<p style="margin:0;"><strong>CID:</strong> ' + esc(id) + '</p>' +
             '<p style="margin:0;"><strong>HN:</strong> ' + esc(hn) + '</p>' +
+            '<p style="margin:0; grid-column:span 2;"><strong>สถานพยาบาล:</strong> <span style="color:#4f46e5; font-weight:500;">' +
+            esc(getFacilityDisplayName(child.hcode, child.hname)) + '</span></p>' +
             '<p style="margin:0;"><strong>วันเกิด:</strong> ' + esc(birthDate) + '</p>' +
             '<p style="margin:0;"><strong>อายุ:</strong> ' + esc(age) + '</p>' +
             '<p style="margin:0; grid-column:span 2;"><strong>ที่อยู่:</strong> บ้าน ' + esc(houseNumber) + ' หมู่ ' +
@@ -6998,6 +8204,7 @@ function updateBottomNavActive(page) {
             html: '<div style="text-align:left;font-family:Kanit,sans-serif">' +
                 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:16px; padding: 12px; background: #f8fafc; border-radius: 8px;">' +
                 '<div><small style="color:#64748b; font-size:12px;">HN</small><div style="font-weight:500;">' + esc(c.hn || '-') + '</div></div>' +
+                '<div><small style="color:#64748b; font-size:12px;">สถานพยาบาล</small><div style="font-weight:600; color:#4f46e5;">' + esc(getFacilityDisplayName(c.hcode, c.hname)) + '</div></div>' +
                 '<div><small style="color:#64748b; font-size:12px;">วันเกิด</small><div style="font-weight:500;">' + formatDate(c.birthDate) + '</div></div>' +
                 '<div><small style="color:#64748b; font-size:12px;">อายุ</small><div style="font-weight:500;">' + esc(c.age) + '</div></div>' +
                 '<div style="grid-column:1/-1"><small style="color:#64748b; font-size:12px;">ที่อยู่</small><div style="font-weight:500;">บ้าน ' + esc(c.houseNumber) + ' หมู่ ' + esc(c.village) + '</div></div>' +
@@ -7062,7 +8269,7 @@ function updateBottomNavActive(page) {
                     let approveBtn = canApprove ? `<button class="action-btn" style="color:#28c76f;" title="อนุมัติการใช้งาน" onclick="approveUser('${esc(u.username)}')"><i class="fas fa-user-check"></i></button>` : '';
 
                     return '<tr>' +
-                        '<td><span style="color:#667eea; font-weight:500;">' + esc(u.hcode) + '</span></td>' +
+                        '<td><span style="color:#667eea; font-weight:500;">' + esc(getFacilityDisplayName(u.hcode)) + '</span></td>' +
                         '<td>' + esc(u.username) + '</td>' +
                         '<td>' + esc(u.fullname) + '</td>' +
                         '<td><span class="role-badge ' + getRoleClass(u.role) + '">' + esc(u.role) + '</span></td>' +
@@ -7102,11 +8309,13 @@ function updateBottomNavActive(page) {
             '<div class="form-group"><label>รหัสสถานพยาบาล (hcode)</label>' +
             '<select id="um_hcode" onchange="updateVillageDropdowns()">' +
             '<option value="">-- เลือกรหัสสถานพยาบาล --</option>' +
-            '<option value="00860">00860</option><option value="11390">11390</option><option value="09491">09491</option>' +
-            '<option value="09492">09492</option><option value="09493">09493</option><option value="09494">09494</option>' +
-            '<option value="09495">09495</option><option value="09496">09496</option><option value="09497">09497</option>' +
-            '<option value="09498">09498</option><option value="09499">09499</option><option value="09500">09500</option>' +
-            '<option value="11915">11915</option><option value="15107">15107</option><option value="15109">15109</option>' +
+            '<option value="00860">สสอ.เทพา (00860)</option><option value="09491">รพ.สต.ตูหยง (09491)</option>' +
+            '<option value="09492">รพ.สต.ตาแปด (09492)</option><option value="09493">รพ.สต.เกาะสะบ้า (09493)</option>' +
+            '<option value="09494">รพ.สต.ลำไพล (09494)</option><option value="09495">รพ.สต.ท่าไทร (09495)</option>' +
+            '<option value="09496">รพ.สต.ท่าม่วง (09496)</option><option value="09497">รพ.สต.พรุชิง (09497)</option>' +
+            '<option value="09498">รพ.สต.วังใหญ่ (09498)</option><option value="09499">รพ.สต.สะกอม (09499)</option>' +
+            '<option value="09500">รพ.สต.ท่าแมงลัก (09500)</option><option value="11915">รพ.สต.ทุ่งโดน (11915)</option>' +
+            '<option value="15107">PCU2 (15107)</option><option value="15109">PCU1 (15109)</option>' +
             '</select></div>' +
             '<div class="form-group"><label>ตำแหน่ง</label><select id="um_role"><option value="เจ้าหน้าที่">เจ้าหน้าที่</option><option value="อสม.">อสม.</option><option value="Admin_HOS">Admin ระดับสถานพยาบาล</option><option value="Admin_Ampur">Admin ระดับอำเภอ</option></select></div>' +
             '</div>' +
@@ -7401,7 +8610,7 @@ function updateBottomNavActive(page) {
                                     <td><span style="font-weight:500;">${esc(l.username)}</span></td>
                                     <td>${esc(l.fullname)}</td>
                                     <td><span class="role-badge ${getRoleClass(l.role)}">${esc(l.role)}</span></td>
-                                    <td><span style="color:#667eea; font-weight:500;">${esc(l.hcode)}</span></td>
+                                    <td><span style="color:#667eea; font-weight:500;">${esc(getFacilityDisplayName(l.hcode))}</span></td>
                                 </tr>`).join('')}
                         </tbody>
                     </table>
@@ -7436,8 +8645,8 @@ function updateBottomNavActive(page) {
                                     <tr>
                                         <td style="white-space:nowrap; font-size:12px;">${esc(l.timestamp)}</td>
                                         <td>
-                                            <div style="font-weight:500;">${esc(l.fullname)}</div>
-                                            <div style="font-size:11px; color:#94a3b8;">${esc(l.username)}</div>
+                                             <div style="font-weight:500;">${esc(l.fullname)}</div>
+                                             <div style="font-size:11px; color:#94a3b8;">${esc(l.username)}</div>
                                         </td>
                                         <td>
                                             <span style="display:inline-flex; align-items:center; gap:5px;
@@ -7455,7 +8664,7 @@ function updateBottomNavActive(page) {
                                         <td style="font-size:13px; color:#334155; max-width: 350px;">
                                             ${esc(l.details)}
                                         </td>
-                                        <td><span style="color:#667eea; font-weight:500; font-size:12px;">${esc(l.hcode)}</span></td>
+                                        <td><span style="color:#667eea; font-weight:500; font-size:12px;">${esc(getFacilityDisplayName(l.hcode))}</span></td>
                                     </tr>`;
                             }).join('')}
                         </tbody>
@@ -7676,11 +8885,10 @@ window.switchLogTab = function(tab) {
                 callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode])
             ]);
             
-            APP.facilityMap = fRes.success ? fRes.map : {};
+            APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
             APP.villagesCache = vRes.success ? (vRes.villages || []) : [];
 
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
 
             const isSpecialOfficer = isSpecialOfficerUser();
             let facilityFilterHtml = ''; 
@@ -7807,7 +9015,7 @@ window.switchLogTab = function(tab) {
                         statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 200px; white-space: normal;">ขาด: ' + esc(c.missingVaccines) + '</div>';
                     }
 
-                    const displayName = c.hname !== '-' ? c.hname : (APP.facilityMap[c.hcode] || c.hcode || '-');
+                    const displayName = getFacilityDisplayName(c.hcode, c.hname);
                     const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
                     const quickCallBtn = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="action-btn" style="color:#10b981;" title="โทร ' + esc(c.phone) + '"><i class="fas fa-phone-alt"></i></a> ' : '';
                     const quickNavBtn = (c.gps && c.gps.includes(',')) ? '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="action-btn" style="color:#2563eb;" title="นำทาง Google Maps"><i class="fas fa-directions"></i></a> ' : '';
@@ -7862,12 +9070,11 @@ window.switchLogTab = function(tab) {
                 callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode])
             ]);
             
-            APP.facilityMap = fRes.success ? fRes.map : {};
+            APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
             const villages = vRes.success ? vRes.villages : [];
             hideLoading();
 
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
 
             const isSpecialOfficer = isSpecialOfficerUser();
             let facilityFilterHtml = ''; 
@@ -7966,7 +9173,7 @@ window.switchLogTab = function(tab) {
                         statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 150px; white-space: normal;">ขาด: ' + esc(c.missingVaccines) + '</div>';
                     }
 
-                    const displayName = c.hname !== '-' ? c.hname : (APP.facilityMap[c.hcode] || c.hcode || '-');
+                    const displayName = getFacilityDisplayName(c.hcode, c.hname);
 
                     const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
                     let contactPill = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="btn-call-pill" title="โทรหาผู้ปกครอง (' + esc(c.phone) + ')"><i class="fas fa-phone-alt"></i> ' + esc(c.phone) + '</a>' : '<span style="color:#94a3b8; font-size:12px;">-</span>';
@@ -8062,10 +9269,9 @@ window.switchLogTab = function(tab) {
 
         try {
             const fRes = await callGAS('getFacilityMap', []);
-            APP.facilityMap = fRes.success ? fRes.map : {};
+            APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
 
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
 
             let facilityFilterHtml = '';
             const isSpecialOfficer = isSpecialOfficerUser();
@@ -8184,7 +9390,7 @@ window.switchLogTab = function(tab) {
                 if (isHiddenCol(idx, headers[idx])) continue; 
                 const cell = row[idx] !== undefined ? row[idx] : '';
                 if (idx === hcodeIdx) {
-                    const displayName = APP.facilityMap[cell] || cell || '-';
+                    const displayName = getFacilityDisplayName(cell);
                     trHtml += '<td><span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span></td>';
                 } else if (idx === vacColIdx && cell) {
                     const vacTags = cell.toString().split(',').map(function(v) {
@@ -8329,7 +9535,7 @@ window.switchLogTab = function(tab) {
         };
 
         const hcode = getVal(['hcode', 'รหัสสถานพยาบาล', 'สถานพยาบาล'], APP.currentUser ? APP.currentUser.hcode : '');
-        const facName = (APP.facilityMap && APP.facilityMap[hcode]) ? APP.facilityMap[hcode] : (hcode ? ('รหัสสถานพยาบาล ' + hcode) : 'หน่วยบริการสาธารณสุข');
+        const facName = getFacilityDisplayName(hcode, 'หน่วยบริการสาธารณสุข');
 
         return {
             hcode: hcode,
@@ -8686,7 +9892,7 @@ window.switchLogTab = function(tab) {
             window.CURRENT_MINI_SLIP_DATA = slipData;
         } else {
             // สร้าง Slip Data เบื้องต้นจาก child detail
-            const facName = (APP.facilityMap && APP.facilityMap[APP.currentUser.hcode]) ? APP.facilityMap[APP.currentUser.hcode] : 'คลินิกเด็กดี';
+            const facName = getFacilityDisplayName(APP.currentUser.hcode, 'คลินิกเด็กดี');
             window.CURRENT_MINI_SLIP_DATA = {
                 hcode: APP.currentUser.hcode || '',
                 facilityName: facName,
@@ -9080,8 +10286,7 @@ window.switchLogTab = function(tab) {
     function ensureClinicBatchModal() {
         if (document.getElementById('clinicBatchModal')) return;
 
-        const facilityOptions = '<option value="ทั้งหมด">-- ทุกสถานพยาบาล --</option>' + 
-            Object.keys(APP.facilityMap || {}).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+        const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทุกสถานพยาบาล --');
 
         const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
         const showFacilityFilter = (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer);
@@ -9506,13 +10711,12 @@ window.switchLogTab = function(tab) {
             const fRes = await callGAS('getFacilityMap', []);
             const apptRes = await callGAS('getAppointments', [filters]); 
             
-            APP.facilityMap = fRes.success ? fRes.map : {};
+            APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
             hideLoading();
 
             const canManage = (isAdminAmpurUser() || isAdminHOSUser() || APP.currentUser.role === 'เจ้าหน้าที่');
             
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
 
             let facilityFilterHtml = '';
             const isSpecialOfficer = isSpecialOfficerUser();
@@ -9613,7 +10817,7 @@ window.switchLogTab = function(tab) {
         const colors = ['#667eea', '#28c76f', '#ff9f43', '#ea5455', '#17a2b8', '#9c27b0', '#e83e8c', '#fd7e14'];
 
         let events = Object.values(mergedEvents).map(function(item, index) {
-            let facilityName = APP.facilityMap && APP.facilityMap[item.hcode] ? APP.facilityMap[item.hcode] : (item.hcode || 'ไม่ระบุสถานพยาบาล');
+            let facilityName = getFacilityDisplayName(item.hcode, 'ไม่ระบุสถานพยาบาล');
             let count = Object.keys(item.children).length;
             let childrenList = Object.values(item.children);
 
@@ -10460,15 +11664,14 @@ window.switchLogTab = function(tab) {
         const reporters = repRes.success ? repRes.reporters : [];
         
         APP.villagesCache = villages;
-        APP.facilityMap = fRes.success ? fRes.map : {};
+        APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
 
         const lockVillage = (APP.currentUser.role === 'เจ้าหน้าที่' && APP.currentUser.village && APP.currentUser.village !== '-') ? APP.currentUser.village : '';
 
         const isSpecialOfficer = isSpecialOfficerUser();
         let facilityFilterHtml = '';
         if (isAdminAmpurUser() || isSpecialOfficer) {
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
             facilityFilterHtml = '<div class="rpt-fg"><label><i class="fas fa-hospital"></i> สถานพยาบาล</label>' +
                 '<select id="rptFacility" onchange="cascadeVillageOptions(this.value, \'rptVillage\')">' + facilityOptions + '</select></div>';
         }
@@ -11298,7 +12501,7 @@ window.switchLogTab = function(tab) {
                 '</span>' +
                 '</td>' +
                 '<td style="vertical-align: middle;">' +
-                '<div style="font-weight: 600; color: #0f172a; font-size: 13.5px;">' + esc(fac.name) + '</div>' +
+                '<div style="font-weight: 600; color: #0f172a; font-size: 13.5px;">' + esc(getFacilityDisplayName(fac.code, fac.name)) + '</div>' +
                 '</td>' +
                 '<td style="vertical-align: middle;">' +
                 dataHtml +
@@ -12634,9 +13837,9 @@ window.confirmClearOldAppointments = async function() {
   showLoading('กำลังโหลดข้อมูล...');
   try {
     const fRes = await callGAS('getFacilityMap', []);
-    APP.facilityMap = fRes.success ? fRes.map : {};
+    APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
   } catch (e) {
-    APP.facilityMap = {};
+    APP.facilityMap = updateFacilityMap({});
   }
   hideLoading();
 
@@ -12649,17 +13852,14 @@ window.confirmClearOldAppointments = async function() {
 
   let facilityFilterHtml = '';
   if (canSelectFacility) {
-    const facilityOptions = '<option value="">-- ทั้งหมด --</option>' +
-      Object.keys(APP.facilityMap || {}).map(k =>
-        `<option value="${esc(k)}">${esc(APP.facilityMap[k])} (${esc(k)})</option>`
-      ).join('');
+    const facilityOptions = buildFacilityDropdownOptions('', '-- ทั้งหมด --');
     facilityFilterHtml = `
       <div class="cv-filter-group">
         <label><i class="fas fa-hospital"></i> สถานพยาบาล</label>
         <select id="cvFacility">${facilityOptions}</select>
       </div>`;
   } else {
-    const myFacilityName = (APP.facilityMap && APP.facilityMap[userHcode]) || userHcode || '-';
+    const myFacilityName = getFacilityDisplayName(userHcode, (APP.facilityMap && APP.facilityMap[userHcode]));
     facilityFilterHtml = `
       <div class="cv-filter-group">
         <label><i class="fas fa-hospital"></i> สถานพยาบาล</label>
@@ -13182,7 +14382,7 @@ function renderCoverage(res, selectedQuarter) {
               <td class="text-start" style="font-weight:600; color:#667eea;">${esc(d.name)}</td>
               <td style="color:#94a3b8; font-size:13px;">${d.dob}</td>
               <td>หมู่ ${d.village || '-'}</td>
-              <td class="text-start" style="font-size:13px; color:#64748b;">${esc(d.hname || '-')}</td>
+              <td class="text-start" style="font-size:13px; color:#64748b;">${esc(getFacilityDisplayName(d.hcode, d.hname))}</td>
               <td class="text-start">
                 <span style="background:#fef2f2; color:#b91c1c; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600; display:inline-block;">
                   ${esc(d.missing)}
@@ -13510,7 +14710,7 @@ async function exportCoverageExcel() {
             d.name,
             d.dob,
             d.village || '-',
-            d.hname || '-',
+            getFacilityDisplayName(d.hcode, d.hname) || '-',
             d.missing
           ]);
         });
@@ -14068,8 +15268,7 @@ async function loadDuplicateReportPage() {
     let facilityMap = {};
     try {
         const fRes = await callGAS('getFacilityMap', []);
-        facilityMap = fRes.success ? fRes.map : {};
-        APP.facilityMap = facilityMap;
+        facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
     } catch (e) {
         console.error('Load facilityMap error:', e);
     }
@@ -14084,8 +15283,7 @@ async function loadDuplicateReportPage() {
 
     let facilityFilterHtml = '';
     if (canSelectFacility) {
-        const facilityOptions = '<option value="ทั้งหมด">-- ทุกสถานพยาบาล --</option>' +
-            Object.keys(facilityMap).map(k => `<option value="${esc(k)}">${esc(facilityMap[k])}</option>`).join('');
+        const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทุกสถานพยาบาล --');
         facilityFilterHtml = `
             <div class="filter-group">
                 <label><i class="fas fa-hospital"></i> สถานพยาบาลที่มีเด็กซ้ำ</label>
@@ -14292,7 +15490,7 @@ function renderDuplicateTable(children) {
             `<div style="margin-top:6px;"><span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; border-radius:6px; padding:3px 8px; font-weight:600;"><i class="fas fa-exclamation-triangle"></i> สถานะขัดแย้งกันระหว่างสถานพยาบาล</span></div>` : '';
 
         const recordsHtml = (c.records || []).map(r => {
-            const facName = r.hname || (APP.facilityMap && APP.facilityMap[r.hcode]) || r.hcode || 'ไม่ระบุสถานพยาบาล';
+            const facName = getFacilityDisplayName(r.hcode, r.hname);
             const cleanPhone = (r.phone && r.phone !== '-') ? r.phone.replace(/[^0-9+]/g, '') : '';
             const phonePill = cleanPhone ? `<a href="tel:${cleanPhone}" class="btn-call-pill" title="โทรหาผู้ปกครอง (${esc(r.phone)})"><i class="fas fa-phone-alt"></i> ${esc(r.phone)}</a>` : '';
             const navPill = (r.gps && r.gps.includes(',')) ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(r.gps.trim())}" target="_blank" class="btn-nav-pill" title="นำทาง Google Maps"><i class="fas fa-directions"></i> นำทาง</a>` : '';
@@ -14400,7 +15598,7 @@ async function exportDuplicateReportExcel() {
         ];
 
         DUP_DATA.forEach((c, i) => {
-            const facListStr = c.records.map(r => `[${r.hcode}] ${r.hname || (APP.facilityMap && APP.facilityMap[r.hcode]) || r.hcode} (HN: ${r.hn || '-'} - ${r.status})`).join(' | ');
+            const facListStr = c.records.map(r => `[${r.hcode}] ${getFacilityDisplayName(r.hcode, r.hname)} (HN: ${r.hn || '-'} - ${r.status})`).join(' | ');
             sheet1Rows.push([
                 i + 1,
                 c.id ? String(c.id) : (c.cleanCid ? String(c.cleanCid) : ''),
@@ -14446,7 +15644,7 @@ async function exportDuplicateReportExcel() {
         let recordIdx = 1;
         DUP_DATA.forEach(c => {
             (c.records || []).forEach(r => {
-                const facName = r.hname || (APP.facilityMap && APP.facilityMap[r.hcode]) || r.hcode || '';
+                const facName = getFacilityDisplayName(r.hcode, r.hname);
                 sheet2Rows.push([
                     recordIdx++,
                     c.id || '',
@@ -14501,7 +15699,7 @@ async function exportDuplicateReportExcel() {
 
         const facBreakdown = DUP_SUMMARY.facilityBreakdown || {};
         Object.keys(facBreakdown).forEach(hc => {
-            const facName = (APP.facilityMap && APP.facilityMap[hc]) || hc || 'ไม่ระบุ';
+            const facName = getFacilityDisplayName(hc, 'ไม่ระบุ');
             sheet3Rows.push([hc, facName, facBreakdown[hc]]);
         });
 
