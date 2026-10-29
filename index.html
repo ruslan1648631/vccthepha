@@ -4899,112 +4899,88 @@
     };
 
     // ============================================================
-    // THEPHA DISTRICT HEALTH FACILITIES MASTER LIST (อำเภอเทพา)
+    // FACILITY HELPERS (ดึงข้อมูลจากตาราง data ฟิลด์ hname โดยตรง)
     // ============================================================
-    const DEFAULT_FACILITIES = [
-        { code: '860', name: 'โรงพยาบาลเทพา' },
-        { code: '9491', name: 'รพ.สต.บ้านตูหยง' },
-        { code: '9492', name: 'รพ.สต.บ้านสะกอม' },
-        { code: '9493', name: 'รพ.สต.บ้านเกาะแลหนัง' },
-        { code: '9494', name: 'รพ.สต.ลำไพล' },
-        { code: '9495', name: 'รพ.สต.บ้านกะลาพอ' },
-        { code: '9496', name: 'รพ.สต.บ้านวังใหญ่' },
-        { code: '9497', name: 'รพ.สต.บ้านพรุตู' },
-        { code: '9498', name: 'รพ.สต.บ้านควนหรัน' },
-        { code: '9499', name: 'รพ.สต.บ้านควนเจดีย์' },
-        { code: '9500', name: 'รพ.สต.บ้านควนหิน' },
-        { code: '11390', name: 'รพ.สต.บ้านเกาะสะบ้า' },
-        { code: '11915', name: 'รพ.สต.บ้านท่าม่วง' },
-        { code: '15107', name: 'รพ.สต.บ้านควนเจดีย์ (15107)' },
-        { code: '15109', name: 'รพ.สต.เฉลิมพระเกียรติฯ บ้านบ่อเตย' }
-    ];
 
-    const DEFAULT_FACILITY_MAP = {
-        '860': 'โรงพยาบาลเทพา',
-        '00860': 'โรงพยาบาลเทพา',
-        '9491': 'รพ.สต.บ้านตูหยง',
-        '09491': 'รพ.สต.บ้านตูหยง',
-        '9492': 'รพ.สต.บ้านสะกอม',
-        '09492': 'รพ.สต.บ้านสะกอม',
-        '9493': 'รพ.สต.บ้านเกาะแลหนัง',
-        '09493': 'รพ.สต.บ้านเกาะแลหนัง',
-        '9494': 'รพ.สต.ลำไพล',
-        '09494': 'รพ.สต.ลำไพล',
-        '9495': 'รพ.สต.บ้านกะลาพอ',
-        '09495': 'รพ.สต.บ้านกะลาพอ',
-        '9496': 'รพ.สต.บ้านวังใหญ่',
-        '09496': 'รพ.สต.บ้านวังใหญ่',
-        '9497': 'รพ.สต.บ้านพรุตู',
-        '09497': 'รพ.สต.บ้านพรุตู',
-        '9498': 'รพ.สต.บ้านควนหรัน',
-        '09498': 'รพ.สต.บ้านควนหรัน',
-        '9499': 'รพ.สต.บ้านควนเจดีย์',
-        '09499': 'รพ.สต.บ้านควนเจดีย์',
-        '9500': 'รพ.สต.บ้านควนหิน',
-        '09500': 'รพ.สต.บ้านควนหิน',
-        '11390': 'รพ.สต.บ้านเกาะสะบ้า',
-        '011390': 'รพ.สต.บ้านเกาะสะบ้า',
-        '11915': 'รพ.สต.บ้านท่าม่วง',
-        '011915': 'รพ.สต.บ้านท่าม่วง',
-        '15107': 'รพ.สต.บ้านควนเจดีย์ (15107)',
-        '15109': 'รพ.สต.เฉลิมพระเกียรติฯ บ้านบ่อเตย'
-    };
-
-    // แปลงรหัสสถานพยาบาลให้เป็นชื่อภาษาไทยที่อ่านเข้าใจง่าย
+    // คืนชื่อสถานพยาบาล โดยอ้างอิงจาก APP.facilityMap ที่ดึงจากตาราง data ฟิลด์ hname
     function getFacilityDisplayName(code, customName) {
         if (!code || code === 'ทั้งหมด' || code === '-') return customName || code || '-';
         const c = String(code).trim();
-        // ถ้า customName เป็นชื่อภาษาไทยที่มีความหมาย (ไม่ใช่ตัวเลข และไม่เท่ากับ code)
+
+        // 1. ถ้า customName มีค่าเป็นชื่อภาษาไทยที่ถูกต้อง ให้ใช้ทันที
         if (customName && isNaN(customName) && String(customName).trim() !== c && !/^\d+$/.test(String(customName).trim())) {
             return String(customName).trim();
         }
-        if (DEFAULT_FACILITY_MAP[c]) return DEFAULT_FACILITY_MAP[c];
-        const unpadded = c.replace(/^0+/, '');
-        if (DEFAULT_FACILITY_MAP[unpadded]) return DEFAULT_FACILITY_MAP[unpadded];
-        const padded5 = c.padStart(5, '0');
-        if (DEFAULT_FACILITY_MAP[padded5]) return DEFAULT_FACILITY_MAP[padded5];
 
-        if (APP && APP.facilityMap && APP.facilityMap[c]) {
-            const mapped = String(APP.facilityMap[c]).trim();
-            if (mapped && isNaN(mapped) && mapped !== c && !/^\d+$/.test(mapped)) {
-                return mapped;
+        // 2. ค้นจาก APP.facilityMap (ซึ่งดึงมาจากตาราง data ฟิลด์ hname)
+        if (APP && APP.facilityMap) {
+            if (APP.facilityMap[c] && isNaN(APP.facilityMap[c]) && APP.facilityMap[c] !== c) {
+                return APP.facilityMap[c];
+            }
+            const unpadded = c.replace(/^0+/, '');
+            if (APP.facilityMap[unpadded] && isNaN(APP.facilityMap[unpadded]) && APP.facilityMap[unpadded] !== unpadded) {
+                return APP.facilityMap[unpadded];
+            }
+            const padded5 = c.padStart(5, '0');
+            if (APP.facilityMap[padded5] && isNaN(APP.facilityMap[padded5]) && APP.facilityMap[padded5] !== padded5) {
+                return APP.facilityMap[padded5];
             }
         }
+
         return customName || code;
     }
 
-    // รวมและอัปเดต Facility Map ให้มีชื่อภาษาไทยเสมอ
+    // อัปเดต APP.facilityMap จากข้อมูลที่โหลดมาจากตาราง data
     function updateFacilityMap(incomingMap) {
-        const map = {};
-        if (incomingMap && typeof incomingMap === 'object' && Object.keys(incomingMap).length > 0) {
+        const map = (APP && APP.facilityMap) ? APP.facilityMap : {};
+        if (incomingMap && typeof incomingMap === 'object') {
             Object.keys(incomingMap).forEach(k => {
                 const val = incomingMap[k];
-                map[k] = getFacilityDisplayName(k, val);
-            });
-        } else {
-            DEFAULT_FACILITIES.forEach(f => {
-                map[f.code] = f.name;
+                if (val && isNaN(val) && val !== k) {
+                    const cleanName = String(val).trim();
+                    map[k] = cleanName;
+                    map[k.replace(/^0+/, '')] = cleanName;
+                    map[k.padStart(5, '0')] = cleanName;
+                } else if (!map[k]) {
+                    map[k] = val || k;
+                }
             });
         }
         APP.facilityMap = map;
         return map;
     }
 
-    // สร้างตัวเลือกสำหรับ Dropdown แสดงชื่อสถานพยาบาลภาษาไทยพร้อมรหัสกำกับ
+    // สร้างตัวเลือก Dropdown สถานพยาบาลจากตาราง data
     function buildFacilityDropdownOptions(curSelected, defaultLabel) {
         const defTxt = defaultLabel || '🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)';
         let html = `<option value="ทั้งหมด"${(curSelected === 'ทั้งหมด' || !curSelected) ? ' selected' : ''}>${defTxt}</option>`;
-        const map = (APP && APP.facilityMap && Object.keys(APP.facilityMap).length > 0) 
-            ? APP.facilityMap 
-            : DEFAULT_FACILITY_MAP;
+        const map = (APP && APP.facilityMap) ? APP.facilityMap : {};
         
-        const keys = Object.keys(map).filter(k => !k.startsWith('0') || (k === '00860' && !map['860']));
-        keys.forEach(k => {
-            const name = getFacilityDisplayName(k, map[k]);
-            const isSel = (String(curSelected) === String(k));
-            const labelText = (name && name !== k && !name.includes(`(${k})`)) ? `${name} (${k})` : (name || k);
-            html += `<option value="${esc(k)}"${isSel ? ' selected' : ''}>${esc(labelText)}</option>`;
+        // คัดกรองหารายการที่ไม่ซ้ำกัน
+        const uniqueList = [];
+        const seenNames = new Set();
+        const seenCodes = new Set();
+
+        Object.keys(map).forEach(k => {
+            const name = map[k];
+            if (!name || name === k || /^\d+$/.test(name)) return;
+            const normCode = k.replace(/^0+/, '');
+            if (!seenNames.has(name) && !seenCodes.has(normCode)) {
+                seenNames.add(name);
+                seenCodes.add(normCode);
+                uniqueList.push({ code: k, name: name });
+            }
         });
+
+        // เรียงลำดับตามรหัสสถานพยาบาล
+        uniqueList.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+
+        uniqueList.forEach(item => {
+            const isSel = (String(curSelected) === String(item.code) || String(curSelected).replace(/^0+/, '') === item.code.replace(/^0+/, ''));
+            const labelText = `${item.name} (${item.code})`;
+            html += `<option value="${esc(item.code)}"${isSel ? ' selected' : ''}>${esc(labelText)}</option>`;
+        });
+
         return html;
     }
 
@@ -5336,43 +5312,56 @@
             return { success: true, catalog };
         }
 
-        // 11. ดึงแผนที่สถานพยาบาล (Facility Map)
+        // 11. ดึงแผนที่สถานพยาบาล (Facility Map) — ดึงจากตาราง hospitals (ฟิลด์ hcode, hosname) เป็นหลัก
         if (fnName === 'getFacilityMap') {
             const map = {};
             try {
-                const { data, error } = await supabaseClient.from('hospitals').select('*');
+                // 1. ดึงจากตาราง hospitals ฟิลด์ hosname โดยตรง
+                const { data, error } = await supabaseClient
+                    .from('hospitals')
+                    .select('hcode, hosname');
+
                 if (!error && data && data.length > 0) {
                     data.forEach(h => {
-                        const code = h.hcode || h.code || h.id;
-                        const name = h.name || h.hname || h.hospital_name;
-                        if (code) {
-                            map[String(code).trim()] = getFacilityDisplayName(code, name);
+                        const code = h.hcode ? String(h.hcode).trim() : '';
+                        const name = h.hosname ? String(h.hosname).trim() : '';
+                        if (code && name && isNaN(name)) {
+                            map[code] = name;
+                            // ผูกทั้งแบบมี 0 นำหน้า และไม่มี 0 นำหน้า (เช่น 860 และ 00860) ให้เจอชื่อเดียวกันเสมอ
+                            const unp = code.replace(/^0+/, '');
+                            const pad = code.padStart(5, '0');
+                            map[unp] = name;
+                            map[pad] = name;
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('⚡ [Supabase] getFacilityMap from hospitals error:', e);
+            }
+
+            // 2. เติมเต็มสถานพยาบาลที่อาจไม่มีในตาราง hospitals จากตาราง data
+            try {
+                const { data: dData } = await supabaseClient
+                    .from('data')
+                    .select('hcode, hname')
+                    .not('hcode', 'is', null)
+                    .limit(5000);
+
+                if (dData && dData.length > 0) {
+                    dData.forEach(r => {
+                        const code = r.hcode ? String(r.hcode).trim() : '';
+                        const name = r.hname ? String(r.hname).trim() : '';
+                        if (code && name && isNaN(name)) {
+                            const unp = code.replace(/^0+/, '');
+                            const pad = code.padStart(5, '0');
+                            if (!map[code]) map[code] = name;
+                            if (!map[unp]) map[unp] = name;
+                            if (!map[pad]) map[pad] = name;
                         }
                     });
                 }
             } catch (e) {}
 
-            // หากตาราง hospitals ยังว่าง ให้ดึง distinct hcode จากตาราง data
-            if (Object.keys(map).length === 0) {
-                try {
-                    const { data } = await supabaseClient.from('data').select('hcode, hospital, hname').limit(3000);
-                    if (data && data.length > 0) {
-                        data.forEach(r => {
-                            const c = r.hcode ? String(r.hcode).trim() : '';
-                            if (c && !map[c]) {
-                                map[c] = getFacilityDisplayName(c, r.hospital || r.hname);
-                            }
-                        });
-                    }
-                } catch (e) {}
-            }
-
-            // ถ้ายังว่าง ให้ใช้รายชื่อสถานพยาบาลของอำเภอเทพาเป็นหลัก
-            if (Object.keys(map).length === 0) {
-                DEFAULT_FACILITIES.forEach(f => {
-                    map[f.code] = f.name;
-                });
-            }
             return { success: true, map };
         }
 
@@ -5401,7 +5390,9 @@
             const filters = args[0] || {};
             let query = supabaseClient.from('Activity_Log').select('*').order('created_at', { ascending: false }).limit(400);
             if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                query = query.eq('hcode', filters.userHcode);
+                const unp = String(filters.userHcode).replace(/^0+/, '');
+                const pad = String(filters.userHcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
             }
             const { data, error } = await query;
             if (error) throw error;
@@ -5442,7 +5433,9 @@
             const filters = args[0] || {};
             let query = supabaseClient.from('appoint').select('*').limit(3000);
             if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                query = query.eq('hcode', filters.userHcode);
+                const unp = String(filters.userHcode).replace(/^0+/, '');
+                const pad = String(filters.userHcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
             }
             const { data, error } = await query;
             if (error) throw error;
@@ -5459,9 +5452,13 @@
             const filters = args[0] || {};
             let query = supabaseClient.from('data').select('*');
             if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
-                query = query.eq('hcode', filters.hcode);
+                const unp = String(filters.hcode).replace(/^0+/, '');
+                const pad = String(filters.hcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
             } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                query = query.eq('hcode', filters.userHcode);
+                const unp = String(filters.userHcode).replace(/^0+/, '');
+                const pad = String(filters.userHcode).padStart(5, '0');
+                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
             }
             if (filters.village && filters.village !== 'ทั้งหมด') {
                 query = query.or(`village_name.eq.${filters.village},village_no.eq.${filters.village}`);
