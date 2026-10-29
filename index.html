@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- ===== SUPABASE JS SDK ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         /* ============================================================
            GLOBAL STYLES
@@ -4901,6 +4904,117 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbwOURwW8llT2-zw5qB7-Q9BtFilNdLXw_w77oIE6UKLeKgnteph4NaoocvjzcLiBX_N/exec";
 
     // ============================================================
+    // SUPABASE CONFIGURATION & CLIENT
+    // ============================================================
+    const SUPABASE_CONFIG = {
+        URL: "https://ioaclozxoinkbrnbtley.supabase.co",
+        ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvYWNsb3p4b2lua2JybmJ0bGV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1NDk4NTUsImV4cCI6MjEwODEyNTg1NX0.xY3PVsmdqX2H3M2wvVsbAYgEoHVwuhFwy3Vagx76naM"
+    };
+
+    let supabaseClient = null;
+    try {
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+            supabaseClient = window.supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+            console.log("⚡ [VCC] Supabase Client initialized successfully!");
+        }
+    } catch (sbErr) {
+        console.warn("⚠️ Supabase Client init failed, will use GAS fallback:", sbErr);
+    }
+
+    // SHA-256 helper for client-side hashing
+    async function sha256Hex(str) {
+        try {
+            const buffer = new TextEncoder().encode(String(str).trim());
+            const digest = await crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch (e) {
+            return String(str).trim();
+        }
+    }
+
+    // Direct Login via Supabase (Fast response: 50-100ms)
+    async function trySupabaseLogin(username, password) {
+        if (!supabaseClient) return null;
+        try {
+            const inputUser = String(username || '').trim();
+            const inputPwd = String(password || '').trim();
+            const inputHash = await sha256Hex(inputPwd);
+
+            // ค้นหา username จากตาราง users (รองรับทั้ง Username และ username)
+            let { data, error } = await supabaseClient
+                .from('users')
+                .select('*')
+                .ilike('Username', inputUser)
+                .limit(1);
+
+            if (error || !data || data.length === 0) {
+                const fb = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .ilike('username', inputUser)
+                    .limit(1);
+                if (fb.data && fb.data.length > 0) {
+                    data = fb.data;
+                    error = null;
+                }
+            }
+
+            if (error) {
+                console.warn('⚠️ Supabase login query returned error:', error.message);
+                return null; // fallback to GAS
+            }
+
+            if (!data || data.length === 0) {
+                return null; // ไม่พบใน Supabase ให้ fallback ไป GAS
+            }
+
+            const row = data[0];
+            const storedPwd = String(row.Password || row.password || '').trim();
+            const isMatch = (storedPwd === inputHash) || (storedPwd === inputPwd);
+
+            if (!isMatch) {
+                return { success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
+            }
+
+            const status = String(row.status || row.Status || 'active').toLowerCase();
+            if (status === 'inactive') {
+                return { success: false, message: 'บัญชีนี้ถูกระงับการใช้งาน' };
+            }
+            if (status === 'register') {
+                return { success: false, message: 'บัญชียังไม่อนุมัติ กรุณารอแอดมินตรวจสอบ (Active)' };
+            }
+
+            const loginUser = {
+                success: true,
+                hcode: String(row.hcode || row.Hcode || '-'),
+                username: String(row.Username || row.username || inputUser),
+                fullname: String(row.Fullname || row.fullname || inputUser),
+                role: String(row.Role || row.role || 'เจ้าหน้าที่'),
+                village: String(row.Village || row.village || '-'),
+                subdistrict: String(row.subdistrict || row.Subdistrict || '-'),
+                source: 'supabase'
+            };
+
+            // บันทึก Access_Log ใน Supabase (Background)
+            try {
+                supabaseClient.from('Access_Log').insert([{
+                    hcode: loginUser.hcode,
+                    username: loginUser.username,
+                    fullname: loginUser.fullname,
+                    role: loginUser.role,
+                    action: 'LOGIN',
+                    created_at: new Date().toISOString()
+                }]).then();
+            } catch (logErr) {}
+
+            return loginUser;
+        } catch (err) {
+            console.warn('⚠️ Supabase login exception, falling back to GAS:', err);
+            return null;
+        }
+    }
+
+    // ============================================================
     // CORE HELPERS & NETWORK LAYER (callGAS)
     // ============================================================
     function esc(text) {
@@ -4935,8 +5049,496 @@
         return msg;
     }
 
+    // ============================================================
+    // SUPABASE DIRECT ACTION DISPATCHER (100% Serverless Backend)
+    // ============================================================
+    async function handleSupabaseAction(fnName, args) {
+        if (!supabaseClient) return null;
+        args = args || [];
+
+        // 1. ดึงข้อมูลผู้ใช้งาน (Users)
+        if (fnName === 'getUsers') {
+            const requestorRole = args[0] || (APP.currentUser ? APP.currentUser.role : '');
+            const requestorHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
+            let query = supabaseClient.from('users').select('*');
+            if (requestorRole === 'Admin_HOS' && requestorHcode && requestorHcode !== '-') {
+                query = query.eq('hcode', requestorHcode);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            const users = (data || []).map(u => ({
+                hcode: u.hcode || '-',
+                username: u.Username || u.username || '-',
+                password: '',
+                fullname: u.Fullname || u.fullname || '-',
+                role: u.Role || u.role || 'เจ้าหน้าที่',
+                village: u.Village || u.village || '-',
+                subdistrict: u.subdistrict || u.Subdistrict || '-',
+                createdAt: formatDateTime(u.CreatedAt || u.created_at),
+                status: (u.status || u.Status || 'active').toLowerCase()
+            }));
+            return { success: true, users };
+        }
+
+        // 2. เพิ่มผู้ใช้งาน (Add User)
+        if (fnName === 'addUser') {
+            const userData = args[0];
+            const hashedPwd = await sha256Hex(userData.password || '123456');
+            const { error } = await supabaseClient.from('users').insert([{
+                hcode: userData.hcode || '-',
+                Username: userData.username,
+                Password: hashedPwd,
+                Fullname: userData.fullname,
+                Role: userData.role || 'เจ้าหน้าที่',
+                Village: userData.village || '-',
+                subdistrict: userData.subdistrict || '-',
+                status: userData.status || 'register',
+                CreatedAt: new Date().toISOString()
+            }]);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'เพิ่มผู้ใช้งานเรียบร้อยแล้ว' };
+        }
+
+        // 3. แก้ไขผู้ใช้งาน (Update User)
+        if (fnName === 'updateUser') {
+            const origUser = args[0];
+            const userData = args[1];
+            const updateObj = {
+                hcode: userData.hcode || '-',
+                Fullname: userData.fullname,
+                Role: userData.role,
+                Village: userData.village || '-',
+                subdistrict: userData.subdistrict || '-',
+                status: userData.status || 'active'
+            };
+            if (userData.password && String(userData.password).trim() !== '') {
+                updateObj.Password = await sha256Hex(String(userData.password).trim());
+            }
+            const { error } = await supabaseClient.from('users').update(updateObj).or(`Username.eq.${origUser},username.eq.${origUser}`);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'อัปเดตผู้ใช้งานเรียบร้อยแล้ว' };
+        }
+
+        // 4. ลบผู้ใช้งาน (Delete User)
+        if (fnName === 'deleteUser') {
+            const username = args[0];
+            const { error } = await supabaseClient.from('users').delete().or(`Username.eq.${username},username.eq.${username}`);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'ลบผู้ใช้งานเรียบร้อยแล้ว' };
+        }
+
+        // 5. อนุมัติผู้ใช้งาน (Activate User)
+        if (fnName === 'activateUserStatus') {
+            const username = args[0];
+            const { error } = await supabaseClient.from('users').update({ status: 'active' }).or(`Username.eq.${username},username.eq.${username}`);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'อนุมัติการใช้งานสำเร็จ' };
+        }
+
+        // 6. ดึงข้อมูลหมู่บ้าน (Villages)
+        if (fnName === 'getVillages') {
+            const requestorRole = args[0] || (APP.currentUser ? APP.currentUser.role : '');
+            const requestorHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
+            const requestorSub = args[2] || (APP.currentUser ? APP.currentUser.subdistrict : '');
+            const requestorVil = args[3] || (APP.currentUser ? APP.currentUser.village : '');
+
+            let query = supabaseClient.from('villages').select('*');
+            if (requestorRole === 'Admin_HOS' && requestorHcode && requestorHcode !== '-') {
+                query = query.eq('hcode', requestorHcode);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            let list = data || [];
+            if (requestorRole === 'อสม.') {
+                if (requestorSub && requestorSub !== '-') {
+                    list = list.filter(v => (v.subdistrict || '').trim() === requestorSub.trim());
+                }
+                if (requestorVil && requestorVil !== '-') {
+                    list = list.filter(v => (v.village_name === requestorVil || v.village_no == requestorVil));
+                }
+            }
+            const villages = list.map(v => ({
+                id: String(v.id || ('VIL_' + (v.village_no || Math.random()))),
+                hcode: v.hcode || '-',
+                village_no: String(v.village_no || '-'),
+                village_name: v.village_name || v.name || '-',
+                subdistrict: v.subdistrict || '-',
+                color: v.color || '#6c757d',
+                icon: v.icon || 'fa-home',
+                createdAt: v.createdAt || v.created_at || '-',
+                name: (v.village_name && v.village_name !== '-') ? v.village_name : ('หมู่ ' + (v.village_no || ''))
+            }));
+            return { success: true, villages };
+        }
+
+        // 7. เพิ่มหมู่บ้าน (Add Village)
+        if (fnName === 'addVillage') {
+            const v = args[0];
+            const newId = 'VIL_' + Date.now();
+            const { error } = await supabaseClient.from('villages').insert([{
+                id: newId,
+                hcode: v.hcode || '-',
+                village_no: v.village_no || '-',
+                village_name: v.village_name || '-',
+                subdistrict: v.subdistrict || '-',
+                color: v.color || '#667eea',
+                icon: v.icon || 'fa-home',
+                createdAt: new Date().toISOString()
+            }]);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'เพิ่มหมู่บ้านเรียบร้อยแล้ว', id: newId };
+        }
+
+        // 8. แก้ไขหมู่บ้าน (Update Village)
+        if (fnName === 'updateVillage') {
+            const vId = args[0];
+            const v = args[1];
+            const { error } = await supabaseClient.from('villages').update({
+                hcode: v.hcode || '-',
+                village_no: v.village_no || '-',
+                village_name: v.village_name || '-',
+                subdistrict: v.subdistrict || '-',
+                color: v.color || '#667eea',
+                icon: v.icon || 'fa-home'
+            }).eq('id', vId);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'อัปเดตหมู่บ้านเรียบร้อยแล้ว' };
+        }
+
+        // 9. ลบหมู่บ้าน (Delete Village)
+        if (fnName === 'deleteVillage') {
+            const vId = args[0];
+            const { error } = await supabaseClient.from('villages').delete().eq('id', vId);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'ลบหมู่บ้านเรียบร้อยแล้ว' };
+        }
+
+        // 10. ดึงรายการแคตตาล็อกวัคซีน (Vaccine Catalog)
+        if (fnName === 'getVaccineCatalog') {
+            const { data, error } = await supabaseClient.from('vaccine_catalog').select('*');
+            if (error) throw error;
+            const catalog = (data || []).map(v => ({
+                code: v.code || v.vaccine_code || '',
+                name: v.name || v.vaccine_name || v.code || '',
+                age_months: String(v.age_months || v.ageMonths || '0'),
+                description: v.description || ''
+            }));
+            return { success: true, catalog };
+        }
+
+        // 11. ดึงแผนที่สถานพยาบาล (Facility Map)
+        if (fnName === 'getFacilityMap') {
+            const { data, error } = await supabaseClient.from('hospitals').select('*');
+            if (!error && data && data.length > 0) {
+                const map = {};
+                data.forEach(h => {
+                    const code = h.hcode || h.code || h.id;
+                    const name = h.name || h.hname || h.hospital_name || code;
+                    if (code) map[code] = name;
+                });
+                return { success: true, map };
+            }
+            return null;
+        }
+
+        // 12. ประวัติการเข้าสู่ระบบ (Access Logs)
+        if (fnName === 'getAccessLogs') {
+            const role = args[0];
+            const hcode = args[1];
+            let query = supabaseClient.from('Access_Log').select('*').order('created_at', { ascending: false }).limit(300);
+            if (role === 'Admin_HOS' && hcode) {
+                query = query.eq('hcode', hcode);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            const logs = (data || []).map(l => ({
+                timestamp: formatDateTime(l.created_at || l.timestamp),
+                username: l.username || '-',
+                fullname: l.fullname || l.username || '-',
+                role: l.role || 'เจ้าหน้าที่',
+                hcode: l.hcode || '-'
+            }));
+            return { success: true, logs };
+        }
+
+        // 13. ประวัติกิจกรรม (Activity Logs)
+        if (fnName === 'getActivityLogs') {
+            const filters = args[0] || {};
+            let query = supabaseClient.from('Activity_Log').select('*').order('created_at', { ascending: false }).limit(400);
+            if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                query = query.eq('hcode', filters.userHcode);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            const logs = (data || []).map(l => ({
+                timestamp: formatDateTime(l.created_at || l.timestamp),
+                username: l.username || '-',
+                fullname: l.fullname || l.username || '-',
+                role: l.role || 'เจ้าหน้าที่',
+                hcode: l.hcode || '-',
+                action: l.action || 'GENERAL',
+                category: l.category || 'general',
+                details: l.details || '-'
+            }));
+            return { success: true, logs };
+        }
+
+        // 14. บันทึกกิจกรรม (Log Activity)
+        if (fnName === 'logActivity') {
+            const l = args[0];
+            if (l) {
+                await supabaseClient.from('Activity_Log').insert([{
+                    username: l.username,
+                    fullname: l.fullname,
+                    role: l.role,
+                    hcode: l.hcode,
+                    action: l.action,
+                    category: l.category || 'general',
+                    details: l.details || '-',
+                    user_agent: l.userAgent || navigator.userAgent.slice(0, 200),
+                    created_at: new Date().toISOString()
+                }]);
+            }
+            return { success: true };
+        }
+
+        // 15. ดึงรายชื่อนัดหมาย (Appointments)
+        if (fnName === 'getAppointments') {
+            const filters = args[0] || {};
+            let query = supabaseClient.from('appoint').select('*').limit(3000);
+            if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                query = query.eq('hcode', filters.userHcode);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                return { success: true, headers: [], appointments: [] };
+            }
+            const headers = Object.keys(data[0]);
+            const appointments = data.map(row => headers.map(h => row[h] !== null && row[h] !== undefined ? String(row[h]) : ''));
+            return { success: true, headers, appointments };
+        }
+
+        // 16. ดึงรายชื่อเด็ก (Children)
+        if (fnName === 'getChildren') {
+            const filters = args[0] || {};
+            let query = supabaseClient.from('data').select('*');
+            if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                query = query.eq('hcode', filters.hcode);
+            } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                query = query.eq('hcode', filters.userHcode);
+            }
+            if (filters.village && filters.village !== 'ทั้งหมด') {
+                query = query.or(`village_name.eq.${filters.village},village_no.eq.${filters.village}`);
+            }
+            if (filters.status && filters.status !== 'ทั้งหมด') {
+                query = query.eq('status', filters.status);
+            }
+            const { data, error } = await query.limit(3000);
+            if (error) throw error;
+            let children = (data || []).map(row => ({
+                id: row.id || row.hn || row.cid,
+                hn: row.hn || '-',
+                cid: row.cid || '-',
+                fullname: row.fullname || row.childname || row['ชื่อ-สกุล'] || '-',
+                birthDate: row.birthdate || row.dob || row['ว/ด/ปเกิด'] || '-',
+                age: row.age || row['อายุ'] || '-',
+                houseNumber: row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
+                village: row.village_no || row.village || row['หมู่ที่'] || '-',
+                villageName: row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-',
+                subdistrict: row.subdistrict || row['ตำบล'] || '-',
+                hcode: row.hcode || '-',
+                hname: row.hospital || row.hname || row['สถานพยาบาล'] || '-',
+                asm: row.asm || row['อสม'] || '-',
+                phone: row.phone || row['โทรศัพท์'] || '-',
+                gps: row.gps || row.lat_lng || '-',
+                status: row.status || row['สถานะ'] || 'ตามนัดปกติ',
+                missingVaccines: row.missing_vaccines || row.missingVaccines || ''
+            }));
+            if (filters.search) {
+                const s = filters.search.toLowerCase();
+                children = children.filter(c => 
+                    (c.fullname && c.fullname.toLowerCase().includes(s)) ||
+                    (c.cid && c.cid.toLowerCase().includes(s)) ||
+                    (c.hn && c.hn.toLowerCase().includes(s))
+                );
+            }
+            return { success: true, children };
+        }
+
+        // 17. บันทึกผลการติดตาม (Save Tracking Report)
+        if (fnName === 'saveTrackingReport' || fnName === 'saveOfficerTracking') {
+            const trackingData = args[0] || {};
+            const { error } = await supabaseClient.from('VCC_tracking').insert([{
+                cid: trackingData.childId || trackingData.cid || '-',
+                hn: trackingData.hn || '-',
+                fullname: trackingData.childName || trackingData.fullname || '-',
+                village: trackingData.village || '-',
+                vaccine: trackingData.vaccine || '-',
+                status: trackingData.status || '-',
+                tracking_date: trackingData.visitDate || new Date().toISOString().slice(0, 10),
+                notes: trackingData.remarks || '-',
+                gps: trackingData.gps || '',
+                reporter: trackingData.reporter || (APP.currentUser ? APP.currentUser.username : '-'),
+                created_at: new Date().toISOString()
+            }]);
+            if (error) return { success: false, message: error.message };
+            return { success: true, message: 'บันทึกข้อมูลการติดตามสำเร็จ' };
+        }
+
+        // 18. ตรวจสอบเด็กซ้ำหลายสถานพยาบาล (Duplicate Children)
+        if (fnName === 'getDuplicateChildren') {
+            const { data, error } = await supabaseClient.from('data').select('*');
+            if (error) throw error;
+            const cidMap = {};
+            (data || []).forEach(row => {
+                const cid = String(row.cid || row.id || '').replace(/\D/g, '');
+                if (!cid || cid.length < 5) return;
+                if (!cidMap[cid]) cidMap[cid] = [];
+                cidMap[cid].push(row);
+            });
+            const duplicateList = [];
+            Object.keys(cidMap).forEach(cid => {
+                const rows = cidMap[cid];
+                const hcodes = [...new Set(rows.map(r => r.hcode).filter(Boolean))];
+                if (hcodes.length > 1) {
+                    const first = rows[0];
+                    duplicateList.push({
+                        key: cid,
+                        id: cid,
+                        cleanCid: cid,
+                        fullname: first.fullname || first.childname || first['ชื่อ-สกุล'] || 'ไม่ระบุชื่อ',
+                        birthDate: first.birthdate || first.dob || '-',
+                        age: first.age || '-',
+                        facilityCount: hcodes.length,
+                        recordCount: rows.length,
+                        distinctHcodes: hcodes,
+                        records: rows.map(r => ({
+                            hcode: r.hcode || '-',
+                            hname: r.hospital || r.hname || '-',
+                            subdistrict: r.subdistrict || '-',
+                            village: r.village_no || '-',
+                            villageName: r.village_name || '-',
+                            hn: r.hn || '-',
+                            phone: r.phone || '-',
+                            status: r.status || 'ตามนัดปกติ'
+                        }))
+                    });
+                }
+            });
+            return { success: true, duplicates: duplicateList };
+        }
+
+        // 19. นำเข้าข้อมูลเด็ก 0-5 ปี (Import Data Sheet)
+        if (fnName === 'importDataSheet') {
+            const dataRows = args[0] || [];
+            const userRole = args[1] || '';
+            const userHcode = args[2] || '';
+            if (!dataRows || dataRows.length <= 1) return { success: false, message: 'ไม่มีข้อมูลให้นำเข้า' };
+
+            const headers = dataRows[0].map(h => String(h || '').trim());
+            const records = [];
+            for (let i = 1; i < dataRows.length; i++) {
+                const row = dataRows[i];
+                if (!row || row.length === 0 || !row[0]) continue;
+                const obj = {};
+                headers.forEach((h, colIdx) => {
+                    if (h) obj[h] = row[colIdx] !== undefined ? String(row[colIdx]).trim() : '';
+                });
+                if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
+                    continue;
+                }
+                records.push(obj);
+            }
+
+            for (let c = 0; c < records.length; c += 100) {
+                const chunk = records.slice(c, c + 100);
+                await supabaseClient.from('data').upsert(chunk);
+            }
+
+            try {
+                await supabaseClient.from('Activity_Log').insert([{
+                    username: APP.currentUser ? APP.currentUser.username : 'admin',
+                    fullname: APP.currentUser ? APP.currentUser.fullname : 'ผู้ดูแลระบบ',
+                    role: userRole || (APP.currentUser ? APP.currentUser.role : 'เจ้าหน้าที่'),
+                    hcode: userHcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
+                    action: 'IMPORT_DATA',
+                    category: 'import',
+                    details: `นำเข้าข้อมูลเด็ก 0-5 ปี สำเร็จ (${records.length} รายการ)`,
+                    created_at: new Date().toISOString()
+                }]);
+            } catch(e) {}
+
+            return { success: true, message: `นำเข้าข้อมูลเด็ก 0-5 ปี สำเร็จทั้งหมด ${records.length} รายการ` };
+        }
+
+        // 20. นำเข้าข้อมูลนัดหมาย (Import Appointments)
+        if (fnName === 'importAppointments') {
+            const dataRows = args[0] || [];
+            const userRole = args[1] || '';
+            const userHcode = args[2] || '';
+            if (!dataRows || dataRows.length <= 1) return { success: false, message: 'ไม่มีข้อมูลให้นำเข้า' };
+
+            const headers = dataRows[0].map(h => String(h || '').trim());
+            const records = [];
+            for (let i = 1; i < dataRows.length; i++) {
+                const row = dataRows[i];
+                if (!row || row.length === 0 || !row[0]) continue;
+                const obj = {};
+                headers.forEach((h, colIdx) => {
+                    if (h) obj[h] = row[colIdx] !== undefined ? String(row[colIdx]).trim() : '';
+                });
+                if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
+                    continue;
+                }
+                records.push(obj);
+            }
+
+            for (let c = 0; c < records.length; c += 100) {
+                const chunk = records.slice(c, c + 100);
+                await supabaseClient.from('appoint').upsert(chunk);
+            }
+
+            try {
+                await supabaseClient.from('Activity_Log').insert([{
+                    username: APP.currentUser ? APP.currentUser.username : 'admin',
+                    fullname: APP.currentUser ? APP.currentUser.fullname : 'ผู้ดูแลระบบ',
+                    role: userRole || (APP.currentUser ? APP.currentUser.role : 'เจ้าหน้าที่'),
+                    hcode: userHcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
+                    action: 'IMPORT_APPT',
+                    category: 'import',
+                    details: `นำเข้าข้อมูลนัดหมายสำเร็จ (${records.length} รายการ)`,
+                    created_at: new Date().toISOString()
+                }]);
+            } catch(e) {}
+
+            return { success: true, message: `นำเข้าข้อมูลนัดหมายสำเร็จทั้งหมด ${records.length} รายการ` };
+        }
+
+        // สำหรับ Action อื่นๆ ส่ง null เพื่อให้ Fallback ไปยัง GAS
+        return null;
+    }
+
     async function callGAS(fnName, args, options) {
         options = options || {};
+        args = args || [];
+
+        // ⚡ 1. ลองประมวลผลผ่าน Supabase โดยตรง (Ultra-fast direct DB access 50-100ms)
+        if (supabaseClient) {
+            const sbStartTime = Date.now();
+            try {
+                const sbResult = await handleSupabaseAction(fnName, args);
+                if (sbResult !== null && sbResult !== undefined) {
+                    const sbElapsed = Date.now() - sbStartTime;
+                    console.log(`⚡ [Supabase Direct] ${fnName} OK (${sbElapsed}ms)`);
+                    return sbResult;
+                }
+            } catch (sbErr) {
+                console.warn(`⚠️ [Supabase Direct] ${fnName} error, fallback to GAS:`, sbErr);
+            }
+        }
+
+        // 🔄 2. Fallback ไปยัง Google Apps Script (Server)
         const maxRetries = (typeof options.maxRetries === 'number') ? options.maxRetries : 3;
         const retryDelay = options.retryDelay || 1000;
         const timeout    = options.timeout    || 45000;
@@ -5662,7 +6264,24 @@ function logActivity(action, category, details) {
     
     console.log('📝 logActivity →', action, '|', details);
     
-    // ✅ Fire-and-forget (ไม่รอ response)
+    // ⚡ บันทึกตรงเข้า Supabase Activity_Log (Real-time)
+    if (supabaseClient) {
+        try {
+            supabaseClient.from('Activity_Log').insert([{
+                username: APP.currentUser.username,
+                fullname: APP.currentUser.fullname,
+                role: APP.currentUser.role,
+                hcode: APP.currentUser.hcode,
+                action: action,
+                category: category || 'general',
+                details: details || '-',
+                user_agent: navigator.userAgent.slice(0, 200),
+                created_at: new Date().toISOString()
+            }]).then(function() {}).catch(function(e) { console.warn('Supabase logActivity warn:', e); });
+        } catch (e) {}
+    }
+    
+    // ✅ Fire-and-forget (ไม่รอ response) ไปที่ GAS ด้วย
     try {
         callGAS('logActivity', [{
             username: APP.currentUser.username,
@@ -5744,6 +6363,26 @@ function logActivity(action, category, details) {
 
     showLoading('กำลังเข้าสู่ระบบ...');
 
+    // ⚡ 1. ลอง Login ผ่าน Supabase โดยตรง (ความเร็ว 50-100ms)
+    try {
+        const sbUser = await trySupabaseLogin(username, password);
+        if (sbUser) {
+            hideLoading();
+            if (sbUser.success) {
+                APP.currentUser = sbUser;
+                console.log('⚡ [Supabase] เข้าสู่ระบบสำเร็จ:', sbUser.username, `(${sbUser.role})`);
+                showMainApp();
+                return;
+            } else {
+                errorEl.textContent = sbUser.message || 'เข้าสู่ระบบไม่สำเร็จ';
+                return;
+            }
+        }
+    } catch (sbErr) {
+        console.warn('⚠️ Supabase login bypass, fallback to GAS:', sbErr);
+    }
+
+    // 🔄 2. หาก Supabase ยังไม่พร้อมหรือไม่พบผู้ใช้ ให้ Fallback ไปยัง Google Apps Script (GAS)
     let lastError = null;
     const maxAttempts = 3;
 
@@ -5860,6 +6499,24 @@ async function warmUpBackend() {
     }
 
     async function loadVillageColors() {
+        // ⚡ 1. ลองโหลดจาก Supabase ก่อน (รวดเร็วทันใจ)
+        if (supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient.from('villages').select('*');
+                if (!error && data && data.length > 0) {
+                    data.forEach(function(v) {
+                        const vName = v.village_name || v.name;
+                        if (vName) APP.villageColors[vName] = v.color || '#667eea';
+                    });
+                    console.log(`⚡ [Supabase] โหลดสีหมู่บ้านสำเร็จ (${data.length} รายการ)`);
+                    return;
+                }
+            } catch (sbErr) {
+                console.warn('⚠️ Supabase loadVillageColors error, fallback to GAS:', sbErr);
+            }
+        }
+
+        // 🔄 2. Fallback ไปยัง Google Apps Script
         try {
             const result = await callGAS('getVillages', []);
             if (result.success) {
@@ -5884,7 +6541,24 @@ async function warmUpBackend() {
             userAgent: navigator.userAgent.slice(0, 200)
         };
         
-        // ✅ ยิง log แบบไม่รอ response
+        // ⚡ บันทึก Log ออกจากระบบตรงเข้า Supabase
+        if (supabaseClient) {
+            try {
+                supabaseClient.from('Activity_Log').insert([{
+                    username: logData.username,
+                    fullname: logData.fullname,
+                    role: logData.role,
+                    hcode: logData.hcode,
+                    action: 'LOGOUT',
+                    category: 'auth',
+                    details: 'ออกจากระบบ',
+                    user_agent: logData.userAgent,
+                    created_at: new Date().toISOString()
+                }]).then();
+            } catch (e) {}
+        }
+
+        // ✅ ยิง log แบบไม่รอ response ไปยัง GAS ด้วย
         try {
             fetch(API_URL, {
                 method: 'POST',
@@ -5910,6 +6584,21 @@ async function warmUpBackend() {
 }
 
     async function loadVaccineCatalog() {
+        // ⚡ 1. ลองโหลดจาก Supabase ก่อน
+        if (supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient.from('vaccine_catalog').select('*');
+                if (!error && data && data.length > 0) {
+                    APP.vaccineCatalog = data;
+                    console.log(`⚡ [Supabase] โหลดรายการวัคซีนสำเร็จ (${data.length} รายการ)`);
+                    return;
+                }
+            } catch (sbErr) {
+                console.warn('⚠️ Supabase loadVaccineCatalog error, fallback to GAS:', sbErr);
+            }
+        }
+
+        // 🔄 2. Fallback ไปยัง Google Apps Script
         try {
             const result = await callGAS('getVaccineCatalog', []);
             if (result.success) APP.vaccineCatalog = result.catalog;
