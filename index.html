@@ -5032,14 +5032,22 @@
         return hasVal ? m : (parseFloat(str) || -1);
     }
 
+    // เธฃเธฒเธขเธเธฒเธฃเธเธทเนเธญเธซเธฑเธงเธเธดเธฅเธ”เนเธงเธฑเธเธเธตเธ 19 เธ•เธฑเธงเธกเธฒเธ•เธฃเธเธฒเธ
+    const OFFICIAL_VACCINE_FIELDS = [
+        'BCG', 'HBV1', 'DTP+HB+Hib1', 'Rota1', 'IPV1',
+        'DTP+HB+Hib2', 'Rota2', 'IPV2', 'DTP+HB+Hib3', 'OPV3',
+        'R23', 'MMR1', 'LJE1', 'DTP4', 'OPV4',
+        'MMR2', 'LJE2', 'DTP5', 'OPV5'
+    ];
+
     function checkChildVaccineGiven(row, targetCodes) {
         if (!row || typeof row !== 'object') return false;
         if (!Array.isArray(targetCodes)) targetCodes = [targetCodes];
         const rowKeys = Object.keys(row);
         for (let target of targetCodes) {
-            const clnTarget = target.toLowerCase().replace(/[-\s_.]/g, '');
+            const clnTarget = target.toLowerCase().replace(/[-\s_.+]/g, '');
             for (let k of rowKeys) {
-                const clnK = k.toLowerCase().replace(/[-\s_.]/g, '');
+                const clnK = k.toLowerCase().replace(/[-\s_.+]/g, '');
                 if (clnK === clnTarget || (clnTarget.length >= 3 && clnK === clnTarget) || (clnTarget.length >= 4 && clnK.includes(clnTarget)) || (clnK.length >= 4 && clnTarget.includes(clnK))) {
                     const val = row[k];
                     if (val !== null && val !== undefined) {
@@ -5055,25 +5063,25 @@
     }
 
     function evaluateChildVaccineStatus(row, refusedSet) {
-        const rowId = String(row.ID || row.id || row.cid || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '').trim();
-        const rowHn = String(row.HN || row.hn || row['รหัส'] || '').trim();
-        const rowName = String(row['ชื่อ-สกุล'] || row.fullname || row.childname || row['ชื่อ'] || '').trim();
+        const rowId = String(row.CID || row.cid || row.ID || row.id || row['เน€เธฅเธเธเธฑเธ•เธฃ'] || row['เน€เธฅเธเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธฃเธฐเธเธฒเธเธ'] || '').trim();
+        const rowHn = String(row.HN || row.hn || row['เธฃเธซเธฑเธช'] || '').trim();
+        const rowName = String(row.fullname || row['เธเธทเนเธญ-เธชเธเธธเธฅ'] || row.childname || row['เธเธทเนเธญ'] || '').trim();
 
-        // 1. ตรวจสอบ "ปฏิเสธวัคซีน" จากประวัติการติดตาม หรือจากฟิลด์ status เดิม
+        // 1. เธ•เธฃเธงเธเธชเธญเธ "เธเธเธดเน€เธชเธเธงเธฑเธเธเธตเธ" เธเธฒเธเธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธ•เธดเธ”เธ•เธฒเธก เธซเธฃเธทเธญเธเธฒเธเธเธดเธฅเธ”เน status เน€เธ”เธดเธก
         if (refusedSet && (
             (rowId && refusedSet.has(rowId)) ||
             (rowHn && refusedSet.has(rowHn)) ||
             (rowName && refusedSet.has(rowName))
         )) {
-            return { status: 'ปฏิเสธวัคซีน', missingVaccines: '' };
+            return { status: 'เธเธเธดเน€เธชเธเธงเธฑเธเธเธตเธ', missingVaccines: '' };
         }
-        const existingStatus = String(row['สถานะ'] || row.status || '').trim();
-        if (existingStatus === 'ปฏิเสธวัคซีน' || existingStatus === 'ปฏิเสธ') {
-            return { status: 'ปฏิเสธวัคซีน', missingVaccines: '' };
+        const existingStatus = String(row.status || row['เธชเธ–เธฒเธเธฐ'] || '').trim();
+        if (existingStatus === 'เธเธเธดเน€เธชเธเธงเธฑเธเธเธตเธ' || existingStatus === 'เธเธเธดเน€เธชเธ') {
+            return { status: 'เธเธเธดเน€เธชเธเธงเธฑเธเธเธตเธ', missingVaccines: '' };
         }
 
-        // 2. คำนวณอายุเป็นเดือน (รองรับทั้งรูปแบบ พ.ศ./ค.ศ. และ DD/MM/YYYY)
-        const rawBirth = row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.birthdate || row.dob || '';
+        // 2. เธเธณเธเธงเธ“เธญเธฒเธขเธธเน€เธเนเธเน€เธ”เธทเธญเธ (เธฃเธญเธเธฃเธฑเธเธ—เธฑเนเธเธฃเธนเธเนเธเธ เธ.เธจ./เธ.เธจ. เนเธฅเธฐ DD/MM/YYYY)
+        const rawBirth = row.DOB || row.dob || row.birthdate || row['เธง/เธ”/เธเน€เธเธดเธ”'] || row['เธงเธฑเธเน€เธเธดเธ”'] || '';
         const rawAgeStr = row['อายุ'] || row.age || '';
         let ageMonths = -1;
         if (rawBirth && String(rawBirth).trim() !== '-' && String(rawBirth).trim() !== '') {
@@ -5117,18 +5125,26 @@
                 ageMonths: 12,
                 vaccines: [
                     { code: 'BCG', alts: ['bcg'] },
-                    { code: 'HB1', alts: ['hb1', 'hbv1', 'hb', 'hepb1'] },
-                    { code: 'DTP-HB1', alts: ['dtphb1', 'dtp1', 'dtphbvipv1'] },
-                    { code: 'DTP-HB2', alts: ['dtphb2', 'dtp2', 'dtphbvipv2'] },
-                    { code: 'DTP-HB3', alts: ['dtphb3', 'dtp3', 'dtphbvipv3'] },
-                    { code: 'MMR1', alts: ['mmr1', 'mmr'] }
+                    { code: 'HBV1', alts: ['hbv1', 'hb1', 'hb', 'hepb1'] },
+                    { code: 'DTP+HB+Hib1', alts: ['dtp+hb+hib1', 'dtphbhib1', 'dtp-hb1', 'dtphb1', 'dtp1'] },
+                    { code: 'IPV1', alts: ['ipv1', 'ipv'] },
+                    { code: 'Rota1', alts: ['rota1', 'rota'] },
+                    { code: 'DTP+HB+Hib2', alts: ['dtp+hb+hib2', 'dtphbhib2', 'dtp-hb2', 'dtphb2', 'dtp2'] },
+                    { code: 'Rota2', alts: ['rota2'] },
+                    { code: 'IPV2', alts: ['ipv2'] },
+                    { code: 'DTP+HB+Hib3', alts: ['dtp+hb+hib3', 'dtphbhib3', 'dtp-hb3', 'dtphb3', 'dtp3'] },
+                    { code: 'OPV3', alts: ['opv3', 'opv'] },
+                    { code: 'R23', alts: ['r23', 'rota3'] },
+                    { code: 'MMR1', alts: ['mmr1', 'mmr'] },
+                    { code: 'LJE1', alts: ['lje1', 'laje1', 'je1', 'laje', 'je'] }
                 ]
             },
             {
                 ageMonths: 24,
                 vaccines: [
                     { code: 'DTP4', alts: ['dtp4', 'dtphb4'] },
-                    { code: 'LAJE1', alts: ['laje1', 'laje2', 'je1', 'je2', 'laje', 'je'] }
+                    { code: 'OPV4', alts: ['opv4'] },
+                    { code: 'LJE2', alts: ['lje2', 'laje2', 'je2'] }
                 ]
             },
             {
@@ -5140,7 +5156,8 @@
             {
                 ageMonths: 60,
                 vaccines: [
-                    { code: 'DTP5', alts: ['dtp5'] }
+                    { code: 'DTP5', alts: ['dtp5'] },
+                    { code: 'OPV5', alts: ['opv5'] }
                 ]
             }
         ];
@@ -5646,27 +5663,29 @@
 
             let children = (data || []).map(row => {
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
-                const rowId = row.ID || row.id || row.cid || row['เลขบัตร'] || '-';
-                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
-                const rowName = row['ชื่อ-สกุล'] || row.fullname || row.childname || row['ชื่อ'] || '-';
+                const rowId = row.CID || row.cid || row.ID || row.id || row['เน€เธฅเธเธเธฑเธ•เธฃ'] || '-';
+                const rowHn = row.HN || row.hn || row['เธฃเธซเธฑเธช'] || '-';
+                const rowName = row.fullname || row['เธเธทเนเธญ-เธชเธเธธเธฅ'] || row.childname || row['เธเธทเนเธญ'] || '-';
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
+                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['เธชเธ–เธฒเธเธเธขเธฒเธเธฒเธฅ']);
 
                 return {
                     id: rowId,
                     hn: rowHn,
                     cid: rowId,
                     fullname: rowName,
-                    birthDate: row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.birthdate || row.dob || '-',
-                    age: row['อายุ'] || row.age || '-',
-                    houseNumber: row['บ้านเลขที่'] || row.house_no || row.houseNumber || '-',
-                    village: row['หมู่ที่'] || row.village_no || row.village || '-',
-                    villageName: row['ชื่อหมู่บ้าน'] || row.village_name || row.villageName || '-',
-                    subdistrict: row['ตำบล'] || row.subdistrict || '-',
+                    birthDate: row.DOB || row.dob || row.birthdate || row['เธง/เธ”/เธเน€เธเธดเธ”'] || row['เธงเธฑเธเน€เธเธดเธ”'] || '-',
+                    type: row.type || row['เธเธฃเธฐเน€เธ เธ—'] || '-',
+                    age: row.age || row['เธญเธฒเธขเธธ'] || '-',
+                    houseNumber: row.house || row.house_no || row.houseNumber || row['เธเนเธฒเธเน€เธฅเธเธ—เธตเน'] || '-',
+                    village: row.moo || row.village_no || row.village || row['เธซเธกเธนเนเธ—เธตเน'] || row['เธซเธกเธนเน'] || '-',
+                    villageName: row.villname || row.village_name || row.villageName || row['เธเธทเนเธญเธซเธกเธนเนเธเนเธฒเธ'] || '-',
+                    subdistrict: row.subdistname || row.subdistrict || row['เธ•เธณเธเธฅ'] || '-',
                     hcode: rowHcode,
-                    hname: getFacilityDisplayName(rowHcode, row.hospital || row.hname || row['สถานพยาบาล']),
-                    asm: row['อสม.'] || row['อสม'] || row.asm || '-',
-                    phone: row['โทรศัพท์'] || row.phone || '-',
-                    gps: row.GPS || row.gps || row['พิกัด'] || row.lat_lng || '-',
+                    hname: rowHname,
+                    asm: row.VHV || row.vhv || row.asm || row['เธญเธชเธก.'] || row['เธญเธชเธก'] || '-',
+                    phone: row.phone || row['เนเธ—เธฃเธจเธฑเธเธ—เน'] || '-',
+                    gps: row.GPS || row.gps || row['เธเธดเธเธฑเธ”'] || row.lat_lng || '-',
                     status: evalRes.status,
                     missingVaccines: evalRes.missingVaccines
                 };
@@ -5958,13 +5977,13 @@
                     }
                 }
 
-                const rowId = row.ID || row.id || row.cid || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '-';
-                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
-                const rowName = row['ชื่อ-สกุล'] || row.fullname || row.childname || row['ชื่อ'] || '-';
-                const rowVillage = row['หมู่ที่'] || row.village_no || row.village || row['หมู่'] || '-';
-                const rowVilName = row['ชื่อหมู่บ้าน'] || row.village_name || row.villageName || '-';
+                const rowId = row.CID || row.cid || row.ID || row.id || row['เน€เธฅเธเธเธฑเธ•เธฃ'] || row['เน€เธฅเธเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธฃเธฐเธเธฒเธเธ'] || '-';
+                const rowHn = row.HN || row.hn || row['เธฃเธซเธฑเธช'] || '-';
+                const rowName = row.fullname || row['เธเธทเนเธญ-เธชเธเธธเธฅ'] || row.childname || row['เธเธทเนเธญ'] || '-';
+                const rowVillage = row.moo || row.village_no || row.village || row['เธซเธกเธนเนเธ—เธตเน'] || row['เธซเธกเธนเน'] || '-';
+                const rowVilName = row.villname || row.village_name || row.villageName || row['เธเธทเนเธญเธซเธกเธนเนเธเนเธฒเธ'] || '-';
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
-                const rowSub = row['ตำบล'] || row.subdistrict || row.Subdistrict || '-';
+                const rowSub = row.subdistname || row.subdistrict || row.Subdistrict || row['เธ•เธณเธเธฅ'] || '-';
 
                 // คำนวณสถานะวัคซีนเด็กแบบเรียลไทม์ตามเกณฑ์ สธ.
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
@@ -6452,23 +6471,24 @@
 
             const rowHcode = String(raw.hcode || '-').trim();
             const childObj = {
-                id: raw.id || raw.cid || raw['เลขบัตร'] || '-',
-                cid: raw.cid || raw.id || raw['เลขบัตร'] || '-',
-                hn: raw.hn || raw.HN || '-',
-                fullname: raw.fullname || raw.childname || raw['ชื่อ-สกุล'] || raw['ชื่อ'] || '-',
-                birthDate: raw.birthdate || raw.dob || raw['ว/ด/ปเกิด'] || raw['วันเกิด'] || '-',
-                age: raw.age || raw['อายุ'] || '-',
-                houseNumber: raw.house_no || raw.houseNumber || raw['บ้านเลขที่'] || '-',
-                village: raw.village_no || raw.village || raw['หมู่ที่'] || '-',
-                villageName: raw.village_name || raw.villageName || raw['ชื่อหมู่บ้าน'] || '-',
-                subdistrict: raw.subdistrict || raw['ตำบล'] || '-',
+                id: raw.CID || raw.cid || raw.id || raw['เน€เธฅเธเธเธฑเธ•เธฃ'] || '-',
+                cid: raw.CID || raw.cid || raw.id || raw['เน€เธฅเธเธเธฑเธ•เธฃ'] || '-',
+                hn: raw.HN || raw.hn || raw['เธฃเธซเธฑเธช'] || '-',
+                fullname: raw.fullname || raw.childname || raw['เธเธทเนเธญ-เธชเธเธธเธฅ'] || raw['เธเธทเนเธญ'] || '-',
+                birthDate: raw.DOB || raw.dob || raw.birthdate || raw['เธง/เธ”/เธเน€เธเธดเธ”'] || raw['เธงเธฑเธเน€เธเธดเธ”'] || '-',
+                type: raw.type || raw['เธเธฃเธฐเน€เธ เธ—'] || '-',
+                age: raw.age || raw['เธญเธฒเธขเธธ'] || '-',
+                houseNumber: raw.house || raw.house_no || raw.houseNumber || raw['เธเนเธฒเธเน€เธฅเธเธ—เธตเน'] || '-',
+                village: raw.moo || raw.village_no || raw.village || raw['เธซเธกเธนเนเธ—เธตเน'] || raw['เธซเธกเธนเน'] || '-',
+                villageName: raw.villname || raw.village_name || raw.villageName || raw['เธเธทเนเธญเธซเธกเธนเนเธเนเธฒเธ'] || '-',
+                subdistrict: raw.subdistname || raw.subdistrict || raw['เธ•เธณเธเธฅ'] || '-',
                 hcode: rowHcode,
-                hname: getFacilityDisplayName(rowHcode, raw.hospital || raw.hname),
-                asm: raw.asm || raw['อสม.'] || raw['อสม'] || '-',
-                phone: raw.phone || raw['โทรศัพท์'] || '-',
-                gps: raw.gps || raw.GPS || raw['พิกัด'] || '-',
-                fatherName: raw.father || raw.fatherName || raw['ชื่อบิดา'] || '-',
-                motherName: raw.mother || raw.motherName || raw['ชื่อมารดา'] || '-',
+                hname: raw.hname || getFacilityDisplayName(rowHcode, raw.hospital),
+                asm: raw.VHV || raw.vhv || raw.asm || raw['เธญเธชเธก.'] || raw['เธญเธชเธก'] || '-',
+                phone: raw.phone || raw['เนเธ—เธฃเธจเธฑเธเธ—เน'] || '-',
+                gps: raw.GPS || raw.gps || raw['เธเธดเธเธฑเธ”'] || '-',
+                fatherName: raw.father || raw.fatherName || raw['เธเธทเนเธญเธเธดเธ”เธฒ'] || '-',
+                motherName: raw.mother || raw.motherName || raw['เธเธทเนเธญเธกเธฒเธฃเธ”เธฒ'] || '-',
                 status: evalRes.status,
                 missingVaccines: evalRes.missingVaccines,
                 vaccines: vaccines
