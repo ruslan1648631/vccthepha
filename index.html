@@ -4899,6 +4899,116 @@
     };
 
     // ============================================================
+    // THEPHA DISTRICT HEALTH FACILITIES MASTER LIST (อำเภอเทพา)
+    // ============================================================
+    const DEFAULT_FACILITIES = [
+        { code: '860', name: 'โรงพยาบาลเทพา' },
+        { code: '9491', name: 'รพ.สต.บ้านตูหยง' },
+        { code: '9492', name: 'รพ.สต.บ้านสะกอม' },
+        { code: '9493', name: 'รพ.สต.บ้านเกาะแลหนัง' },
+        { code: '9494', name: 'รพ.สต.ลำไพล' },
+        { code: '9495', name: 'รพ.สต.บ้านกะลาพอ' },
+        { code: '9496', name: 'รพ.สต.บ้านวังใหญ่' },
+        { code: '9497', name: 'รพ.สต.บ้านพรุตู' },
+        { code: '9498', name: 'รพ.สต.บ้านควนหรัน' },
+        { code: '9499', name: 'รพ.สต.บ้านควนเจดีย์' },
+        { code: '9500', name: 'รพ.สต.บ้านควนหิน' },
+        { code: '11390', name: 'รพ.สต.บ้านเกาะสะบ้า' },
+        { code: '11915', name: 'รพ.สต.บ้านท่าม่วง' },
+        { code: '15107', name: 'รพ.สต.บ้านควนเจดีย์ (15107)' },
+        { code: '15109', name: 'รพ.สต.เฉลิมพระเกียรติฯ บ้านบ่อเตย' }
+    ];
+
+    const DEFAULT_FACILITY_MAP = {
+        '860': 'โรงพยาบาลเทพา',
+        '00860': 'โรงพยาบาลเทพา',
+        '9491': 'รพ.สต.บ้านตูหยง',
+        '09491': 'รพ.สต.บ้านตูหยง',
+        '9492': 'รพ.สต.บ้านสะกอม',
+        '09492': 'รพ.สต.บ้านสะกอม',
+        '9493': 'รพ.สต.บ้านเกาะแลหนัง',
+        '09493': 'รพ.สต.บ้านเกาะแลหนัง',
+        '9494': 'รพ.สต.ลำไพล',
+        '09494': 'รพ.สต.ลำไพล',
+        '9495': 'รพ.สต.บ้านกะลาพอ',
+        '09495': 'รพ.สต.บ้านกะลาพอ',
+        '9496': 'รพ.สต.บ้านวังใหญ่',
+        '09496': 'รพ.สต.บ้านวังใหญ่',
+        '9497': 'รพ.สต.บ้านพรุตู',
+        '09497': 'รพ.สต.บ้านพรุตู',
+        '9498': 'รพ.สต.บ้านควนหรัน',
+        '09498': 'รพ.สต.บ้านควนหรัน',
+        '9499': 'รพ.สต.บ้านควนเจดีย์',
+        '09499': 'รพ.สต.บ้านควนเจดีย์',
+        '9500': 'รพ.สต.บ้านควนหิน',
+        '09500': 'รพ.สต.บ้านควนหิน',
+        '11390': 'รพ.สต.บ้านเกาะสะบ้า',
+        '011390': 'รพ.สต.บ้านเกาะสะบ้า',
+        '11915': 'รพ.สต.บ้านท่าม่วง',
+        '011915': 'รพ.สต.บ้านท่าม่วง',
+        '15107': 'รพ.สต.บ้านควนเจดีย์ (15107)',
+        '15109': 'รพ.สต.เฉลิมพระเกียรติฯ บ้านบ่อเตย'
+    };
+
+    // แปลงรหัสสถานพยาบาลให้เป็นชื่อภาษาไทยที่อ่านเข้าใจง่าย
+    function getFacilityDisplayName(code, customName) {
+        if (!code || code === 'ทั้งหมด' || code === '-') return customName || code || '-';
+        const c = String(code).trim();
+        // ถ้า customName เป็นชื่อภาษาไทยที่มีความหมาย (ไม่ใช่ตัวเลข และไม่เท่ากับ code)
+        if (customName && isNaN(customName) && String(customName).trim() !== c && !/^\d+$/.test(String(customName).trim())) {
+            return String(customName).trim();
+        }
+        if (DEFAULT_FACILITY_MAP[c]) return DEFAULT_FACILITY_MAP[c];
+        const unpadded = c.replace(/^0+/, '');
+        if (DEFAULT_FACILITY_MAP[unpadded]) return DEFAULT_FACILITY_MAP[unpadded];
+        const padded5 = c.padStart(5, '0');
+        if (DEFAULT_FACILITY_MAP[padded5]) return DEFAULT_FACILITY_MAP[padded5];
+
+        if (APP && APP.facilityMap && APP.facilityMap[c]) {
+            const mapped = String(APP.facilityMap[c]).trim();
+            if (mapped && isNaN(mapped) && mapped !== c && !/^\d+$/.test(mapped)) {
+                return mapped;
+            }
+        }
+        return customName || code;
+    }
+
+    // รวมและอัปเดต Facility Map ให้มีชื่อภาษาไทยเสมอ
+    function updateFacilityMap(incomingMap) {
+        const map = {};
+        if (incomingMap && typeof incomingMap === 'object' && Object.keys(incomingMap).length > 0) {
+            Object.keys(incomingMap).forEach(k => {
+                const val = incomingMap[k];
+                map[k] = getFacilityDisplayName(k, val);
+            });
+        } else {
+            DEFAULT_FACILITIES.forEach(f => {
+                map[f.code] = f.name;
+            });
+        }
+        APP.facilityMap = map;
+        return map;
+    }
+
+    // สร้างตัวเลือกสำหรับ Dropdown แสดงชื่อสถานพยาบาลภาษาไทยพร้อมรหัสกำกับ
+    function buildFacilityDropdownOptions(curSelected, defaultLabel) {
+        const defTxt = defaultLabel || '🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)';
+        let html = `<option value="ทั้งหมด"${(curSelected === 'ทั้งหมด' || !curSelected) ? ' selected' : ''}>${defTxt}</option>`;
+        const map = (APP && APP.facilityMap && Object.keys(APP.facilityMap).length > 0) 
+            ? APP.facilityMap 
+            : DEFAULT_FACILITY_MAP;
+        
+        const keys = Object.keys(map).filter(k => !k.startsWith('0') || (k === '00860' && !map['860']));
+        keys.forEach(k => {
+            const name = getFacilityDisplayName(k, map[k]);
+            const isSel = (String(curSelected) === String(k));
+            const labelText = (name && name !== k && !name.includes(`(${k})`)) ? `${name} (${k})` : (name || k);
+            html += `<option value="${esc(k)}"${isSel ? ' selected' : ''}>${esc(labelText)}</option>`;
+        });
+        return html;
+    }
+
+    // ============================================================
     // CONFIGURATION & API ENDPOINT
     // ============================================================
     const API_URL = "https://script.google.com/macros/s/AKfycbwOURwW8llT2-zw5qB7-Q9BtFilNdLXw_w77oIE6UKLeKgnteph4NaoocvjzcLiBX_N/exec";
@@ -5228,17 +5338,42 @@
 
         // 11. ดึงแผนที่สถานพยาบาล (Facility Map)
         if (fnName === 'getFacilityMap') {
-            const { data, error } = await supabaseClient.from('hospitals').select('*');
-            if (!error && data && data.length > 0) {
-                const map = {};
-                data.forEach(h => {
-                    const code = h.hcode || h.code || h.id;
-                    const name = h.name || h.hname || h.hospital_name || code;
-                    if (code) map[code] = name;
-                });
-                return { success: true, map };
+            const map = {};
+            try {
+                const { data, error } = await supabaseClient.from('hospitals').select('*');
+                if (!error && data && data.length > 0) {
+                    data.forEach(h => {
+                        const code = h.hcode || h.code || h.id;
+                        const name = h.name || h.hname || h.hospital_name;
+                        if (code) {
+                            map[String(code).trim()] = getFacilityDisplayName(code, name);
+                        }
+                    });
+                }
+            } catch (e) {}
+
+            // หากตาราง hospitals ยังว่าง ให้ดึง distinct hcode จากตาราง data
+            if (Object.keys(map).length === 0) {
+                try {
+                    const { data } = await supabaseClient.from('data').select('hcode, hospital, hname').limit(3000);
+                    if (data && data.length > 0) {
+                        data.forEach(r => {
+                            const c = r.hcode ? String(r.hcode).trim() : '';
+                            if (c && !map[c]) {
+                                map[c] = getFacilityDisplayName(c, r.hospital || r.hname);
+                            }
+                        });
+                    }
+                } catch (e) {}
             }
-            return null;
+
+            // ถ้ายังว่าง ให้ใช้รายชื่อสถานพยาบาลของอำเภอเทพาเป็นหลัก
+            if (Object.keys(map).length === 0) {
+                DEFAULT_FACILITIES.forEach(f => {
+                    map[f.code] = f.name;
+                });
+            }
+            return { success: true, map };
         }
 
         // 12. ประวัติการเข้าสู่ระบบ (Access Logs)
@@ -5348,7 +5483,7 @@
                 villageName: row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-',
                 subdistrict: row.subdistrict || row['ตำบล'] || '-',
                 hcode: row.hcode || '-',
-                hname: row.hospital || row.hname || row['สถานพยาบาล'] || '-',
+                hname: getFacilityDisplayName(row.hcode, row.hospital || row.hname || row['สถานพยาบาล']),
                 asm: row.asm || row['อสม'] || '-',
                 phone: row.phone || row['โทรศัพท์'] || '-',
                 gps: row.gps || row.lat_lng || '-',
@@ -5415,7 +5550,7 @@
                         distinctHcodes: hcodes,
                         records: rows.map(r => ({
                             hcode: r.hcode || '-',
-                            hname: r.hospital || r.hname || '-',
+                            hname: getFacilityDisplayName(r.hcode, r.hospital || r.hname),
                             subdistrict: r.subdistrict || '-',
                             village: r.village_no || '-',
                             villageName: r.village_name || '-',
@@ -5443,7 +5578,17 @@
                 if (!row || row.length === 0 || !row[0]) continue;
                 const obj = {};
                 headers.forEach((h, colIdx) => {
-                    if (h) obj[h] = row[colIdx] !== undefined ? String(row[colIdx]).trim() : '';
+                    if (h) {
+                        let val = row[colIdx] !== undefined ? String(row[colIdx]).trim() : '';
+                        const hl = h.toLowerCase();
+                        if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && val && /^\d+$/.test(val) && val.length < 5) {
+                            val = val.padStart(5, '0');
+                        }
+                        if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && val && /^\d+$/.test(val) && val.length > 9 && val.length < 13) {
+                            val = val.padStart(13, '0');
+                        }
+                        obj[h] = val;
+                    }
                 });
                 if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
                     continue;
@@ -5486,7 +5631,17 @@
                 if (!row || row.length === 0 || !row[0]) continue;
                 const obj = {};
                 headers.forEach((h, colIdx) => {
-                    if (h) obj[h] = row[colIdx] !== undefined ? String(row[colIdx]).trim() : '';
+                    if (h) {
+                        let val = row[colIdx] !== undefined ? String(row[colIdx]).trim() : '';
+                        const hl = h.toLowerCase();
+                        if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && val && /^\d+$/.test(val) && val.length < 5) {
+                            val = val.padStart(5, '0');
+                        }
+                        if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && val && /^\d+$/.test(val) && val.length > 9 && val.length < 13) {
+                            val = val.padStart(13, '0');
+                        }
+                        obj[h] = val;
+                    }
                 });
                 if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
                     continue;
@@ -6990,7 +7145,7 @@ function updateBottomNavActive(page) {
             )
         ]);
 
-        APP.facilityMap = facilityResult.success ? facilityResult.map : {};
+        APP.facilityMap = updateFacilityMap(facilityResult.success ? facilityResult.map : {});
 
         const villageColorsMap = {};
         if (villagesResult.success && villagesResult.villages) {
@@ -7043,10 +7198,7 @@ function updateBottomNavActive(page) {
         let mapFacilityDropdownHtml = '';
         if (isAdminAmpur || isSpecialOfficer) {
             const curSelected = APP.selectedDashboardFacility || 'ทั้งหมด';
-            const facilityOptions = '<option value="ทั้งหมด"' + (curSelected === 'ทั้งหมด' ? ' selected' : '') + '>🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)</option>' + 
-                Object.keys(APP.facilityMap).map(k => 
-                    `<option value="${esc(k)}"${curSelected === k ? ' selected' : ''}>${esc(APP.facilityMap[k])}</option>`
-                ).join('');
+            const facilityOptions = buildFacilityDropdownOptions(curSelected, '🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)');
             
             dashFacilitySelectorHtml = `
                 <div style="display:inline-flex; align-items:center; background:#fff; padding:6px 14px; border-radius:10px; border:1px solid #cbd5e1; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
@@ -7240,7 +7392,7 @@ function updateBottomNavActive(page) {
             return;
         }
 
-        const labels = coverageData.map(d => d.name);
+        const labels = coverageData.map(d => getFacilityDisplayName(d.code, d.name));
         const rates = coverageData.map(d => d.rate);
         const onTime = coverageData.map(d => d.onTime);
         const totals = coverageData.map(d => d.total);
@@ -7265,7 +7417,7 @@ function updateBottomNavActive(page) {
                     if (elements && elements.length > 0) {
                         const dataIndex = elements[0].index;
                         const clickedHcode = coverageData[dataIndex].code;
-                        const clickedName = coverageData[dataIndex].name;
+                        const clickedName = getFacilityDisplayName(clickedHcode, coverageData[dataIndex].name);
                         filterVillageChartByFacility(clickedHcode, clickedName);
                     }
                 },
@@ -8365,11 +8517,10 @@ window.switchLogTab = function(tab) {
                 callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode])
             ]);
             
-            APP.facilityMap = fRes.success ? fRes.map : {};
+            APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
             APP.villagesCache = vRes.success ? (vRes.villages || []) : [];
 
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
 
             const isSpecialOfficer = isSpecialOfficerUser();
             let facilityFilterHtml = ''; 
@@ -8551,12 +8702,11 @@ window.switchLogTab = function(tab) {
                 callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode])
             ]);
             
-            APP.facilityMap = fRes.success ? fRes.map : {};
+            APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
             const villages = vRes.success ? vRes.villages : [];
             hideLoading();
 
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
 
             const isSpecialOfficer = isSpecialOfficerUser();
             let facilityFilterHtml = ''; 
@@ -8751,10 +8901,9 @@ window.switchLogTab = function(tab) {
 
         try {
             const fRes = await callGAS('getFacilityMap', []);
-            APP.facilityMap = fRes.success ? fRes.map : {};
+            APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
 
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
 
             let facilityFilterHtml = '';
             const isSpecialOfficer = isSpecialOfficerUser();
@@ -9769,8 +9918,7 @@ window.switchLogTab = function(tab) {
     function ensureClinicBatchModal() {
         if (document.getElementById('clinicBatchModal')) return;
 
-        const facilityOptions = '<option value="ทั้งหมด">-- ทุกสถานพยาบาล --</option>' + 
-            Object.keys(APP.facilityMap || {}).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+        const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทุกสถานพยาบาล --');
 
         const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
         const showFacilityFilter = (APP.currentUser.role === 'Admin_Ampur' || isSpecialOfficer);
@@ -11149,15 +11297,14 @@ window.switchLogTab = function(tab) {
         const reporters = repRes.success ? repRes.reporters : [];
         
         APP.villagesCache = villages;
-        APP.facilityMap = fRes.success ? fRes.map : {};
+        APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
 
         const lockVillage = (APP.currentUser.role === 'เจ้าหน้าที่' && APP.currentUser.village && APP.currentUser.village !== '-') ? APP.currentUser.village : '';
 
         const isSpecialOfficer = isSpecialOfficerUser();
         let facilityFilterHtml = '';
         if (isAdminAmpurUser() || isSpecialOfficer) {
-            const facilityOptions = '<option value="ทั้งหมด">-- ทั้งหมด --</option>' + 
-                Object.keys(APP.facilityMap).map(k => `<option value="${esc(k)}">${esc(APP.facilityMap[k])}</option>`).join('');
+            const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทั้งหมด --');
             facilityFilterHtml = '<div class="rpt-fg"><label><i class="fas fa-hospital"></i> สถานพยาบาล</label>' +
                 '<select id="rptFacility" onchange="cascadeVillageOptions(this.value, \'rptVillage\')">' + facilityOptions + '</select></div>';
         }
@@ -11987,7 +12134,7 @@ window.switchLogTab = function(tab) {
                 '</span>' +
                 '</td>' +
                 '<td style="vertical-align: middle;">' +
-                '<div style="font-weight: 600; color: #0f172a; font-size: 13.5px;">' + esc(fac.name) + '</div>' +
+                '<div style="font-weight: 600; color: #0f172a; font-size: 13.5px;">' + esc(getFacilityDisplayName(fac.code, fac.name)) + '</div>' +
                 '</td>' +
                 '<td style="vertical-align: middle;">' +
                 dataHtml +
@@ -13338,17 +13485,14 @@ window.confirmClearOldAppointments = async function() {
 
   let facilityFilterHtml = '';
   if (canSelectFacility) {
-    const facilityOptions = '<option value="">-- ทั้งหมด --</option>' +
-      Object.keys(APP.facilityMap || {}).map(k =>
-        `<option value="${esc(k)}">${esc(APP.facilityMap[k])} (${esc(k)})</option>`
-      ).join('');
+    const facilityOptions = buildFacilityDropdownOptions('', '-- ทั้งหมด --');
     facilityFilterHtml = `
       <div class="cv-filter-group">
         <label><i class="fas fa-hospital"></i> สถานพยาบาล</label>
         <select id="cvFacility">${facilityOptions}</select>
       </div>`;
   } else {
-    const myFacilityName = (APP.facilityMap && APP.facilityMap[userHcode]) || userHcode || '-';
+    const myFacilityName = getFacilityDisplayName(userHcode, (APP.facilityMap && APP.facilityMap[userHcode]));
     facilityFilterHtml = `
       <div class="cv-filter-group">
         <label><i class="fas fa-hospital"></i> สถานพยาบาล</label>
@@ -14757,8 +14901,7 @@ async function loadDuplicateReportPage() {
     let facilityMap = {};
     try {
         const fRes = await callGAS('getFacilityMap', []);
-        facilityMap = fRes.success ? fRes.map : {};
-        APP.facilityMap = facilityMap;
+        facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
     } catch (e) {
         console.error('Load facilityMap error:', e);
     }
@@ -14773,8 +14916,7 @@ async function loadDuplicateReportPage() {
 
     let facilityFilterHtml = '';
     if (canSelectFacility) {
-        const facilityOptions = '<option value="ทั้งหมด">-- ทุกสถานพยาบาล --</option>' +
-            Object.keys(facilityMap).map(k => `<option value="${esc(k)}">${esc(facilityMap[k])}</option>`).join('');
+        const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทุกสถานพยาบาล --');
         facilityFilterHtml = `
             <div class="filter-group">
                 <label><i class="fas fa-hospital"></i> สถานพยาบาลที่มีเด็กซ้ำ</label>
