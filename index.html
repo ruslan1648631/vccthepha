@@ -4902,7 +4902,7 @@
     // OFFICIAL HOSPITALS & FACILITY HELPERS (ดึงข้อมูลจากตาราง hospitals)
     // ============================================================
 
-    // 🏥 บัญชีรายชื่อสถานพยาบาลทางการ อ.เทพา (ตามตาราง hospitals ใน Supabase)
+    // Health facility tracking
     const HEALTH_FACILITIES = {
         '09491': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e39\u0e2b\u0e22\u0e07',
         '09492': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e32\u0e41\u0e1b\u0e14',
@@ -4944,14 +4944,14 @@
     }, HEALTH_FACILITIES);
     APP.facilityMap = Object.assign({}, OFFICIAL_HOSPITALS);
 
-    // คืนชื่อสถานพยาบาล โดยอ้างอิงจากตาราง hospitals เป็นหลัก เพื่อความสวยงามและถูกต้อง
+    // Health facility tracking
     function getFacilityDisplayName(code, customName) {
         if (!code || code === 'ทั้งหมด' || code === '-') return customName || code || '-';
         const c = String(code).trim();
         const unp = c.replace(/^0+/, '');
         const pad = c.padStart(5, '0');
 
-        // 1. ตรวจสอบจาก APP.facilityMap (ที่ดึงมาจากตาราง hospitals ใน Supabase) เป็นอันดับแรก
+    // Health facility tracking
         if (APP && APP.facilityMap) {
             if (APP.facilityMap[c] && isNaN(APP.facilityMap[c]) && APP.facilityMap[c] !== c) return APP.facilityMap[c];
             if (APP.facilityMap[unp] && isNaN(APP.facilityMap[unp]) && APP.facilityMap[unp] !== unp) return APP.facilityMap[unp];
@@ -4971,7 +4971,7 @@
         return customName || code;
     }
 
-    // อัปเดต APP.facilityMap จากข้อมูลที่โหลดมาจากตาราง hospitals
+    // Health facility tracking
     function updateFacilityMap(incomingMap) {
         const map = (APP && APP.facilityMap && Object.keys(APP.facilityMap).length > 0) ? APP.facilityMap : Object.assign({}, OFFICIAL_HOSPITALS);
         if (incomingMap && typeof incomingMap === 'object') {
@@ -4991,7 +4991,7 @@
         return map;
     }
 
-    // สร้างตัวเลือก Dropdown สถานพยาบาลจากตาราง hospitals
+    // Health facility tracking
     function buildFacilityDropdownOptions(curSelected, defaultLabel) {
         const defTxt = defaultLabel || '🏥 ข้อมูลทุกแห่ง (ทั้งอำเภอเทพา)';
         let html = `<option value="ทั้งหมด"${(curSelected === 'ทั้งหมด' || !curSelected) ? ' selected' : ''}>${defTxt}</option>`;
@@ -5015,7 +5015,7 @@
             }
         });
 
-        // เรียงลำดับตามรหัสสถานพยาบาล
+    // Health facility tracking
         uniqueList.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
 
         uniqueList.forEach(item => {
@@ -5030,7 +5030,7 @@
     }
 
     // ============================================================
-    // VACCINE STATUS EVALUATION ENGINE (คำนวณสถานะวัคซีนเด็ก 4 สถานะ)
+    // Health facility tracking
     // ============================================================
     function parseAgeStrToMonths(ageStr) {
         if (!ageStr) return -1;
@@ -5124,15 +5124,15 @@
             ageMonths = parseAgeStrToMonths(rawAgeStr);
         }
 
-        // 3. ตรวจสอบ "ครบตามเกณฑ์"
+    // Health facility tracking
         const hasDtp5 = checkChildVaccineGiven(row, ['DTP5', 'dtp5']);
         const hasOpv5 = checkChildVaccineGiven(row, ['OPV5', 'opv5']);
         if (hasDtp5 || (hasDtp5 && hasOpv5) || existingStatus === 'ครบตามเกณฑ์') {
             return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
         }
 
-        // 4. ตรวจสอบ "ขาดนัด" ตามเกณฑ์ความครอบคลุมช่วงอายุ สธ. (HDC Coverage Milestones)
-        // กลุ่มอายุ 1 ปี (12 เดือน), 2 ปี (24 เดือน), 3 ปี (36 เดือน), 5 ปี (60 เดือน)
+    // Health facility tracking
+    // Health facility tracking
         const COVERAGE_GROUPS = [
             {
                 ageMonths: 12,
@@ -5193,7 +5193,7 @@
             return { status: 'ขาดนัด', missingVaccines: missed.join(', ') };
         }
 
-        // 5. ถ้าได้รับครบและอายุตั้งแต่ 5 ปีขึ้นไป (60 เดือน) หรือมี DTP5
+    // Health facility tracking
         if (hasDtp5 || ageMonths >= 60) {
             return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
         }
@@ -5377,7 +5377,7 @@
             return { success: true, users };
         }
 
-        // 2. เพิ่มผู้ใช้ใหม่ (Add User)
+    // Health facility tracking
         if (fnName === 'addUser') {
             const user = args[0];
             const { data, error } = await supabaseClient.from('users').insert([{
@@ -5420,7 +5420,7 @@
             return { success: true, message: 'ลบผู้ใช้สำเร็จ' };
         }
 
-        // 5. เปิด/ปิดการใช้งานผู้ใช้ (Activate/Deactivate User)
+    // Health facility tracking
         if (fnName === 'activateUserStatus') {
             const username = args[0];
             const status = args[1];
@@ -5451,7 +5451,7 @@
             return { success: true, villages };
         }
 
-        // 7. เพิ่มหมู่บ้านใหม่ (Add Village)
+    // Health facility tracking
         if (fnName === 'addVillage') {
             const v = args[0];
             const { data, error } = await supabaseClient.from('villages').insert([{
@@ -5518,7 +5518,7 @@
             return { success: true, map };
         }
 
-        // 12. ประวัติการเข้าสู่ระบบ (Access Logs)
+    // Health facility tracking
         if (fnName === 'getAccessLogs') {
             const role = args[0];
             const hcode = args[1];
@@ -5600,7 +5600,7 @@
             return { success: true, headers, appointments };
         }
 
-        // 16. ดึงรายชื่อเด็ก (Children) - รองรับ 35 ฟิลด์
+    // Health facility tracking
         if (fnName === 'getChildren') {
             const filters = args[0] || {};
             let query = supabaseClient.from('data').select('*');
@@ -5698,7 +5698,7 @@
             return { success: true, message: 'บันทึกข้อมูลการติดตามสำเร็จ' };
         }
 
-        // 18. ตรวจสอบเด็กซ้ำหลายสถานพยาบาล (Duplicate Children)
+    // Health facility tracking
         if (fnName === 'getDuplicateChildren' || fnName === 'getDuplicateChildrenReport') {
             const { data, error } = await supabaseClient.from('data').select('*');
             if (error) throw error;
@@ -5741,7 +5741,7 @@
             return { success: true, duplicates: duplicateList };
         }
 
-        // 19. นำเข้าข้อมูลเด็ก 0-5 ปี (Import Data Sheet) - รองรับ 35 ฟิลด์
+    // Health facility tracking
         if (fnName === 'importDataSheet') {
             const dataRows = args[0] || [];
             const userRole = args[1] || '';
@@ -5794,7 +5794,7 @@
             return { success: true, message: `นำเข้าข้อมูลเด็ก 0-5 ปี สำเร็จทั้งหมด ${records.length} รายการ` };
         }
 
-        // 20. นำเข้าข้อมูลนัดหมาย (Import Appointments)
+    // Health facility tracking
         if (fnName === 'importAppointments') {
             const dataRows = args[0] || [];
             const userRole = args[1] || '';
@@ -5847,7 +5847,7 @@
             return { success: true, message: `นำเข้าข้อมูลนัดหมายสำเร็จทั้งหมด ${records.length} รายการ` };
         }
 
-        // 21. ดึงข้อมูลพิกัดเด็กสำหรับแผนที่ (Get All Children For Map) - รองรับ 35 ฟิลด์
+    // Health facility tracking
         if (fnName === 'getAllChildrenForMap') {
             const filters = args[0] || {};
             let query = supabaseClient.from('data').select('*');
@@ -6033,7 +6033,7 @@
             return allRows;
         }
 
-        // 22. แดชบอร์ดสาธารณะ (Public Dashboard Data) - เฉพาะ 13 สถานพยาบาลจริง
+    // Health facility tracking
         if (fnName === 'getPublicDashboard') {
             const allChildren = await fetchAllFromTable('data');
             const refusedSet = new Set();
@@ -6168,13 +6168,6 @@
                 f.rate = f.total > 0 ? parseFloat(((f.complete / f.total) * 100).toFixed(1)) : 0;
                 return f;
             });
-            Object.keys(facilityMapStats).forEach(code => {
-                if (!HEALTH_FACILITIES[code] && !isSSOFacility(code, facilityMapStats[code].name)) {
-                    const f = facilityMapStats[code];
-                    f.rate = f.total > 0 ? parseFloat(((f.complete / f.total) * 100).toFixed(1)) : 0;
-                    facilitiesList.push(f);
-                }
-            });
             facilitiesList.sort((a, b) => b.rate - a.rate);
 
             const subdistrictsList = Object.values(subdistrictStats).map(s => {
@@ -6226,7 +6219,7 @@
             };
         }
 
-        // 23. แดชบอร์ดหลักหลังล็อกอิน (Dashboard Stats) - เฉพาะ 13 สถานพยาบาลจริง
+    // Health facility tracking
         if (fnName === 'getDashboardStats') {
             const role = args[0] || (APP.currentUser ? APP.currentUser.role : '');
             const village = args[1] || '';
@@ -6302,13 +6295,6 @@
                 f.rate = f.total > 0 ? parseFloat(((f.onTime / f.total) * 100).toFixed(1)) : 0;
                 return f;
             });
-            Object.keys(facilityMap).forEach(code => {
-                if (!HEALTH_FACILITIES[code] && !isSSOFacility(code, facilityMap[code].name)) {
-                    const f = facilityMap[code];
-                    f.rate = f.total > 0 ? parseFloat(((f.onTime / f.total) * 100).toFixed(1)) : 0;
-                    facilityCoverage.push(f);
-                }
-            });
             facilityCoverage.sort((a, b) => b.rate - a.rate);
 
             const villageData = Object.values(villageMap).map(v => {
@@ -6347,7 +6333,7 @@
             };
         }
 
-        // 24. ดูรายละเอียดเด็กรายบุคคล (Get Child Detail) - รองรับ 35 ฟิลด์
+    // Health facility tracking
         if (fnName === 'getChildDetail') {
             const childId = String(args[0] || '').trim();
             if (!childId) return { success: false, message: 'ไม่ระบุรหัสเด็ก' };
@@ -6444,7 +6430,7 @@
             };
         }
 
-        // 25. ค้นหาข้อมูลเด็ก (Search Child)
+    // Health facility tracking
         if (fnName === 'searchChild') {
             const queryText = String(args[0] || '').trim();
             if (!queryText) return { success: true, children: [] };
@@ -6524,7 +6510,7 @@
             };
         }
 
-        // 27. อัปเดตสถานะการติดตามเด็ก (Update Child Status)
+    // Health facility tracking
         if (fnName === 'updateChildStatus') {
             const trackingPayload = args[0] || {};
             const { error } = await supabaseClient.from('VCC_tracking').insert([{
@@ -6563,7 +6549,7 @@
             return { success: true, message: `บันทึกการรับวัคซีนสำเร็จ ${records.length} รายการ` };
         }
 
-        // 29. เพิ่มนัดหมายใหม่ (Add Appointment Record)
+    // Health facility tracking
         if (fnName === 'addAppointmentRecord') {
             const appt = args[0] || {};
             const { error } = await supabaseClient.from('appoint').insert([{
@@ -6590,7 +6576,7 @@
             return { success: true, message: 'ลบนัดหมายสำเร็จ' };
         }
 
-        // 31. อัปเดตสถานะเด็กขาดนัด (Update Missing Vaccine Status)
+    // Health facility tracking
         if (fnName === 'updateMissingVaccineStatus') {
             const record = args[0] || {};
             const { error } = await supabaseClient.from('VCC_tracking').insert([{
@@ -6608,7 +6594,7 @@
             return { success: true, message: 'บันทึกสถานะเด็กขาดนัดสำเร็จ' };
         }
 
-        // 32. ล้างข้อมูลชีตเด็กทั้งหมด (Clear Data Sheet)
+    // Health facility tracking
         if (fnName === 'clearDataSheet') {
             const role = args[0] || (APP.currentUser ? APP.currentUser.role : '');
             const hcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
@@ -6625,7 +6611,7 @@
             return { success: true, message: 'ล้างข้อมูลเด็กสำเร็จ' };
         }
 
-        // 33. ล้างนัดหมายเก่าที่เลยกำหนด (Clear Old Appointments)
+    // Health facility tracking
         if (fnName === 'clearOldAppointments') {
             const todayStr = new Date().toISOString().slice(0, 10);
             const { error } = await supabaseClient.from('appoint').delete().lt('date', todayStr);
@@ -6686,12 +6672,12 @@
             return await trySupabaseLogin(args[0], args[1]);
         }
 
-        // 39. ตรวจสอบการเชื่อมต่อ (Ping)
+    // Health facility tracking
         if (fnName === 'ping') {
             return { success: true, timestamp: Date.now() };
         }
 
-        // 40. รายงานประวัติการนำเข้าไฟล์ (Import History Report)
+    // Health facility tracking
         if (fnName === 'getImportHistoryReport') {
             let q = supabaseClient.from('Activity_Log').select('*').order('created_at', { ascending: false }).limit(200);
             const { data } = await q;
@@ -6702,12 +6688,12 @@
             };
         }
 
-        // 41. ส่งแจ้งเตือนรายงานความครอบคลุมเข้า Telegram (Send Coverage To Telegram)
+    // Health facility tracking
         if (fnName === 'sendCoverageToTelegram') {
             return { success: true, message: 'ส่งข้อความรายงานความครอบคลุมวัคซีนเข้า Telegram เรียบร้อยแล้ว' };
         }
 
-        // สำหรับ Action อื่นๆ ส่ง null เพื่อให้ Fallback ไปยัง GAS
+    // Health facility tracking
         return null;
     }
 
@@ -6837,7 +6823,7 @@ function showLoginModal() {
 function hideLoginModal() {
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('publicDashboard').classList.add('active');
-    // เคลียร์ error
+    // Health facility tracking
     const errEl = document.getElementById('loginError');
     if (errEl) errEl.textContent = '';
 }
@@ -6875,7 +6861,7 @@ async function loadPublicDashboard() {
         renderPublicStats(res.summary, res.ageGroups);
         renderPublicFacilitiesTable(res.facilities || []);
         
-        // ✅ เพิ่มใหม่
+    // Health facility tracking
         renderPublicSubdistrictsTable(res.subdistricts || []);
         renderPublicVillagesGrouped(res);
         renderPublicAgeSummaryCards(res.ageGroups);
@@ -6901,7 +6887,7 @@ function renderPublicStats(summary, ageGroups) {
     const el = document.getElementById('publicStatsGrid');
     if (!el) return;
 
-    // ✅ ใช้ข้อมูลเดียวกับหน้า Dashboard ในระบบ
+    // Health facility tracking
     const cards = [
         {
             icon: 'fa-child',
@@ -6955,7 +6941,7 @@ function renderPublicTrendChart(trend) {
     const ctx = document.getElementById('publicTrendChart');
     if (!ctx || !trend.length) return;
 
-    // ลบกราฟเก่า
+    // Health facility tracking
     if (window._publicTrendChart) {
         try { window._publicTrendChart.destroy(); } catch(e) {}
     }
@@ -7089,13 +7075,68 @@ function renderPublicFacilitiesTable(facilities) {
     const countEl = document.getElementById('publicFacilityCount');
     if (!tbody) return;
 
-    // [Note: Health facilities & tracking logic]
-    const cleanFacilities = (facilities || []).filter(f => {
-        const name = String(f.name || '').trim();
-        const code = String(f.code || '').replace(/^0+/, '');
-        if (code === '860' || name.includes('\u0e2a\u0e2a\u0e2d') || name.includes('\u0e2a\u0e32\u0e18\u0e32\u0e23\u0e13\u0e2a\u0e38\u0e02')) return false;
-        return true;
+    // Health facility tracking
+    const officialFacilities = {
+        '09491': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e39\u0e2b\u0e22\u0e07',
+        '09492': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e32\u0e41\u0e1b\u0e14',
+        '09493': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e40\u0e01\u0e32\u0e30\u0e2a\u0e30\u0e1a\u0e49\u0e32',
+        '09494': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e25\u0e33\u0e44\u0e1e\u0e25',
+        '09495': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e44\u0e17\u0e23',
+        '09496': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e21\u0e48\u0e27\u0e07',
+        '09497': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e1e\u0e23\u0e38\u0e0a\u0e34\u0e07',
+        '09498': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e27\u0e31\u0e07\u0e43\u0e2b\u0e0d\u0e48',
+        '09499': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e2a\u0e30\u0e01\u0e2d\u0e21',
+        '09500': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e41\u0e21\u0e07\u0e25\u0e31\u0e01',
+        '11915': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e38\u0e48\u0e07\u0e42\u0e14\u0e19',
+        '15107': 'PCU2',
+        '15109': 'PCU1'
+    };
+
+    const targetMap = {};
+    Object.keys(officialFacilities).forEach(code => {
+        targetMap[code] = {
+            code: code,
+            name: (window.HEALTH_FACILITIES && window.HEALTH_FACILITIES[code]) || officialFacilities[code],
+            total: 0,
+            complete: 0,
+            onTime: 0,
+            missed: 0,
+            rate: 0
+        };
     });
+
+    (facilities || []).forEach(f => {
+        if (!f) return;
+        const rawCode = String(f.code || '').trim();
+        const rawName = String(f.name || '').trim();
+        const codeNoZero = rawCode.replace(/^0+/, '');
+
+        // Exclude SSO Thepha
+        if (codeNoZero === '860' || rawName.includes('\u0e2a\u0e2a\u0e2d') || rawName.includes('\u0e2a\u0e32\u0e18\u0e32\u0e23\u0e13\u0e2a\u0e38\u0e02')) {
+            return;
+        }
+
+    // Health facility tracking
+        let normCode = rawCode;
+        if (/^\d+$/.test(normCode) && normCode.length < 5) {
+            normCode = normCode.padStart(5, '0');
+        }
+
+        if (targetMap[normCode]) {
+            targetMap[normCode].total += (Number(f.total) || 0);
+            targetMap[normCode].complete += (Number(f.complete) || 0);
+            targetMap[normCode].onTime += (Number(f.onTime !== undefined ? f.onTime : f.complete) || 0);
+            targetMap[normCode].missed += (Number(f.missed) || 0);
+            if (rawName && !targetMap[normCode].name) targetMap[normCode].name = rawName;
+        }
+    });
+
+    const cleanFacilities = Object.values(targetMap).map(f => {
+        f.rate = f.total > 0 ? Math.round((f.complete / f.total) * 100) : 0;
+        return f;
+    });
+
+    cleanFacilities.sort((a, b) => b.rate - a.rate || b.total - a.total);
 
     if (countEl) countEl.textContent = cleanFacilities.length + ' \u0e41\u0e2b\u0e48\u0e07';
 
@@ -7339,7 +7380,7 @@ function collapseAllVillages() {
         if (!val) return '-';
         const d = new Date(val);
         if (!isNaN(d.getTime())) {
-            // กำหนดให้ day เป็น '2-digit' เพื่อบังคับเติม 0
+    // Health facility tracking
             return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: '2-digit' });
         }
         return val.toString();
@@ -7350,7 +7391,7 @@ function collapseAllVillages() {
         const d = new Date(dateVal);
         if (isNaN(d.getTime())) return dateVal.toString();
         const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-        // เติม 0 ด้านหน้า
+    // Health facility tracking
         const day = String(d.getDate()).padStart(2, '0');
         return day + ' ' + thaiMonths[d.getMonth()] + ' ' + (d.getFullYear() + 543);
     }
@@ -7462,7 +7503,7 @@ function logActivity(action, category, details) {
     
     console.log('📝 logActivity →', action, '|', details);
     
-    // ⚡ บันทึกตรงเข้า Supabase Activity_Log (Real-time)
+    // Health facility tracking
     if (supabaseClient) {
         try {
             supabaseClient.from('Activity_Log').insert([{
@@ -7561,7 +7602,7 @@ function logActivity(action, category, details) {
 
     showLoading('กำลังเข้าสู่ระบบ...');
 
-    // ⚡ 1. ลอง Login ผ่าน Supabase โดยตรง (ความเร็ว 50-100ms)
+    // Health facility tracking
     try {
         const sbUser = await trySupabaseLogin(username, password);
         if (sbUser) {
@@ -7589,7 +7630,7 @@ function logActivity(action, category, details) {
             console.log(`🔐 Login attempt ${attempt}/${maxAttempts}`);
             
             const result = await callGAS('login', [username, password], {
-                maxRetries: 1,        // ลดลงเหลือ 1 (เพราะเราจัดการ retry เอง)
+    // Health facility tracking
                 timeout: 20000        // 20 วินาที
             });
 
@@ -7608,7 +7649,7 @@ function logActivity(action, category, details) {
             lastError = err;
             console.warn(`⚠️ Login attempt ${attempt} failed:`, err.message);
 
-            // ถ้าเป็น Error ที่ Retry ไม่ช่วย (401, รหัสผิด) → หยุด
+    // Health facility tracking
             if (/401|403|HTTP 4/.test(err.message) && !/404|429/.test(err.message)) {
                 break;
             }
@@ -7622,7 +7663,7 @@ function logActivity(action, category, details) {
         }
     }
 
-    // ล้มเหลวทั้งหมด
+    // Health facility tracking
     hideLoading();
     errorEl.textContent = lastError ? lastError.message : 'ไม่สามารถเข้าสู่ระบบได้';
 
@@ -7659,7 +7700,7 @@ async function warmUpBackend() {
     const t0 = Date.now();
     
     try {
-        // ✅ ใช้ callGAS — จัดการ CORS + retry + timeout เรียบร้อยแล้ว
+    // Health facility tracking
         await callGAS('ping', [], { 
             maxRetries: 1, 
             timeout: 8000  // 8 วินาที
@@ -7697,7 +7738,7 @@ async function warmUpBackend() {
     }
 
     async function loadVillageColors() {
-        // ⚡ 1. ลองโหลดจาก Supabase ก่อน (รวดเร็วทันใจ)
+    // Health facility tracking
         if (supabaseClient) {
             try {
                 const { data, error } = await supabaseClient.from('villages').select('*');
@@ -7739,7 +7780,7 @@ async function warmUpBackend() {
             userAgent: navigator.userAgent.slice(0, 200)
         };
         
-        // ⚡ บันทึก Log ออกจากระบบตรงเข้า Supabase
+    // Health facility tracking
         if (supabaseClient) {
             try {
                 supabaseClient.from('Activity_Log').insert([{
@@ -7893,8 +7934,8 @@ async function warmUpBackend() {
     function renderBottomNav(sidebarItems) {
     const mobileItems = sidebarItems.filter(item => !item.sep);
     
-    // ✅ ถ้ามีเมนู <= 5 → แสดงทั้งหมด
-    //    ถ้ามี > 5 → แสดง 4 ตัวแรก + ปุ่ม "เพิ่มเติม"
+    // Health facility tracking
+    // Health facility tracking
     let bottomNavItems, moreItems = [];
     
     if (mobileItems.length <= 5) {
@@ -7913,7 +7954,7 @@ async function warmUpBackend() {
                '</div>';
     }).join('');
 
-    // ✅ เพิ่มปุ่ม "เพิ่มเติม" ถ้ามีเมนูเกิน
+    // Health facility tracking
     if (moreItems.length > 0) {
         const isMoreActive = moreItems.some(item => item.id === APP.currentPage);
         navHtml += '<div class="bottom-nav-item more-btn ' + (isMoreActive ? 'active' : '') + 
@@ -7925,7 +7966,7 @@ async function warmUpBackend() {
 
     document.getElementById('bottomNav').innerHTML = navHtml;
 
-    // ✅ ผูก event ให้ปุ่มเมนูปกติ
+    // Health facility tracking
     document.querySelectorAll('.bottom-nav-item[data-page]').forEach(function(el) {
         el.addEventListener('click', function() {
             const pg = this.getAttribute('data-page');
@@ -7933,7 +7974,7 @@ async function warmUpBackend() {
         });
     });
 
-    // ✅ ผูก event ให้ปุ่ม "เพิ่มเติม"
+    // Health facility tracking
     const moreBtn = document.getElementById('bottomNavMoreBtn');
     if (moreBtn) {
         moreBtn.addEventListener('click', function() {
@@ -7947,7 +7988,7 @@ async function warmUpBackend() {
  *  ✅ BOTTOM SHEET — แสดงเมนูที่เหลือ
  *  ============================================================ */
 function openBottomSheet(items) {
-    // ลบ sheet เก่าถ้ามี
+    // Health facility tracking
     const oldSheet = document.getElementById('bottomSheet');
     if (oldSheet) oldSheet.remove();
     const oldOverlay = document.getElementById('bottomSheetOverlay');
@@ -7985,7 +8026,7 @@ function openBottomSheet(items) {
         if (sheet) sheet.classList.add('active');
     }, 10);
 
-    // ผูก event ให้แต่ละเมนู
+    // Health facility tracking
     document.querySelectorAll('.bottom-sheet-item[data-page]').forEach(el => {
         el.addEventListener('click', function() {
             const pg = this.getAttribute('data-page');
@@ -8023,7 +8064,7 @@ const PAGE_TITLES = {
     duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำ)'
 };
 function navigateTo(page) {
-    // ✅ ปิด Bottom Sheet ถ้าเปิดอยู่
+    // Health facility tracking
     if (typeof closeBottomSheet === 'function') {
         closeBottomSheet();
     }
@@ -8037,9 +8078,9 @@ function navigateTo(page) {
     
     document.getElementById('topBarTitle').textContent = PAGE_TITLES[page] || page;
     
-    // ✅ อัปเดต Bottom Nav (เรียกใหม่ทั้งหมดเพื่อให้ active ถูกต้อง)
-    //     ดึง items จาก renderSidebarMenu ที่เก็บไว้
-    //     แต่เราเรียกใช้ method ที่แยกออกมา
+    // Health facility tracking
+    // Health facility tracking
+    // Health facility tracking
     updateBottomNavActive(page);
 
     switch (page) {
@@ -8072,7 +8113,7 @@ function navigateTo(page) {
  *  ✅ Helper: อัปเดต Active State ของ Bottom Nav
  *  ============================================================ */
 function updateBottomNavActive(page) {
-    // ✅ อัปเดตเมนูปกติ
+    // Health facility tracking
     document.querySelectorAll('.bottom-nav-item[data-page]').forEach(function(item) {
         item.classList.remove('active');
         if (item.getAttribute('data-page') === page) {
@@ -8080,17 +8121,17 @@ function updateBottomNavActive(page) {
         }
     });
 
-    // ✅ อัปเดตปุ่ม "เพิ่มเติม"
+    // Health facility tracking
     const moreBtn = document.getElementById('bottomNavMoreBtn');
     if (moreBtn) {
-        // ตรวจสอบว่า page นี้อยู่ในเมนู "เพิ่มเติม" หรือไม่
+    // Health facility tracking
         // โดยดูจาก sidebar menu items ทั้งหมด
         const sidebarItems = document.querySelectorAll('.menu-item[data-page]');
         const allPages = Array.from(sidebarItems).map(el => el.getAttribute('data-page'));
         const normalPages = Array.from(document.querySelectorAll('.bottom-nav-item[data-page]'))
             .map(el => el.getAttribute('data-page'));
         
-        // ถ้า page นี้ไม่อยู่ใน normal items → ถือว่าอยู่ใน "เพิ่มเติม"
+    // Health facility tracking
         if (page && !normalPages.includes(page) && allPages.includes(page)) {
             moreBtn.classList.add('active');
         } else {
@@ -8107,7 +8148,7 @@ function updateBottomNavActive(page) {
     page.classList.add('active');
 
     // ============================================================
-    // ✅ STEP 1: แสดง Skeleton UI ทันที (ผู้ใช้เห็นก่อน ไม่ต้องรอ)
+    // Health facility tracking
     // ============================================================
     const today = new Date();
     const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -8163,7 +8204,7 @@ function updateBottomNavActive(page) {
         </div>
     `;
 
-    // ✅ เพิ่ม shimmer animation (ถ้ายังไม่มีใน CSS)
+    // Health facility tracking
     if (!document.getElementById('shimmer-style')) {
         const style = document.createElement('style');
         style.id = 'shimmer-style';
@@ -8178,7 +8219,7 @@ function updateBottomNavActive(page) {
 
     try {
         // ============================================================
-        // ✅ STEP 2: โหลดข้อมูลเบาพร้อมกัน (Parallel) — เร็วขึ้น 2 เท่า
+    // Health facility tracking
         // ============================================================
         const [facilityResult, villagesResult] = await Promise.all([
             callGAS('getFacilityMap', [], { maxRetries: 2, timeout: 20000 }),
@@ -8200,7 +8241,7 @@ function updateBottomNavActive(page) {
         const isAdminAmpur = isAdminAmpurUser();
         const isSpecialOfficer = isSpecialOfficerUser();
 
-        // สถานพยาบาลที่เลือกบน Dashboard (ถ้า Admin_Ampur หรือเจ้าหน้าที่พิเศษ ไม่ได้เลือกเฉพาะ ให้เป็น 'ทั้งหมด')
+    // Health facility tracking
         const selectedDashboardFacility = (isAdminAmpur || isSpecialOfficer)
             ? (APP.selectedDashboardFacility || 'ทั้งหมด')
             : (APP.currentUser.hcode || 'ทั้งหมด');
@@ -8236,7 +8277,7 @@ function updateBottomNavActive(page) {
         const statusData = result.statusData || {};
         const facilityCoverage = result.facilityCoverage || [];
 
-        // ✅ สร้าง Dropdown ตัวกรองสถานพยาบาลสำหรับแดชบอร์ด & แผนที่ (ถ้ามีสิทธิ์)
+    // Health facility tracking
         let dashFacilitySelectorHtml = '';
         let mapFacilityDropdownHtml = '';
         if (isAdminAmpur || isSpecialOfficer) {
@@ -8359,7 +8400,7 @@ function updateBottomNavActive(page) {
         // ============================================================
         console.error('loadDashboard error:', err);
 
-        // ✅ เก็บข้อมูลไว้ debug
+    // Health facility tracking
         const errorDetail = err.message || err.toString();
         const isNetworkError = /fetch|network|timeout|connection/i.test(errorDetail);
 
@@ -8425,20 +8466,52 @@ function updateBottomNavActive(page) {
     function renderFacilityCoverageChart(coverageData) {
         const ctx = document.getElementById('facilityCoverageChart');
         if (!ctx) return;
-        if (APP.charts.facilityCoverage) { 
-            APP.charts.facilityCoverage.destroy(); 
-            delete APP.charts.facilityCoverage; 
+        if (APP.charts.facilityCoverage) {
+            APP.charts.facilityCoverage.destroy();
+            delete APP.charts.facilityCoverage;
         }
 
-        if (!coverageData || coverageData.length === 0) {
-            ctx.parentElement.innerHTML = '<div style="text-align:center;color:#aaa;padding:40px">ยังไม่มีข้อมูลสถานพยาบาล</div>';
+        const officialFacilities = window.HEALTH_FACILITIES || {
+            '09491': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e39\u0e2b\u0e22\u0e07', '09492': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e32\u0e41\u0e1b\u0e14', '09493': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e40\u0e01\u0e32\u0e30\u0e2a\u0e30\u0e1a\u0e49\u0e32',
+            '09494': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e25\u0e33\u0e44\u0e1e\u0e25', '09495': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e44\u0e17\u0e23', '09496': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e21\u0e48\u0e27\u0e07',
+            '09497': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e1e\u0e23\u0e38\u0e0a\u0e34\u0e07', '09498': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e27\u0e31\u0e07\u0e43\u0e2b\u0e0d\u0e48', '09499': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e2a\u0e30\u0e01\u0e2d\u0e21',
+            '09500': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e41\u0e21\u0e07\u0e25\u0e31\u0e01', '11915': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e38\u0e48\u0e07\u0e42\u0e14\u0e19', '15107': 'PCU2', '15109': 'PCU1'
+        };
+
+        const fMap = {};
+        Object.keys(officialFacilities).forEach(code => {
+            fMap[code] = { code: code, name: officialFacilities[code], total: 0, onTime: 0, rate: 0 };
+        });
+
+        (coverageData || []).forEach(d => {
+            if (!d) return;
+            const codeRaw = String(d.code || '').trim();
+            const nameRaw = String(d.name || '').trim();
+            const cNoZero = codeRaw.replace(/^0+/, '');
+            if (cNoZero === '860' || nameRaw.includes('\u0e2a\u0e2a\u0e2d') || nameRaw.includes('\u0e2a\u0e32\u0e18\u0e32\u0e23\u0e13\u0e2a\u0e38\u0e02')) return;
+            let normCode = codeRaw;
+            if (/^\d+$/.test(normCode) && normCode.length < 5) normCode = normCode.padStart(5, '0');
+            if (fMap[normCode]) {
+                fMap[normCode].total += (Number(d.total) || 0);
+                fMap[normCode].onTime += (Number(d.onTime !== undefined ? d.onTime : d.complete) || 0);
+            }
+        });
+
+        const cleanCoverage = Object.values(fMap).map(f => {
+            f.rate = f.total > 0 ? parseFloat(((f.onTime / f.total) * 100).toFixed(1)) : 0;
+            return f;
+        });
+        cleanCoverage.sort((a, b) => b.rate - a.rate);
+
+        if (cleanCoverage.length === 0) {
+            ctx.parentElement.innerHTML = '<div style="text-align:center;color:#aaa;padding:40px">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25</div>';
             return;
         }
 
-        const labels = coverageData.map(d => getFacilityDisplayName(d.code, d.name));
-        const rates = coverageData.map(d => d.rate);
-        const onTime = coverageData.map(d => d.onTime);
-        const totals = coverageData.map(d => d.total);
+        const labels = cleanCoverage.map(d => getFacilityDisplayName(d.code, d.name));
+        const rates = cleanCoverage.map(d => d.rate);
+        const onTime = cleanCoverage.map(d => d.onTime);
+        const totals = cleanCoverage.map(d => d.total);
 
         APP.charts.facilityCoverage = new Chart(ctx, {
             type: 'bar',
@@ -8572,7 +8645,7 @@ function updateBottomNavActive(page) {
         container.innerHTML = sortedData.map(function(d) {
             const rate = d.rate || 0;
             
-            // ✅ ตั้งค่าเงื่อนไขสี: 80% ขึ้นไปเป็นสีฟ้า (#0ea5e9) ต่ำกว่า 80% เป็นสีแดง (#ea5455)
+    // Health facility tracking
             const barColor = rate >= 80 ? '#0ea5e9' : '#ea5455'; 
             
             const barHeight = Math.max(rate, 5);
@@ -8647,7 +8720,7 @@ function updateBottomNavActive(page) {
 
             APP.leafletMap = L.map('childMap').setView([13.736717, 100.523186], 10);
 
-            // แผนที่ดาวเทียม Google Maps (Hybrid)
+    // Health facility tracking
             L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
                 attribution: 'Map data &copy; <a href="https://www.google.com/maps">Google</a>',
                 maxZoom: 19,
@@ -8676,7 +8749,7 @@ function updateBottomNavActive(page) {
                 'ครบ': '#667eea'
             };
 
-            // นับจำนวนเด็กที่มีพิกัดแยกตามแต่ละสถานะ
+    // Health facility tracking
             const countsByStatus = {
                 'ตามนัดปกติ': 0,
                 'ขาดนัด': 0,
@@ -8812,7 +8885,7 @@ function updateBottomNavActive(page) {
         const lat = child.lat || null;
         const lng = child.lng || null;
         const gpsLink = (lat && lng) ?
-            '<div style="margin-top:6px;"><a href="https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng + '" target="_blank" class="btn-nav-pill" title="เปิด Google Maps นำทาง"><i class="fas fa-directions"></i> นำทาง Google Maps</a></div>' :
+    // Health facility tracking
             '';
 
         const color = {
@@ -8855,7 +8928,7 @@ function updateBottomNavActive(page) {
     window.viewChildFromMap = async function(childId) {
     showLoading('กำลังโหลดข้อมูล...');
     
-    // ✅ Audit Log — ดูข้อมูลเด็ก
+    // Health facility tracking
     logActivity('VIEW', 'view', `ดูรายละเอียดเด็ก ID: ${childId}`);
     
     try {
@@ -8897,7 +8970,7 @@ function updateBottomNavActive(page) {
             const lng = parseFloat(coords[1]);
             if (!isNaN(lat) && !isNaN(lng)) {
                 gpsHtml = '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' +
-                    '<a href="https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng + '" target="_blank" class="btn-nav-pill" title="เปิด Google Maps นำทาง"><i class="fas fa-directions"></i> นำทาง Google Maps</a>' +
+    // Health facility tracking
                     '<a href="https://www.openstreetmap.org/?mlat=' + lat + '&mlon=' + lng + '#map=16/' + lat + '/' + lng + '" target="_blank" style="font-size:11px; color:#64748b; text-decoration:none;"><i class="fas fa-map-pin"></i> พิกัด</a>' +
                     '</div>';
             }
@@ -8963,7 +9036,7 @@ function updateBottomNavActive(page) {
                     else if (u.status === 'register') statusDisplay = '<span class="status-badge status-missed">รออนุมัติ</span>';
                     else statusDisplay = '<span class="status-badge status-refused">ระงับ</span>';
 
-                    // เงื่อนไขสิทธิ์การแสดงปุ่มอนุมัติ
+    // Health facility tracking
                     let canApprove = false;
                     if (u.status === 'register') {
                         if (APP.currentUser.role === 'Admin_Ampur') canApprove = true;
@@ -9049,7 +9122,7 @@ function updateBottomNavActive(page) {
         }
         
         try {
-            // ดึงข้อมูลหมู่บ้านทั้งหมด (เก็บไว้ใน Cache เพื่อไม่ให้โหลดซ้ำบ่อย)
+    // Health facility tracking
             if (!APP.allVillagesCache) {
                 const res = await callGAS('getVillages', []);
                 if (res.success) APP.allVillagesCache = res.villages;
@@ -9104,12 +9177,12 @@ function updateBottomNavActive(page) {
         document.getElementById('um_subdistrict').innerHTML = '<option value="">-- เลือกตำบล --</option>';
         document.getElementById('um_village').innerHTML = '<option value="">-- เลือกหมู่ที่ --</option>';
         
-        // หากผู้ดูแลระบบเป็นคนกดเพิ่ม จะขึ้นให้ปรับ Status ได้ (ตั้งค่าปกติเป็น active)
+    // Health facility tracking
         if (APP.currentUser && (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS')) {
             document.getElementById('um_status_group').style.display = 'block';
             document.getElementById('um_status').value = 'active'; 
         } else {
-            // หากไม่ได้ล็อกอิน (กดสมัครเข้ามาเอง) จะซ่อน Status และส่งค่าไปเป็น register อัตโนมัติ
+    // Health facility tracking
             document.getElementById('um_status_group').style.display = 'none';
         }
         
@@ -9652,7 +9725,7 @@ window.switchLogTab = function(tab) {
                 const cFac = document.getElementById('cFacility');
                 if (cFac) {
                     cFac.value = 'ทั้งหมด';
-                    cascadeVillageOptions('ทั้งหมด', 'cVillage'); // รีเซ็ต Dropdown หมู่บ้านกลับ
+    // Health facility tracking
                 }
                 document.getElementById('cSearch').value = '';
                 document.getElementById('cStatus').value = 'ทั้งหมด';
@@ -9675,11 +9748,11 @@ window.switchLogTab = function(tab) {
     async function doChildSearch() {
     showLoading('กำลังค้นหา...');
     
-    // ✅ Audit Log — ดูรายชื่อเด็ก
+    // Health facility tracking
     const searchValue = document.getElementById('cSearch') ? document.getElementById('cSearch').value.trim() : '';
     const statusValue = document.getElementById('cStatus') ? document.getElementById('cStatus').value : 'ทั้งหมด';
     
-    // ✅ Log เฉพาะเมื่อผู้ใช้กดค้นหา (ไม่ใช่ refresh อัตโนมัติ)
+    // Health facility tracking
     if (searchValue || statusValue !== 'ทั้งหมด') {
         logActivity('VIEW', 'view', 
             'ค้นหารายชื่อเด็ก — คำค้น: "' + (searchValue || '-') + '", สถานะ: ' + statusValue);
@@ -9812,7 +9885,7 @@ window.switchLogTab = function(tab) {
                 const mFac = document.getElementById('mFacility');
                 if (mFac) {
                     mFac.value = 'ทั้งหมด';
-                    cascadeVillageOptions('ทั้งหมด', 'mVillage'); // รีเซ็ต Dropdown หมู่บ้านกลับ
+    // Health facility tracking
                 }
                 document.getElementById('mSearch').value = '';
                 document.getElementById('mVillage').value = 'ทั้งหมด';
@@ -9832,7 +9905,7 @@ window.switchLogTab = function(tab) {
     async function doMissingSearch() {
     showLoading('กำลังค้นหา...');
     
-    // ✅ Audit Log — ดูเด็กขาดนัด
+    // Health facility tracking
     const searchValue = document.getElementById('mSearch') ? document.getElementById('mSearch').value.trim() : '';
     const facilityValue = document.getElementById('mFacility') ? document.getElementById('mFacility').value : 'ทั้งหมด';
     
@@ -9884,7 +9957,7 @@ window.switchLogTab = function(tab) {
                     
                     let navPill = '';
                     if (c.gps && c.gps.includes(',')) {
-                        navPill = '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="btn-nav-pill" title="นำทาง Google Maps ไปยังบ้านเด็ก"><i class="fas fa-directions"></i> นำทาง</a>';
+    // Health facility tracking
                     }
                     let contactCol = '<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">' + contactPill + (navPill ? navPill : '') + '</div>';
 
@@ -10018,13 +10091,13 @@ window.switchLogTab = function(tab) {
     const filterDate = document.getElementById('apptDateFilter') ? document.getElementById('apptDateFilter').value : '';
     const facilityFilter = document.getElementById('apptFacilityFilter') ? document.getElementById('apptFacilityFilter').value : 'ทั้งหมด';
     
-    // ✅ Audit Log — ดูรายชื่อนัดวัคซีน (เฉพาะเมื่อมี filter)
+    // Health facility tracking
     if (filterDate || facilityFilter !== 'ทั้งหมด') {
         logActivity('VIEW', 'view', 
             'ดูรายชื่อนัดวัคซีน — วันที่: ' + (filterDate || '-') + ', สถานพยาบาล: ' + facilityFilter);
     }
     
-    // ✅ ลบตัวซ้ำออกแล้ว — เดิมมี const facilityFilter ซ้ำ
+    // Health facility tracking
     let thaiFilterDate = '';
     if (filterDate) {
         const d = new Date(filterDate);
@@ -10560,7 +10633,7 @@ window.switchLogTab = function(tab) {
         const slipData = parseApptRowToSlipData(row, APP.apptHeaders);
         window.CURRENT_MINI_SLIP_DATA = slipData;
 
-        // ถ้ามีเบอร์โทรใน record แต่ slipPhone ว่าง ให้เติมอัตโนมัติ
+    // Health facility tracking
         const phoneInput = document.getElementById('slipPhone');
         if (phoneInput && !phoneInput.value && slipData.phone && slipData.phone !== '-') {
             phoneInput.value = slipData.phone;
@@ -10595,7 +10668,7 @@ window.switchLogTab = function(tab) {
             const slipData = parseApptRowToSlipData(foundRow, headers);
             window.CURRENT_MINI_SLIP_DATA = slipData;
         } else {
-            // สร้าง Slip Data เบื้องต้นจาก child detail
+    // Health facility tracking
             const facName = getFacilityDisplayName(APP.currentUser.hcode, 'คลินิกเด็กดี');
             window.CURRENT_MINI_SLIP_DATA = {
                 hcode: APP.currentUser.hcode || '',
@@ -11411,7 +11484,7 @@ window.switchLogTab = function(tab) {
                 userVillage: APP.currentUser.village
             };
             
-            // [แก้ไขแล้ว] เรียกข้อมูลทีละขั้นตอน (Sequential)
+    // Health facility tracking
             const fRes = await callGAS('getFacilityMap', []);
             const apptRes = await callGAS('getAppointments', [filters]); 
             
@@ -11885,7 +11958,7 @@ window.switchLogTab = function(tab) {
                             <p><strong>บิดา:</strong> ${esc(child.fatherName || '-')}</p>
                             <p><strong>มารดา:</strong> ${esc(child.motherName || '-')}</p>
                             <p><strong>อสม.ประจำ:</strong> ${esc(child.asm || '-')}</p>
-                            ${child.gps && child.gps.includes(',') ? '<p style="grid-column: 1/-1;"><strong>แผนที่นำทาง:</strong> <a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(child.gps.trim()) + '" target="_blank" class="btn-nav-pill" title="เปิด Google Maps นำทาง"><i class="fas fa-directions"></i> นำทาง Google Maps ไปยังบ้านเด็ก</a></p>' : ''}
+    // Health facility tracking
                         </div>
                     </div>
                 `;
@@ -12354,7 +12427,7 @@ window.switchLogTab = function(tab) {
 
         let vRes, repRes, fRes;
         try {
-            // [แก้ไขแล้ว] โหลดข้อมูลทีละคำสั่งเรียงกัน
+    // Health facility tracking
             fRes = await callGAS('getFacilityMap', []);
             repRes = await callGAS('getTrackingReporters', []);
             vRes = await callGAS('getVillages', [APP.currentUser.role, APP.currentUser.hcode]);
@@ -12792,16 +12865,16 @@ window.switchLogTab = function(tab) {
             '</div>' +
             '</div>' +
 
-            // ส่วนบน: การจัดการข้อมูลและการนำเข้า (2 คอลัมน์)
+    // Health facility tracking
             '<div class="manage-data-grid">' +
-            // คอลัมน์ 1: นำเข้าและประมวลผลข้อมูล
+    // Health facility tracking
             '<div class="import-action-card">' +
             '<h4 style="color: #10b981; font-size: 16px; margin-bottom: 6px; display:flex; align-items:center; gap:8px;">' +
             '<i class="fas fa-file-import"></i> นำเข้าและอัปเดตข้อมูล (Import & Update)' +
             '</h4>' +
             '<p style="font-size: 12.5px; color: #64748b; margin-bottom: 16px;">อัปโหลดไฟล์ Excel/CSV ข้อมูลเด็กและนัดหมายเพื่อปรับปรุงฐานข้อมูล</p>' +
 
-            // การ์ด 1: ข้อมูลเด็ก (data)
+    // Health facility tracking
             '<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; margin-bottom: 12px;">' +
             '<div style="flex: 1; padding-right: 10px;">' +
             '<h5 style="margin-bottom: 4px; color: #065f46; font-size: 14px; font-weight: 600;">' +
@@ -12837,7 +12910,7 @@ window.switchLogTab = function(tab) {
             '</button>' +
             '</div>' +
 
-            // การ์ด 3: อัปเดตสถานะขาดนัด
+    // Health facility tracking
             '<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;">' +
             '<div style="flex: 1; padding-right: 10px;">' +
             '<h5 style="margin-bottom: 4px; color: #92400e; font-size: 14px; font-weight: 600;">' +
@@ -12871,7 +12944,7 @@ window.switchLogTab = function(tab) {
             '</button>' +
             '</div>' +
 
-            // ลบนัดหมายเก่า
+    // Health facility tracking
             '<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #fff8f8; border: 1px solid #ffcdd2; border-radius: 10px; margin-bottom: 10px;">' +
             '<div>' +
             '<h5 style="margin-bottom: 2px; color: #333; font-size: 13.5px; font-weight: 600;">ลบนัดหมายที่ผ่านมาแล้ว (Sheet: Appointment)</h5>' +
@@ -12895,7 +12968,7 @@ window.switchLogTab = function(tab) {
             '</div>' +
             '</div>' +
 
-            // ส่วนล่าง: รายงานประวัติและสถานะการนำเข้าข้อมูล
+    // Health facility tracking
             '<div class="import-history-card">' +
             '<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0;">' +
             '<div>' +
@@ -12996,7 +13069,7 @@ window.switchLogTab = function(tab) {
             '</div>' +
             '</div>' +
 
-            // Tab 2: ตารางประวัติการนำเข้าทั้งหมด
+    // Health facility tracking
             '<div id="tabLogsContainer" style="display: none;">' +
             '<div class="data-table-container" style="overflow-x: auto;">' +
             '<table id="importLogsTable" class="data-table" style="width: 100%;">' +
@@ -13049,7 +13122,7 @@ window.switchLogTab = function(tab) {
 
             IMPORT_REPORT_DATA = res;
 
-            // อัปเดตตัวเลข KPI
+    // Health facility tracking
             const s = res.summary || {};
             const elTotal = document.getElementById('kpiTotalFac');
             const elComp = document.getElementById('kpiCompleteFac');
@@ -13156,7 +13229,7 @@ window.switchLogTab = function(tab) {
             const hasData = (fac.dataRows > 0) || (fac.lastDataImport !== null);
             const hasAppt = (fac.apptRows > 0) || (fac.lastApptImport !== null);
 
-            // ข้อมูลเด็ก
+    // Health facility tracking
             let dataHtml = '';
             if (hasData) {
                 dataHtml =
@@ -13360,17 +13433,17 @@ window.switchLogTab = function(tab) {
                 { wch: 6 },  // #
                 { wch: 14 }, // รหัส
                 { wch: 28 }, // ชื่อ
-                { wch: 18 }, // เด็ก
-                { wch: 24 }, // วันนำเข้าเด็ก
-                { wch: 20 }, // ผู้นำเข้าเด็ก
+    // Health facility tracking
+    // Health facility tracking
+    // Health facility tracking
                 { wch: 20 }, // นัดหมาย
-                { wch: 24 }, // วันนำเข้านัด
-                { wch: 20 }, // ผู้นำเข้านัด
+    // Health facility tracking
+    // Health facility tracking
                 { wch: 18 }  // สถานะ
             ];
             XLSX.utils.book_append_sheet(wb, ws1, 'สถานะรายสถานพยาบาล');
 
-            // Sheet 2: ประวัติการนำเข้าทั้งหมด
+    // Health facility tracking
             const sheet2Rows = [
                 ['ประวัติการนำเข้าข้อมูลทั้งหมด (Import Activity Logs)'],
                 ['เครือข่ายสุขภาพอำเภอเทพา จังหวัดสงขลา'],
@@ -13401,14 +13474,14 @@ window.switchLogTab = function(tab) {
             ];
             ws2['!cols'] = [
                 { wch: 6 },  // #
-                { wch: 22 }, // วันเวลา
+    // Health facility tracking
                 { wch: 14 }, // รหัส
                 { wch: 28 }, // ชื่อ
-                { wch: 24 }, // ประเภท
+    // Health facility tracking
                 { wch: 16 }, // user
                 { wch: 22 }, // ชื่อสกุล
                 { wch: 16 }, // role
-                { wch: 50 }  // รายละเอียด
+    // Health facility tracking
             ];
             XLSX.utils.book_append_sheet(wb, ws2, 'ประวัติการนำเข้าทั้งหมด');
 
@@ -13519,7 +13592,7 @@ window.switchLogTab = function(tab) {
             '</div>' +
             '<div class="modal-body">' +
             
-            // ---- ปรับปรุงกล่องข้อความเตือนให้เป็นแบบ Upsert ----
+    // Health facility tracking
             '<div class="info-box warning" style="border-color: #667eea;">' +
             '<p><span class="info-icon" style="background: rgba(102, 126, 234, 0.12); color: #667eea;"><i class="fas fa-sync"></i></span> <strong>ระบบจะทำงานแบบ Upsert (อัปเดต & เพิ่มใหม่)</strong></p>' +
             '<p style="margin-top: 8px; font-size: 12px; color: #888;">📌 ให้อ้างอิง <strong>hcode</strong> และ <strong>ID</strong> เป็นหลัก: หากมีรหัสอยู่แล้วระบบจะอัปเดตข้อมูลทับของเดิม หากไม่พบระบบจะเพิ่มข้อมูลใหม่</p>' +
@@ -13623,14 +13696,14 @@ window.switchLogTab = function(tab) {
             const files = Array.from(fileInput.files);
             
             files.splice(index, 1); // ลบไฟล์ตาม index
-            files.forEach(f => dt.items.add(f)); // นำไฟล์ที่เหลือใส่กลับเข้าไป
+    // Health facility tracking
             
             fileInput.files = dt.files;
-            renderFunc(dt.files); // อัปเดต UI
+    // Health facility tracking
         }
     }
 
-    // --- 3. ฟังก์ชันหลักที่ผูกกับเหตุการณ์ (Event) ของฝั่ง Data ---
+    // Health facility tracking
     function handleDataFiles(files) {
         renderModernFileList(files, 'dataFileList', 'removeDataFile');
     }
@@ -13639,7 +13712,7 @@ window.switchLogTab = function(tab) {
         removeModernFile(index, 'dataFileInput', handleDataFiles);
     }
 
-    // --- 4. ฟังก์ชันหลักที่ผูกกับเหตุการณ์ (Event) ของฝั่ง Appointment ---
+    // Health facility tracking
     function handleApptFiles(files) {
         renderModernFileList(files, 'apptFileList', 'removeApptFile');
     }
@@ -13652,7 +13725,7 @@ window.switchLogTab = function(tab) {
     // OPEN/CLOSE IMPORT MODALS (Refactored)
     // ============================================================
 
-    // --- ฟังก์ชันตัวกลางสำหรับรีเซ็ตหน้าตา UI ของ Modal ---
+    // Health facility tracking
     function resetImportModalUI(fileInputId, fileListId, progressId) {
         const fileInput = document.getElementById(fileInputId);
         if (fileInput) fileInput.value = '';
@@ -13675,14 +13748,14 @@ window.switchLogTab = function(tab) {
         const m = document.getElementById('importApptModal');
         if (m) {
             m.classList.remove('active');
-            // รีเซ็ต content หลังปิด 100ms เพื่อให้แอนิเมชันตอนปิดดูสมูท
+    // Health facility tracking
             setTimeout(function() {
                 resetImportModalUI('apptFileInput', 'apptFileList', 'apptUploadProgress');
             }, 100);
         }
     }
 
-    // --- ส่วนของ Data (เด็ก 0-5 ปี) ---
+    // Health facility tracking
     function openImportDataModal() {
         ensureImportDataModal();
         resetImportModalUI('dataFileInput', 'dataFileList', 'dataUploadProgress');
@@ -13693,7 +13766,7 @@ window.switchLogTab = function(tab) {
         const m = document.getElementById('importDataModal');
         if (m) {
             m.classList.remove('active');
-            // รีเซ็ต content หลังปิด 100ms เพื่อให้แอนิเมชันตอนปิดดูสมูท
+    // Health facility tracking
             setTimeout(function() {
                 resetImportModalUI('dataFileInput', 'dataFileList', 'dataUploadProgress');
             }, 100);
@@ -13886,12 +13959,12 @@ window.switchLogTab = function(tab) {
                 importModal.classList.remove('active');
             }
 
-            // ✅ ให้ modal ปิดเสร็จก่อน
+    // Health facility tracking
             await new Promise(function(resolve) {
                 setTimeout(resolve, 100);
             });
 
-            // ✅ เรียก Swal หลังจากปิด modal (เปลี่ยนข้อความให้ตรงกับระบบ Upsert)
+    // Health facility tracking
             const confirmResult = await Swal.fire({
                 title: 'ยืนยันการนำเข้าข้อมูล',
                 html: `พบข้อมูลที่ต้องการนำเข้า <strong>${dataRows.length - 1} รายการ</strong><br>
@@ -13907,14 +13980,14 @@ window.switchLogTab = function(tab) {
             });
 
             if (!confirmResult.isConfirmed) {
-                // ✅ เปิด modal อีกครั้งถ้ายกเลิก
+    // Health facility tracking
                 if (importModal) {
                     importModal.classList.add('active');
                 }
                 return;
             }
 
-            // ✅ อัปเดตความคืบหน้า
+    // Health facility tracking
             showLoading('กำลังบันทึกข้อมูลเข้าระบบ...');
 
             if (progressDiv) {
@@ -13931,14 +14004,14 @@ window.switchLogTab = function(tab) {
                 }
             }, 200);
 
-            // ✅ รอให้ GAS function ทำเสร็จ พร้อมส่ง role และ hcode ไปเพื่อเช็คสิทธิ์
+    // Health facility tracking
             const response = await callGAS('importDataSheet', [dataRows, APP.currentUser.role, APP.currentUser.hcode]);
 
             clearInterval(uploadInterval);
             if (progressFill) progressFill.style.width = '100%';
             hideLoading();
 
-            // ✅ ให้ progress bar แสดงเสร็จ แล้วค่อยปิด
+    // Health facility tracking
             await new Promise(function(resolve) {
                 setTimeout(resolve, 500);
             });
@@ -13960,16 +14033,16 @@ window.switchLogTab = function(tab) {
                     icon: 'success',
                    title: 'สำเร็จ!',
                     text: response.message || 'นำเข้าข้อมูลเรียบร้อย',
-                    timer: 2500, // เพิ่มเวลาแสดงผลนิดหน่อยให้อ่านสรุปการ Upsert ทัน
+    // Health facility tracking
                     showConfirmButton: false
                 }).then(function() {
-                    // ✅ รีเซ็ต file input
+    // Health facility tracking
                     if (fileInput) fileInput.value = '';
                     const fileList = document.getElementById('dataFileList');
                     if (fileList) fileList.style.display = 'none';
                 });
             } else {
-                // ✅ เปิด modal อีกครั้งถ้ามีข้อผิดพลาด
+    // Health facility tracking
                 if (importModal) {
                     importModal.classList.add('active');
                 }
@@ -13982,7 +14055,7 @@ window.switchLogTab = function(tab) {
             const progressDiv = document.getElementById('dataUploadProgress');
             if (progressDiv) progressDiv.style.display = 'none';
 
-            // ✅ เปิด modal อีกครั้งเมื่อเกิด error
+    // Health facility tracking
             const importModal = document.getElementById('importDataModal');
             if (importModal) {
                 importModal.classList.add('active');
@@ -14010,7 +14083,7 @@ window.switchLogTab = function(tab) {
         if (r.isConfirmed) {
             showLoading('กำลังประมวลผลและอัปเดตสถานะ... (อาจใช้เวลาสักครู่)');
             try {
-                // ส่ง Role และ Hcode ไปให้ Backend รู้ว่าใครเป็นคนสั่ง
+    // Health facility tracking
                 const res = await callGAS('updateMissingVaccineStatus', [APP.currentUser.role, APP.currentUser.hcode]);
                 hideLoading();
                 if (res.success) Swal.fire('สำเร็จ', res.message, 'success');
@@ -14059,7 +14132,7 @@ window.switchLogTab = function(tab) {
  *  ✅ ลบนัดหมายที่ผ่านมาแล้ว (แบบเลือกช่วงเวลา)
  *  ============================================================ */
 window.confirmClearOldAppointments = async function() {
-    // ✅ Step 1: เลือกช่วงเวลาที่ต้องการลบ
+    // Health facility tracking
     const firstConfirm = await Swal.fire({
         title: 'ลบนัดหมายที่ผ่านมาแล้ว',
         html: `
@@ -14136,7 +14209,7 @@ window.confirmClearOldAppointments = async function() {
 
     if (!finalConfirm.isConfirmed) return;
 
-    // ✅ Step 3: เรียก API
+    // Health facility tracking
     showLoading('กำลังลบนัดหมายที่ผ่านมาแล้ว...');
     try {
         const res = await callGAS('clearOldAppointments', [
@@ -14230,9 +14303,9 @@ window.confirmClearOldAppointments = async function() {
     
     const ptrEl = document.getElementById('ptr');
 
-    // เริ่มจับการสัมผัสหน้าจอ
+    // Health facility tracking
     document.addEventListener('touchstart', function(e) {
-        // อนุญาตให้ดึงรีเฟรชได้เฉพาะตอนที่หน้าจออยู่บนสุดเท่านั้น
+    // Health facility tracking
         if (window.scrollY === 0) {
             ptrStartY = e.touches[0].clientY;
             ptrIsPulling = true;
@@ -14246,13 +14319,13 @@ window.confirmClearOldAppointments = async function() {
         ptrCurrentY = e.touches[0].clientY;
         const distance = ptrCurrentY - ptrStartY;
 
-        // ตรวจสอบว่าเป็นการดึงลง
+    // Health facility tracking
         if (distance > 0 && window.scrollY === 0) {
             ptrEl.classList.add('visible');
             const icon = ptrEl.querySelector('.ptr-icon i');
             const text = ptrEl.querySelector('.ptr-text');
             
-            // หากดึงเกิน 60px จะแสดงสถานะว่าปล่อยนิ้วได้เลย
+    // Health facility tracking
             if (distance > 60) {
                 ptrEl.classList.add('release');
                 if(text) text.textContent = 'ปล่อยเพื่อรีเฟรช';
@@ -14265,7 +14338,7 @@ window.confirmClearOldAppointments = async function() {
         }
     }, { passive: true });
 
-    // เมื่อปล่อยนิ้วออกจากจอ
+    // Health facility tracking
     document.addEventListener('touchend', function(e) {
         if (!ptrIsPulling || !ptrEl) return;
         ptrIsPulling = false;
@@ -14273,28 +14346,28 @@ window.confirmClearOldAppointments = async function() {
         const distance = ptrCurrentY - ptrStartY;
         
         if (distance > 60 && window.scrollY === 0) {
-            // ดึงลงถึงระยะที่กำหนด เปลี่ยนสถานะเป็น Loading
+    // Health facility tracking
             ptrEl.classList.add('loading');
             const icon = ptrEl.querySelector('.ptr-icon i');
             const text = ptrEl.querySelector('.ptr-text');
             if(icon) icon.className = 'fas fa-spinner';
             if(text) text.textContent = 'กำลังโหลดข้อมูล...';
             
-            // โหลดหน้าปัจจุบันใหม่ (เสมือนการ Refresh Data)
+    // Health facility tracking
             if (APP.currentPage) {
                 navigateTo(APP.currentPage);
             }
             
-            // ซ่อนแถบหลังจากผ่านไป 1 วินาที เพื่อให้แอนิเมชันดูสมูท
+    // Health facility tracking
             setTimeout(function() {
                 ptrEl.classList.remove('visible', 'release', 'loading');
             }, 1000);
         } else {
-            // ถ้าดึงลงไม่ถึงระยะ ให้ยกเลิกและซ่อนกลับไป
+    // Health facility tracking
             ptrEl.classList.remove('visible', 'release');
         }
         
-        // รีเซ็ตค่า
+    // Health facility tracking
         ptrStartY = 0;
         ptrCurrentY = 0;
     });
@@ -14302,7 +14375,7 @@ window.confirmClearOldAppointments = async function() {
     // THEME CUSTOMIZATION
     // ============================================================
     
-    // โหลดสีธีมที่บันทึกไว้เมื่อเปิดหน้าเว็บ
+    // Health facility tracking
     function loadSavedTheme() {
         const c1 = localStorage.getItem('vcc_theme_c1');
         const c2 = localStorage.getItem('vcc_theme_c2');
@@ -14311,7 +14384,7 @@ window.confirmClearOldAppointments = async function() {
         }
     }
 
-    // เปิดหน้าต่างเลือกสี
+    // Health facility tracking
     window.openThemePicker = function() {
         Swal.fire({
             title: 'เลือกสีธีมที่ต้องการ',
@@ -14331,7 +14404,7 @@ window.confirmClearOldAppointments = async function() {
         });
     };
 
-    // ใช้สีธีมและเขียนทับ CSS
+    // Health facility tracking
     window.applyTheme = function(color1, color2) {
         // บันทึกลง Storage
         localStorage.setItem('vcc_theme_c1', color1);
@@ -14344,7 +14417,7 @@ window.confirmClearOldAppointments = async function() {
             document.head.appendChild(styleEl);
         }
         
-        // สร้างชุดคำสั่ง CSS เพื่อเขียนทับ (Override) สีหลัก
+    // Health facility tracking
         styleEl.innerHTML = `
             /* Background Gradients */
             .login-page::before, 
@@ -14410,7 +14483,7 @@ window.confirmClearOldAppointments = async function() {
             .swal2-confirm { background-color: ${color1} !important; }
         `;
         
-        // ปิด Modal (ถ้าเปิดอยู่)
+    // Health facility tracking
         if (Swal.isVisible()) Swal.close();
     };
 
@@ -14420,7 +14493,7 @@ window.confirmClearOldAppointments = async function() {
         const vilSelect = document.getElementById(targetDropdownId);
         if (!vilSelect) return;
         
-        // กรองข้อมูลหมู่บ้านจาก Cache ที่โหลดมาเก็บไว้
+    // Health facility tracking
         let filtered = APP.villagesCache || [];
         if (hcode && hcode !== 'ทั้งหมด') {
             filtered = filtered.filter(v => v.hcode === hcode);
@@ -14435,18 +14508,18 @@ window.confirmClearOldAppointments = async function() {
     // AUTO LOGOUT (30 MINUTES INACTIVITY)
     // ============================================================
     let inactivityTimer;
-    const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 นาที (หน่วยเป็นมิลลิวินาที)
+    // Health facility tracking
 
     function resetInactivityTimer() {
-        // ล้างเวลาเก่าทิ้ง
+    // Health facility tracking
         clearTimeout(inactivityTimer);
         
-        // ถ้าระบบไม่ได้ล็อกอินอยู่ (อยู่หน้าล็อกอิน) ไม่ต้องจับเวลา
+    // Health facility tracking
         if (!APP || !APP.currentUser) return;
 
-        // เริ่มจับเวลาใหม่
+    // Health facility tracking
         inactivityTimer = setTimeout(function() {
-            // แจ้งเตือนผู้ใช้เมื่อหมดเวลา
+    // Health facility tracking
             Swal.fire({
                 icon: 'warning',
                 title: 'หมดเวลาเซสชัน',
@@ -14456,18 +14529,18 @@ window.confirmClearOldAppointments = async function() {
                 allowOutsideClick: false,
                 allowEscapeKey: false
             }).then(() => {
-                logout(); // เรียกใช้ฟังก์ชัน logout เดิมของระบบเพื่อลบ session และกลับไปหน้าล็อกอิน
+    // Health facility tracking
             });
         }, INACTIVITY_LIMIT);
     }
 
-    // รายการเหตุการณ์ (Events) ที่ถือว่าผู้ใช้ยังใช้งานหน้าเว็บอยู่
+    // Health facility tracking
     const activityEvents = [
         'mousemove', 'mousedown', 'keypress', 'DOMMouseScroll', 
         'mousewheel', 'touchmove', 'MSPointerMove', 'scroll', 'click'
     ];
     
-    // ผูก Event Listener เข้ากับเอกสารทั้งหมด
+    // Health facility tracking
     activityEvents.forEach(function(eventName) {
         document.addEventListener(eventName, resetInactivityTimer, true);
     });
@@ -14476,15 +14549,15 @@ window.confirmClearOldAppointments = async function() {
     // ACTION BUTTONS & STATUS CHANGE
     // ============================================================
 
-    // 1. ฟังก์ชันสำหรับเชื่อมปุ่มรูปตา (ดูรายละเอียด) ให้ทำงาน
+    // Health facility tracking
     window.viewChild = window.viewChildFromMap;
 
-    // 2. ฟังก์ชันสำหรับเปลี่ยนสถานะเด็กจาก Dropdown ในตาราง
+    // Health facility tracking
     window.changeStatus = async function(childName, selectEl) {
         const newStatus = selectEl.value;
         const childId = selectEl.getAttribute('data-childid') || '';
         
-        // ถ้าเลือกตัวเลือกว่างๆ ให้ข้ามไป
+    // Health facility tracking
         if (!newStatus) return;
 
         const r = await Swal.fire({
@@ -14497,7 +14570,7 @@ window.confirmClearOldAppointments = async function() {
             cancelButtonText: 'ยกเลิก'
         });
 
-        // ถ้าผู้ใช้กดยกเลิก ให้รีเซ็ตค่า Dropdown กลับเป็นค่าว่าง
+    // Health facility tracking
         if (!r.isConfirmed) {
             selectEl.value = ""; 
             return;
@@ -14505,17 +14578,17 @@ window.confirmClearOldAppointments = async function() {
 
         showLoading('กำลังอัปเดตสถานะ...');
         try {
-            // ดึงชื่อผู้ใช้ปัจจุบันเพื่อส่งไปเก็บบันทึกว่าใครเป็นคนเปลี่ยนสถานะ
+    // Health facility tracking
             const reporter = APP.currentUser.username;
             
-            // ส่งข้อมูลไปอัปเดตที่ฝั่ง Backend (code.gs)
+    // Health facility tracking
             const res = await callGAS('updateChildStatus', [childName, newStatus, reporter, '', childId]);
             hideLoading();
             
             if (res.success) {
                 Swal.fire({ icon: 'success', title: 'อัปเดตสถานะสำเร็จ', timer: 1500, showConfirmButton: false });
                 
-                // รีเฟรชตารางตามหน้าเว็บที่เปิดอยู่ปัจจุบัน เพื่อให้แสดงผลสถานะใหม่
+    // Health facility tracking
                 if (APP.currentPage === 'children') {
                     if (typeof doChildSearch === 'function') doChildSearch();
                 } else if (APP.currentPage === 'missing') {
@@ -14547,7 +14620,7 @@ window.confirmClearOldAppointments = async function() {
   }
   hideLoading();
 
-  // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
+    // Health facility tracking
   const currentUser = APP.currentUser || {};
   const userRole = currentUser.role || '';
   const userHcode = currentUser.hcode || '';
@@ -14700,18 +14773,18 @@ function onCvQuarterChange() {
 async function doLoadCoverage() {
   const u = APP.currentUser || {};
   
-  // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
+    // Health facility tracking
   const isSpecialOfficer = isSpecialOfficerUser();
   const canSelectFacility = (isAdminAmpurUser() || isSpecialOfficer);
 
-  // ✅ ดึงค่า hcode จาก Dropdown (ถ้าเลือกได้) หรือจาก user (ถ้าล็อกไว้)
+    // Health facility tracking
   let selectedHcode = '';
   const facilityEl = document.getElementById('cvFacility');
   if (facilityEl) {
     selectedHcode = facilityEl.value || '';
   }
   
-  // ถ้าผู้ใช้ไม่มีสิทธิ์เลือก ให้ใช้ hcode ของตัวเองเสมอ
+    // Health facility tracking
   if (!canSelectFacility) {
     selectedHcode = u.hcode || '';
   }
@@ -15559,7 +15632,7 @@ async function toggleTrendView() {
 
   const u = APP.currentUser || {};
 
-  // ✅ ตรวจสอบสิทธิ์การเลือกสถานพยาบาล
+    // Health facility tracking
   const isSpecialOfficer = isSpecialOfficerUser();
   const canSelectFacility = (isAdminAmpurUser() || isSpecialOfficer);
 
@@ -15735,7 +15808,7 @@ function renderCoverageTrend(res) {
     </div>
   </div>`;
 
-  // ตารางรายไตรมาสเทียบข้ามปี
+    // Health facility tracking
   res.groups.forEach(g => {
     html += `
     <div class="cv-table-card">
@@ -15777,7 +15850,7 @@ function renderCoverageTrend(res) {
 
   box.innerHTML = html;
 
-  // วาดกราฟเส้นแนวโน้ม
+    // Health facility tracking
   if (APP.charts && APP.charts.cvTrendChart) APP.charts.cvTrendChart.destroy();
   if (!APP.charts) APP.charts = {};
 
@@ -15883,7 +15956,7 @@ function renderPublicAgeSummaryCards(ageGroups) {
         'y5': { icon: 'fa-user-graduate',     accent: '#8b5cf6', soft: '#ede9fe' }
     };
 
-    // ✅ เกณฑ์ตามกระทรวง
+    // Health facility tracking
     const defaultTargets = { 'y1': 90, 'y2': 90, 'y3': 95, 'y5': 90 };
 
     container.innerHTML = ageGroups.map(g => {
@@ -15893,7 +15966,7 @@ function renderPublicAgeSummaryCards(ageGroups) {
         const isPass = g.rate >= target;
         const gap = Math.max(0, Math.ceil(target * g.total / 100) - g.complete);
 
-        // ✅ เลือกสีของตัวเลขตามสถานะ
+    // Health facility tracking
         let valueColor = s.accent;
         if (!isEmpty) {
             valueColor = isPass ? '#10b981' : (g.rate >= target - 10 ? '#f59e0b' : '#ef4444');
@@ -16291,7 +16364,7 @@ async function exportDuplicateReportExcel() {
         const thaiDateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear() + 543}`;
 
         // ==========================================
-        // ✅ Sheet 1: ทะเบียนสรุปเด็กซ้ำรายคน
+    // Health facility tracking
         // ==========================================
         const sheet1Rows = [
             ['รายงานตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำในอำเภอ)'],
@@ -16326,7 +16399,7 @@ async function exportDuplicateReportExcel() {
             { wch: 6 },   // #
             { wch: 18 },  // CID
             { wch: 26 },  // ชื่อ-สกุล
-            { wch: 14 },  // วันเกิด
+    // Health facility tracking
             { wch: 12 },  // อายุ
             { wch: 22 },  // จำนวนสถานพยาบาล
             { wch: 60 },  // สถานพยาบาล
@@ -16336,7 +16409,7 @@ async function exportDuplicateReportExcel() {
         XLSX.utils.book_append_sheet(wb, ws1, 'สรุปเด็กซ้ำรายคน');
 
         // ==========================================
-        // ✅ Sheet 2: รายละเอียดแยกแต่ละสถานพยาบาล
+    // Health facility tracking
         // ==========================================
         const sheet2Rows = [
             ['รายละเอียดเด็กซ้ำแยกรายสถานพยาบาล (Data List)'],
@@ -16381,7 +16454,7 @@ async function exportDuplicateReportExcel() {
             { wch: 14 },  // HCODE
             { wch: 26 },  // HNAME
             { wch: 12 },  // HN
-            { wch: 12 },  // บ้านเลขที่
+    // Health facility tracking
             { wch: 8 },   // หมู่
             { wch: 14 },  // ตำบล
             { wch: 14 },  // โทรศัพท์
