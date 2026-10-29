@@ -5166,9 +5166,9 @@
                     { code: 'HBV1', alts: ['hbv1', 'hb1', 'hb', 'hepb1'] },
                     { code: 'DTP+HB+Hib1', alts: ['dtp+hb+hib1', 'dtphbhib1', 'dtp-hb1', 'dtphb1', 'dtp1'] },
                     { code: 'IPV1', alts: ['ipv1', 'ipv'] },
-                    { code: 'Rota1', alts: ['rota1', 'rota'] },
+                    { code: 'Rota1', alts: ['rota1', 'rota', 'r11', 'r21'] },
                     { code: 'DTP+HB+Hib2', alts: ['dtp+hb+hib2', 'dtphbhib2', 'dtp-hb2', 'dtphb2', 'dtp2'] },
-                    { code: 'Rota2', alts: ['rota2'] },
+                    { code: 'Rota2', alts: ['rota2', 'r12', 'r22'] },
                     { code: 'IPV2', alts: ['ipv2'] },
                     { code: 'DTP+HB+Hib3', alts: ['dtp+hb+hib3', 'dtphbhib3', 'dtp-hb3', 'dtphb3', 'dtp3'] },
                     { code: 'OPV3', alts: ['opv3', 'opv'] },
@@ -5634,18 +5634,19 @@
         // 16. ดึงรายชื่อเด็ก (Children)
         if (fnName === 'getChildren') {
             const filters = args[0] || {};
-            let query = supabaseClient.from('data').select('*');
-            if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
-                const unp = String(filters.hcode).replace(/^0+/, '');
-                const pad = String(filters.hcode).padStart(5, '0');
-                query = query.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
-            } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                const unp = String(filters.userHcode).replace(/^0+/, '');
-                const pad = String(filters.userHcode).padStart(5, '0');
-                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
-            }
-            const { data, error } = await query.limit(3000);
-            if (error) throw error;
+            const filterBuilder = (q) => {
+                if (filters.hcode && filters.hcode !== '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14') {
+                    const unp = String(filters.hcode).replace(/^0+/, '');
+                    const pad = String(filters.hcode).padStart(5, '0');
+                    q = q.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
+                } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                    const unp = String(filters.userHcode).replace(/^0+/, '');
+                    const pad = String(filters.userHcode).padStart(5, '0');
+                    q = q.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
+                }
+                return q;
+            };
+            const data = await fetchAllFromTable('data', '*', filterBuilder);
 
             const refusedSet = new Set();
             try {
@@ -6254,28 +6255,46 @@
         }
 
     // Health facility tracking
-        if (fnName === 'getDashboardStats') {
+                if (fnName === 'getDashboardStats') {
             const role = args[0] || (APP.currentUser ? APP.currentUser.role : '');
             const village = args[1] || '';
             const userHcode = args[2] || (APP.currentUser ? APP.currentUser.hcode : '');
             const userSubdistrict = args[3] || (APP.currentUser ? APP.currentUser.subdistrict : '');
-            const userVillage = args[4] || (APP.currentUser ? APP.currentUser.village : '');
-            const selectedHcode = args[5] || '';
+            const selectedHcode = args[4] || args[5] || '';
 
             const roleNorm = String(role || '').toLowerCase().trim();
-            const isAdminAmpur = (roleNorm === 'admin_ampur' || roleNorm === 'admin');
+            const isAdminAmpur = (roleNorm === 'admin_ampur' || roleNorm === 'admin' || roleNorm.includes('ampur'));
 
-            const filters = {
-                hcode: (selectedHcode && selectedHcode !== 'ทั้งหมด') ? selectedHcode : (isAdminAmpur ? 'ทั้งหมด' : userHcode),
-                village: (isAdminAmpur || !village || village === '-') ? 'ทั้งหมด' : village,
-                userRole: role,
-                userHcode: userHcode,
-                userSubdistrict: userSubdistrict,
-                userVillage: userVillage
+            const isAll = (v) => !v || v === '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14' || v === 'all';
+            const targetHcode = (!isAll(selectedHcode))
+                ? selectedHcode
+                : (isAdminAmpur ? '' : userHcode);
+
+            const filterFn = (q) => {
+                if (targetHcode && !isAll(targetHcode)) {
+                    const unp = String(targetHcode).replace(/^0+/, '');
+                    const pad = String(targetHcode).padStart(5, '0');
+                    q = q.or('hcode.eq.' + targetHcode + ',hcode.eq.' + unp + ',hcode.eq.' + pad);
+                }
+                return q;
             };
 
-            const childrenRes = await handleSupabaseAction('getChildren', [filters]);
-            const children = (childrenRes && childrenRes.children) ? childrenRes.children : [];
+            const data = await fetchAllFromTable('data', '*', filterFn);
+
+            const refusedSet = new Set();
+            try {
+                const { data: tData } = await supabaseClient
+                    .from('VCC_tracking')
+                    .select('cid, hn, fullname, status')
+                    .eq('status', '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19');
+                if (tData) {
+                    tData.forEach(t => {
+                        if (t.cid) refusedSet.add(String(t.cid).trim());
+                        if (t.hn) refusedSet.add(String(t.hn).trim());
+                        if (t.fullname) refusedSet.add(String(t.fullname).trim());
+                    });
+                }
+            } catch (tErr) {}
 
             let stats = { total: 0, onTime: 0, missed: 0, complete: 0, refused: 0 };
             const facilityMap = {};
@@ -6286,40 +6305,44 @@
                 facilityMap[code] = { code, name, total: 0, onTime: 0, missed: 0, rate: 0 };
             });
 
-            children.forEach(c => {
+            data.forEach(row => {
+                const evalRes = evaluateChildVaccineStatus(row, refusedSet);
+                const st = evalRes.status;
                 stats.total++;
-                if (c.status === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') stats.onTime++;
-                else if (c.status === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') stats.missed++;
-                else if (c.status === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') stats.complete++;
-                else if (c.status === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') stats.refused++;
+                if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') stats.onTime++;
+                else if (st === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') stats.missed++;
+                else if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') stats.complete++;
+                else if (st === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') stats.refused++;
 
-                let rawCode = String(c.hcode || '').trim();
+                let rawCode = String(row.hcode || '').trim();
                 let fCode = rawCode;
                 if (fCode && /^\d+$/.test(fCode) && fCode.length < 5) {
                     fCode = fCode.padStart(5, '0');
                 }
-                const isSSO = isSSOFacility(fCode, c.hname);
+                const isSSO = isSSOFacility(fCode, row.hname);
                 if (!isSSO && fCode && fCode !== '-') {
-                    const fName = HEALTH_FACILITIES[fCode] || (c.hname && c.hname !== '-' ? c.hname : getFacilityDisplayName(fCode, fCode));
+                    const fName = HEALTH_FACILITIES[fCode] || row.hname || getFacilityDisplayName(fCode, fCode);
                     if (!facilityMap[fCode]) {
                         facilityMap[fCode] = { code: fCode, name: fName, total: 0, onTime: 0, missed: 0, rate: 0 };
                     }
                     facilityMap[fCode].total++;
-                    if (c.status === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || c.status === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
+                    if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
                         facilityMap[fCode].onTime++;
-                    } else if (c.status === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') {
+                    } else if (st === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') {
                         facilityMap[fCode].missed++;
                     }
                 }
 
-                const vRealName = (c.villageName && c.villageName !== '-' && c.villageName !== '') ? c.villageName : (c.village !== '-' ? '\u0e2b\u0e21\u0e39\u0e48 ' + c.village : '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e2b\u0e21\u0e39\u0e48\u0e1a\u0e49\u0e32\u0e19');
+                const vRealName = (row.villname && row.villname !== '-' && row.villname !== '')
+                    ? row.villname
+                    : (row.moo && row.moo !== '-' ? '\u0e2b\u0e21\u0e39\u0e48 ' + row.moo : '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e2b\u0e21\u0e39\u0e48\u0e1a\u0e49\u0e32\u0e19');
                 if (!villageMap[vRealName]) {
-                    villageMap[vRealName] = { name: vRealName, villageNo: c.village, total: 0, onTime: 0, missed: 0, rate: 0 };
+                    villageMap[vRealName] = { name: vRealName, villageNo: row.moo || '-', hcode: fCode, total: 0, onTime: 0, missed: 0, rate: 0 };
                 }
                 villageMap[vRealName].total++;
-                if (c.status === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || c.status === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
+                if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
                     villageMap[vRealName].onTime++;
-                } else if (c.status === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') {
+                } else if (st === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') {
                     villageMap[vRealName].missed++;
                 }
             });
@@ -6338,36 +6361,71 @@
             villageData.sort((a, b) => b.rate - a.rate);
 
             let currentMonthAppts = [];
+            let appointmentsThisMonth = 0;
+            let appointmentsToday = 0;
             try {
-                let apptQ = supabaseClient.from('appoint').select('*').limit(1500);
-                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
-                    const unp = String(filters.hcode).replace(/^0+/, '');
-                    const pad = String(filters.hcode).padStart(5, '0');
-                    apptQ = apptQ.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
-                }
-                const { data: aData } = await apptQ;
+                const apptFilterFn = (q) => {
+                    if (targetHcode && !isAll(targetHcode)) {
+                        const unp = String(targetHcode).replace(/^0+/, '');
+                        const pad = String(targetHcode).padStart(5, '0');
+                        q = q.or(`hcode.eq.${targetHcode},hcode.eq.${unp},hcode.eq.${pad}`);
+                    }
+                    return q;
+                };
+                const aData = await fetchAllFromTable('appoint', '*', apptFilterFn);
+                const now = new Date();
+                const curM = String(now.getMonth() + 1).padStart(2, '0');
+                const curYCE = String(now.getFullYear());
+                const curYBE = String(now.getFullYear() + 543);
+                const curD = String(now.getDate()).padStart(2, '0');
+
                 if (aData) {
-                    currentMonthAppts = aData.map(a => ({
-                        hn: a.hn || a.HN || '-',
-                        name: a.name || a.fullname || a['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || '-',
-                        date: a.date || a.thaiDate || a['\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14'] || '-',
-                        vaccine: a.vaccine || a['\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19'] || '-',
-                        village: a.village || a['\u0e2b\u0e21\u0e39\u0e48\u0e17\u0e35\u0e48'] || '-',
-                        hcode: a.hcode || '-'
-                    }));
+                    aData.forEach(a => {
+                        const rawD = String(a.appointdate || a.date || a.thaiDate || a['\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14'] || '').trim();
+                        if (rawD.includes('/' + curM + '/' + curYCE) || rawD.includes('/' + curM + '/' + curYBE)) {
+                            appointmentsThisMonth++;
+                            if (rawD.startsWith(curD + '/') || rawD.startsWith(now.getDate() + '/')) {
+                                appointmentsToday++;
+                            }
+                        }
+                        currentMonthAppts.push({
+                            hn: a.hn || a.HN || '-',
+                            name: a.name || a.fullname || a['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || '-',
+                            date: rawD || '-',
+                            vaccine: a.vaccinename || a.vaccine || a.vaccinecode || a['\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19'] || '-',
+                            village: a.moo || a.village || a['\u0e2b\u0e21\u0e39\u0e48\u0e17\u0e35\u0e48'] || '-',
+                            hcode: a.hcode || '-'
+                        });
+                    });
                 }
             } catch (aErr) {}
 
+            const statusData = {
+                onTime: stats.onTime + stats.complete,
+                missed: stats.missed,
+                refused: stats.refused,
+                total: stats.total
+            };
+
             return {
                 success: true,
-                stats,
+                stats: {
+                    totalChildren: stats.total,
+                    total: stats.total,
+                    onTime: stats.onTime,
+                    complete: stats.complete,
+                    missed: stats.missed,
+                    refused: stats.refused,
+                    appointmentsThisMonth: appointmentsThisMonth,
+                    appointmentsToday: appointmentsToday
+                },
+                statusData,
                 facilityCoverage,
                 villageData,
                 currentMonthAppts
             };
         }
 
-    // Health facility tracking
         if (fnName === 'getChildDetail') {
             const childId = String(args[0] || '').trim();
             if (!childId) return { success: false, message: 'ไม่ระบุรหัสเด็ก' };
