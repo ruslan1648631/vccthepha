@@ -4652,28 +4652,6 @@
                 <div class="public-stats-grid" id="publicStatsGrid"></div>
             </div>
 
-                        <!-- Section 2: Charts (เนเธเธงเนเธเนเธกเนเธฅเธฐเธเธฒเธฃเธเธฃเธฐเธเธฒเธขเธญเธฒเธขเธธ) -->
-            <div class="public-charts-grid" style="margin-bottom: 24px;">
-                <div class="public-card">
-                    <div class="public-card-header">
-                        <i class="fas fa-chart-line"></i>
-                        <span>เนเธเธงเนเธเนเธกเธเธงเธฒเธกเธเธฃเธญเธเธเธฅเธธเธกเธงเธฑเธเธเธตเธเธฃเธฒเธขเธเธต</span>
-                    </div>
-                    <div class="public-chart-wrap">
-                        <canvas id="publicTrendChart"></canvas>
-                    </div>
-                </div>
-                <div class="public-card">
-                    <div class="public-card-header">
-                        <i class="fas fa-chart-bar"></i>
-                        <span>เธเธฒเธฃเธเธฃเธฐเธเธฒเธขเธเธฅเธธเนเธกเน€เธเนเธฒเธซเธกเธฒเธขเธ•เธฒเธกเธเนเธงเธเธญเธฒเธขเธธ</span>
-                    </div>
-                    <div class="public-chart-wrap">
-                        <canvas id="publicAgeChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
             <!-- Section 3: Facility Table -->
             <div class="public-card">
                 <div class="public-card-header">
@@ -7005,8 +6983,6 @@ async function loadPublicDashboard() {
         dataEl.style.display = 'block';
 
         renderPublicStats(res.summary, res.ageGroups);
-        renderPublicTrendChart(res.trend || []);
-        renderPublicAgeChart(res.ageDistribution || {});
         renderPublicFacilitiesTable(res.facilities || []);
         
         // ✅ เพิ่มใหม่
