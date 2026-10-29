@@ -5689,50 +5689,132 @@
                 const pad = String(filters.userHcode).padStart(5, '0');
                 query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
             }
-            if (filters.village && filters.village !== 'ทั้งหมด') {
-                query = query.or(`village_name.eq.${filters.village},village_no.eq.${filters.village}`);
-            }
             const { data, error } = await query.limit(3000);
             if (error) throw error;
 
             const children = (data || []).map(row => {
-                const gpsRaw = String(row.gps || row.lat_lng || '').trim();
-                let lat = null, lng = null, hasValidGps = false;
-                if (gpsRaw && gpsRaw.includes(',')) {
-                    const parts = gpsRaw.split(',');
-                    const pLat = parseFloat(parts[0]);
-                    const pLng = parseFloat(parts[1]);
-                    if (!isNaN(pLat) && !isNaN(pLng) && pLat > 0 && pLng > 0) {
-                        lat = pLat;
-                        lng = pLng;
+                let lat = null, lng = null, gpsRaw = '', hasValidGps = false;
+
+                // 1. ตรวจหา lat, lng จากทุกลักษณะคอลัมน์ที่เป็นไปได้
+                for (let k of Object.keys(row)) {
+                    const kl = k.toLowerCase().trim();
+                    if (kl === 'lat' || kl === 'latitude' || kl === 'ละติจูด') {
+                        const v = parseFloat(row[k]);
+                        if (!isNaN(v)) lat = v;
+                    }
+                    if (kl === 'lng' || kl === 'lon' || kl === 'longitude' || kl === 'ลองจิจูด') {
+                        const v = parseFloat(row[k]);
+                        if (!isNaN(v)) lng = v;
+                    }
+                }
+
+                // 2. ถ้ายังไม่ได้ หาจากคอลัมน์ข้อความ เช่น GPS, พิกัด, lat_lng
+                if (lat === null || lng === null) {
+                    for (let k of Object.keys(row)) {
+                        const kl = k.toLowerCase().trim();
+                        if (kl === 'gps' || kl === 'พิกัด' || kl.includes('gps') || kl.includes('lat') || kl.includes('พิกัด')) {
+                            const val = row[k];
+                            if (val !== undefined && val !== null && String(val).trim() !== '' && String(val).trim() !== '-') {
+                                gpsRaw = String(val).trim();
+                                break;
+                            }
+                        }
+                    }
+
+                    if (gpsRaw) {
+                        const match = gpsRaw.match(/(\d+\.\d+)\s*[, ]\s*(\d+\.\d+)/);
+                        if (match) {
+                            lat = parseFloat(match[1]);
+                            lng = parseFloat(match[2]);
+                        } else {
+                            const parts = gpsRaw.replace(/[^\d., -]/g, '').split(',');
+                            if (parts.length >= 2) {
+                                lat = parseFloat(parts[0]);
+                                lng = parseFloat(parts[1]);
+                            }
+                        }
+                    }
+                } else {
+                    gpsRaw = `${lat}, ${lng}`;
+                }
+
+                // 3. ตรวจสอบพิกัดประเทศไทย (Lat: 5-21, Lng: 97-106) และสลับหากสลับตำแหน่งกัน
+                if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+                    if (lat >= 97 && lat <= 106 && lng >= 5 && lng <= 21) {
+                        const tmp = lat;
+                        lat = lng;
+                        lng = tmp;
+                    }
+                    if (lat >= 5 && lat <= 21 && lng >= 97 && lng <= 106) {
                         hasValidGps = true;
                     }
                 }
+
+                const rowId = row.ID || row.id || row.cid || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '-';
+                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
+                const rowName = row['ชื่อ-สกุล'] || row.fullname || row.childname || row['ชื่อ'] || '-';
+                const rowVillage = row['หมู่ที่'] || row.village_no || row.village || row['หมู่'] || '-';
+                const rowVilName = row['ชื่อหมู่บ้าน'] || row.village_name || row.villageName || '-';
+                const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
+                const rowSub = row['ตำบล'] || row.subdistrict || row.Subdistrict || '-';
+
                 return {
-                    id: row.id || row.hn || row.cid,
-                    hn: row.hn || '-',
-                    cid: row.cid || '-',
-                    fullname: row.fullname || row.childname || row['ชื่อ-สกุล'] || '-',
-                    village: row.village_no || row.village || '-',
-                    villageName: row.village_name || row.villageName || '-',
-                    hcode: row.hcode || '-',
-                    hname: getFacilityDisplayName(row.hcode, row.hospital || row.hname),
+                    id: rowId,
+                    hn: rowHn,
+                    cid: rowId,
+                    fullname: rowName,
+                    village: rowVillage,
+                    villageName: rowVilName,
+                    subdistrict: rowSub,
+                    hcode: rowHcode,
+                    hname: getFacilityDisplayName(rowHcode, row.hospital || row.hname),
                     gps: gpsRaw,
-                    lat: lat,
-                    lng: lng,
+                    lat: hasValidGps ? lat : null,
+                    lng: hasValidGps ? lng : null,
                     hasGps: hasValidGps,
-                    age: row.age || row['อายุ'] || '-',
-                    houseNumber: row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
-                    phone: row.phone || row['โทรศัพท์'] || '-',
-                    fatherName: row.father || row.fatherName || '-',
-                    motherName: row.mother || row.motherName || '-',
-                    asm: row.asm || row['อสม'] || '-',
-                    birthDate: row.birthdate || row.dob || '-',
-                    status: row.status || row['สถานะ'] || 'ตามนัดปกติ',
+                    age: row['อายุ'] || row.age || '-',
+                    houseNumber: row['บ้านเลขที่'] || row.house_no || row.houseNumber || '-',
+                    phone: row['โทรศัพท์'] || row.phone || '-',
+                    fatherName: row['ชื่อบิดา'] || row.father || row.fatherName || '-',
+                    motherName: row['ชื่อมารดา'] || row.mother || row.motherName || '-',
+                    asm: row['อสม.'] || row['อสม'] || row.asm || '-',
+                    birthDate: row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.birthdate || row.dob || '-',
+                    status: row['สถานะ'] || row.status || 'ตามนัดปกติ',
                     missingVaccines: row.missing_vaccines || row.missingVaccines || ''
                 };
             });
-            return { success: true, children };
+
+            // กรองเงื่อนไขสิทธิ์การเข้าถึงข้อมูลตาม Role
+            let filteredChildren = children;
+            if (filters.userRole) {
+                const uRole = String(filters.userRole).trim().toLowerCase();
+                const uHcodeUnp = String(filters.userHcode || '').replace(/^0+/, '');
+                const isMapAdminAmpur = (uRole === 'admin_ampur' || uRole === 'admin');
+
+                if (!isMapAdminAmpur) {
+                    if (filters.userRole === 'Admin_HOS') {
+                        filteredChildren = filteredChildren.filter(c => String(c.hcode).replace(/^0+/, '') === uHcodeUnp);
+                    } else if (filters.userRole === 'เจ้าหน้าที่') {
+                        const isSpecialOfficer = (uHcodeUnp === '860' || uHcodeUnp === '11390');
+                        if (!isSpecialOfficer) {
+                            filteredChildren = filteredChildren.filter(c => String(c.hcode).replace(/^0+/, '') === uHcodeUnp);
+                        }
+                    } else if (filters.userRole === 'อสม.') {
+                        if (filters.userSubdistrict && filters.userSubdistrict !== '-') {
+                            filteredChildren = filteredChildren.filter(c => c.subdistrict === filters.userSubdistrict);
+                        }
+                        if (filters.userVillage && filters.userVillage !== '-') {
+                            filteredChildren = filteredChildren.filter(c => c.village === filters.userVillage);
+                        }
+                    }
+                }
+            }
+
+            if (filters.village && filters.village !== 'ทั้งหมด') {
+                filteredChildren = filteredChildren.filter(c => c.village === filters.village || c.villageName === filters.village);
+            }
+
+            return { success: true, children: filteredChildren };
         }
 
         // สำหรับ Action อื่นๆ ส่ง null เพื่อให้ Fallback ไปยัง GAS
@@ -7654,7 +7736,11 @@ function updateBottomNavActive(page) {
             });
 
             if (!hasAnyCoords) {
-                mapDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#aaa;">ไม่พบเด็กที่มีพิกัดในระบบ (ในสถานพยาบาลที่เลือก)</div>';
+                if (APP.leafletMap) {
+                    APP.leafletMap.remove();
+                    APP.leafletMap = null;
+                }
+                mapDiv.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; min-height:350px; color:#64748b; font-family:Kanit,sans-serif; background:#f8fafc; border-radius:8px;"><i class="fas fa-map-marker-slash fa-3x" style="color:#cbd5e1; margin-bottom:12px;"></i><div style="font-size:15px; font-weight:600; color:#334155;">ไม่พบเด็กที่มีพิกัดในระบบ (ในสถานพยาบาลที่เลือก)</div><div style="font-size:13px; color:#94a3b8; margin-top:4px;">กรุณาตรวจสอบว่ามีข้อมูลพิกัด (GPS) ในฐานข้อมูล หรือลองเลือกสถานพยาบาลอื่น</div></div>';
                 return;
             }
 
@@ -7734,7 +7820,11 @@ function updateBottomNavActive(page) {
             }
 
             if (countDisplayed === 0) {
-                mapDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#ff9f43;">ไม่พบข้อมูลเด็กที่มีพิกัดตามเงื่อนไขที่เลือก</div>';
+                if (APP.leafletMap) {
+                    APP.leafletMap.remove();
+                    APP.leafletMap = null;
+                }
+                mapDiv.innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; min-height:350px; color:#64748b; font-family:Kanit,sans-serif; background:#f8fafc; border-radius:8px;"><i class="fas fa-filter fa-3x" style="color:#cbd5e1; margin-bottom:12px;"></i><div style="font-size:15px; font-weight:600; color:#334155;">ไม่พบเด็กที่มีพิกัดตามสถานะที่เลือก</div><div style="font-size:13px; color:#94a3b8; margin-top:4px;">ลองเปลี่ยนตัวกรองสถานะวัคซีนหรือสถานพยาบาล</div></div>';
                 return;
             }
 
