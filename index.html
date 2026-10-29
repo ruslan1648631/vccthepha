@@ -5110,27 +5110,50 @@
             return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
         }
 
-        // 4. ตรวจสอบ "ขาดนัด" ตามเกณฑ์ช่วงอายุ (สธ.)
-        const CORE_VACCINES = [
-            { code: 'BCG', alts: ['bcg'], minAge: 1 },
-            { code: 'HB1', alts: ['hb1', 'hbv1', 'hb'], minAge: 1 },
-            { code: 'DTP-HB1', alts: ['dtphb1', 'dtp1', 'dtphbvipv1'], minAge: 2 },
-            { code: 'DTP-HB2', alts: ['dtphb2', 'dtp2', 'dtphbvipv2'], minAge: 4 },
-            { code: 'DTP-HB3', alts: ['dtphb3', 'dtp3', 'dtphbvipv3'], minAge: 6 },
-            { code: 'MMR1', alts: ['mmr1', 'mmr'], minAge: 9 },
-            { code: 'LAJE1', alts: ['laje1', 'je1', 'laje', 'laje2', 'je2'], minAge: 12 },
-            { code: 'DTP4', alts: ['dtp4', 'dtphb4'], minAge: 18 },
-            { code: 'MMR2', alts: ['mmr2'], minAge: 30 },
-            { code: 'DTP5', alts: ['dtp5'], minAge: 48 }
+        // 4. ตรวจสอบ "ขาดนัด" ตามเกณฑ์ความครอบคลุมช่วงอายุ สธ. (HDC Coverage Milestones)
+        // กลุ่มอายุ 1 ปี (12 เดือน), 2 ปี (24 เดือน), 3 ปี (36 เดือน), 5 ปี (60 เดือน)
+        const COVERAGE_GROUPS = [
+            {
+                ageMonths: 12,
+                vaccines: [
+                    { code: 'BCG', alts: ['bcg'] },
+                    { code: 'HB1', alts: ['hb1', 'hbv1', 'hb', 'hepb1'] },
+                    { code: 'DTP-HB1', alts: ['dtphb1', 'dtp1', 'dtphbvipv1'] },
+                    { code: 'DTP-HB2', alts: ['dtphb2', 'dtp2', 'dtphbvipv2'] },
+                    { code: 'DTP-HB3', alts: ['dtphb3', 'dtp3', 'dtphbvipv3'] },
+                    { code: 'MMR1', alts: ['mmr1', 'mmr'] }
+                ]
+            },
+            {
+                ageMonths: 24,
+                vaccines: [
+                    { code: 'DTP4', alts: ['dtp4', 'dtphb4'] },
+                    { code: 'LAJE1', alts: ['laje1', 'laje2', 'je1', 'je2', 'laje', 'je'] }
+                ]
+            },
+            {
+                ageMonths: 36,
+                vaccines: [
+                    { code: 'MMR2', alts: ['mmr2'] }
+                ]
+            },
+            {
+                ageMonths: 60,
+                vaccines: [
+                    { code: 'DTP5', alts: ['dtp5'] }
+                ]
+            }
         ];
 
         const missed = [];
-        if (ageMonths > 0) {
-            for (let v of CORE_VACCINES) {
-                if (ageMonths >= v.minAge) {
-                    const given = checkChildVaccineGiven(row, [v.code, ...v.alts]);
-                    if (!given) {
-                        missed.push(v.code);
+        if (ageMonths >= 12) {
+            for (let grp of COVERAGE_GROUPS) {
+                if (ageMonths >= grp.ageMonths) {
+                    for (let v of grp.vaccines) {
+                        const given = checkChildVaccineGiven(row, [v.code, ...v.alts]);
+                        if (!given) {
+                            if (!missed.includes(v.code)) missed.push(v.code);
+                        }
                     }
                 }
             }
@@ -5140,8 +5163,8 @@
             return { status: 'ขาดนัด', missingVaccines: missed.join(', ') };
         }
 
-        // 5. ถ้าอายุถึง 5 ปี (60 เดือนขึ้นไป) และไม่มีขาดนัด
-        if (ageMonths >= 60) {
+        // 5. ถ้าได้รับครบและอายุตั้งแต่ 5 ปีขึ้นไป (60 เดือน) หรือมี DTP5
+        if (hasDtp5 || ageMonths >= 60) {
             return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
         }
 
