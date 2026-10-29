@@ -6696,7 +6696,7 @@
                 const pad = String(hcode).padStart(5, '0');
                 q = q.or(`hcode.eq.${hcode},hcode.eq.${unp},hcode.eq.${pad}`);
             } else {
-                q = q.neq('id', 'CLEAR_ALL_PROTECTION_KEY_9999');
+                q = q.not('CID', 'is', null);
             }
             const { error } = await q;
             if (error) return { success: false, message: error.message };
@@ -6704,11 +6704,20 @@
         }
 
     // Health facility tracking
-        if (fnName === 'clearOldAppointments') {
-            const todayStr = new Date().toISOString().slice(0, 10);
-            const { error } = await supabaseClient.from('appoint').delete().lt('date', todayStr);
+        if (fnName === 'clearOldAppointments' || fnName === 'clearAppointments') {
+            const role = args[0] || (APP.currentUser ? APP.currentUser.role : '');
+            const hcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
+            let q = supabaseClient.from('appoint').delete();
+            if (role === 'Admin_HOS' && hcode) {
+                const unp = String(hcode).replace(/^0+/, '');
+                const pad = String(hcode).padStart(5, '0');
+                q = q.or(`hcode.eq.${hcode},hcode.eq.${unp},hcode.eq.${pad}`);
+            } else {
+                q = q.not('appointdate', 'is', null);
+            }
+            const { error } = await q;
             if (error) return { success: false, message: error.message };
-            return { success: true, message: 'ล้างข้อมูลนัดหมายที่ผ่านมาสำเร็จ' };
+            return { success: true, message: 'ล้างข้อมูลนัดหมายสำเร็จ' };
         }
 
         // 34. ล้างประวัติการติดตาม (Clear Auto Tracking Records)
