@@ -5997,7 +5997,7 @@
                 // 2. คอลัมน์วันที่: คืนค่าเป็น ISO string YYYY-MM-DD หรือ null (ห้ามคืนค่า "" เด็ดขาด)
                 if (DATE_COLS.has(fieldName)) {
                     const iso = parseThaiDateToISO(val);
-                    return (iso && typeof iso === 'string' && iso.trim() !== '') ? iso.trim() : null;
+                    return (iso && typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso.trim())) ? iso.trim() : null;
                 }
 
                 // 3. คอลัมน์ตัวเลข (CID, HN, moo, type): ป้องกันการแปลงเป็นวันที่และคืนค่าเป็น number
@@ -6157,7 +6157,7 @@
                 // 2. คอลัมน์วันที่: คืนค่าเป็น ISO string หรือ null (ห้ามเป็น "")
                 if (APPT_DATE_COLS.has(fieldName)) {
                     const iso = parseThaiDateToISO(val);
-                    return (iso && typeof iso === 'string' && iso.trim() !== '') ? iso.trim() : null;
+                    return (iso && typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso.trim())) ? iso.trim() : null;
                 }
 
                 // 3. คอลัมน์ตัวเลข (CID, HN, moo)
@@ -12934,23 +12934,40 @@ window.switchLogTab = function(tab) {
             return !isNaN(thaiDateStr.getTime()) ? thaiDateStr.toISOString().slice(0, 10) : null;
         }
         const s = String(thaiDateStr).trim();
-        if (!s || s === '-') return null;
+        if (!s || s === '-' || s === '0' || s === 'undefined' || s === 'null') return null;
 
         // 1. รูปแบบ ISO: YYYY-MM-DD
         const isoM = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
         if (isoM) {
             let y = parseInt(isoM[1], 10);
+            let m = parseInt(isoM[2], 10);
+            let d = parseInt(isoM[3], 10);
             if (y > 2400) y -= 543;
-            return `${y}-${String(isoM[2]).padStart(2, '0')}-${String(isoM[3]).padStart(2, '0')}`;
+            if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            }
         }
 
-        // 2. รูปแบบ DD/MM/YYYY
+        // 2. รูปแบบ DD/MM/YYYY หรือ MM/DD/YYYY
         const ddmmyyyy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
         if (ddmmyyyy) {
+            let p1 = parseInt(ddmmyyyy[1], 10);
+            let p2 = parseInt(ddmmyyyy[2], 10);
             let y = parseInt(ddmmyyyy[3], 10);
             if (y < 100) y += 2000;
             if (y > 2400) y -= 543;
-            return `${y}-${String(ddmmyyyy[2]).padStart(2, '0')}-${String(ddmmyyyy[3]).padStart(2, '0')}`;
+
+            let d = p1;
+            let m = p2;
+            // ถ้า p1 > 12 -> p1 คือวัน, p2 คือเดือน (DD/MM/YYYY)
+            // ถ้า p2 > 12 -> p2 คือวัน, p1 คือเดือน (MM/DD/YYYY)
+            if (p2 > 12 && p1 <= 12) {
+                m = p1;
+                d = p2;
+            }
+            if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            }
         }
 
         // 3. รูปแบบข้อความภาษาไทย เช่น "9 ธ.ค. 2569" หรือ "09 ธันวาคม 2569"
@@ -12958,14 +12975,16 @@ window.switchLogTab = function(tab) {
                             'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
         let parts = s.split(/\s+/);
         if (parts.length >= 3) {
-            let d = parts[0].padStart(2, '0');
+            let d = parseInt(parts[0], 10);
             let mStr = parts[1];
-            let y = parseInt(parts[2]);
+            let y = parseInt(parts[2], 10);
             let mIdx = thaiMonths.findIndex(tm => tm === mStr);
             if (mIdx !== -1) {
                 let m = (mIdx % 12) + 1;
                 if (y > 2400) y -= 543;
-                return `${y}-${m.toString().padStart(2, '0')}-${d}`;
+                if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                }
             }
         }
 
@@ -12974,7 +12993,11 @@ window.switchLogTab = function(tab) {
         if (!isNaN(parsed.getTime())) {
             let y = parsed.getFullYear();
             if (y > 2400) y -= 543;
-            return `${y}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+            let m = parsed.getMonth() + 1;
+            let d = parsed.getDate();
+            if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 1900 && y <= 2100) {
+                return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            }
         }
 
         return null;
