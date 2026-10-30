@@ -5705,8 +5705,13 @@
                 const houseVal = row.house || row.houseNumber || row['บ้านเลขที่'] || '-';
                 const mooVal   = (row.moo !== null && row.moo !== undefined) ? String(row.moo).trim() : (row.village || '-');
                 const phoneVal = row.phone || row['โทรศัพท์'] || '-';
-                const vacCode  = row.vaccinecode || row.vaccine || row['รหัสวัคซีน'] || '-';
-                const vacName  = row.vaccinename || row['ชื่อวัคซีน'] || row.vaccinecode || row.vaccine || '-';
+                const cleanVac = (v) => {
+                    if (v === null || v === undefined) return '';
+                    const s = String(v).trim();
+                    return (s === '-' || s === 'undefined' || s === 'null') ? '' : s;
+                };
+                const vacCode  = cleanVac(row.vaccinecode) || cleanVac(row.vaccine_code) || cleanVac(row.vaccine) || cleanVac(row.vaccinename) || cleanVac(row.vaccine_name) || cleanVac(row['\u0e23\u0e2b\u0e31\u0e2a\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19']) || cleanVac(row['\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19']) || cleanVac(row['\u0e0a\u0e37\u0e48\u0e2d\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19']) || '-';
+                const vacName  = cleanVac(row.vaccinename) || cleanVac(row.vaccine_name) || cleanVac(row.vaccine) || cleanVac(row.vaccinecode) || cleanVac(row.vaccine_code) || cleanVac(row['\u0e0a\u0e37\u0e48\u0e2d\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19']) || cleanVac(row['\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19']) || cleanVac(row['\u0e23\u0e2b\u0e31\u0e2a\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19']) || vacCode || '-';
                 const isoAppt  = rawAppt ? String(rawAppt).slice(0, 10) : '';
 
                 return [
@@ -6576,6 +6581,51 @@
                 g.rate = g.target > 0 ? parseFloat(((g.complete / g.target) * 100).toFixed(1)) : 0;
             });
 
+            const ageKeyMap = {
+                '1 \u0e1b\u0e35': { key: 'y1', label: '\u0e2d\u0e32\u0e22\u0e38 1 \u0e1b\u0e35', defaultTarget: 90 },
+                '2 \u0e1b\u0e35': { key: 'y2', label: '\u0e2d\u0e32\u0e22\u0e38 2 \u0e1b\u0e35', defaultTarget: 90 },
+                '3 \u0e1b\u0e35': { key: 'y3', label: '\u0e2d\u0e32\u0e22\u0e38 3 \u0e1b\u0e35', defaultTarget: 95 },
+                '5 \u0e1b\u0e35': { key: 'y5', label: '\u0e2d\u0e32\u0e22\u0e38 5 \u0e1b\u0e35', defaultTarget: 90 }
+            };
+            const ageGroupsList = Object.keys(ageGroupTargets).map(k => {
+                const g = ageGroupTargets[k];
+                const meta = ageKeyMap[k] || { key: 'y1', label: k, defaultTarget: 90 };
+                return {
+                    key: meta.key,
+                    label: meta.label,
+                    total: g.target,
+                    target: meta.defaultTarget,
+                    complete: g.complete,
+                    rate: g.rate
+                };
+            });
+
+            let appointmentsThisMonth = 0;
+            let appointmentsToday = 0;
+            try {
+                const aData = await fetchAllFromTable('appoint', 'appointdate,date,thaiDate');
+                const now = new Date();
+                const curM = String(now.getMonth() + 1).padStart(2, '0');
+                const curYCE = String(now.getFullYear());
+                const curYBE = String(now.getFullYear() + 543);
+                const curD = String(now.getDate()).padStart(2, '0');
+                if (aData) {
+                    aData.forEach(a => {
+                        const rawD = String(a.appointdate || a.date || a.thaiDate || '').trim();
+                        const isThisMonth = rawD.startsWith(curYCE + '-' + curM) ||
+                                            rawD.includes('/' + curM + '/' + curYCE) ||
+                                            rawD.includes('/' + curM + '/' + curYBE);
+                        if (isThisMonth) {
+                            appointmentsThisMonth++;
+                            const isToday = rawD.startsWith(curYCE + '-' + curM + '-' + curD) ||
+                                            rawD.startsWith(curD + '/' + curM) ||
+                                            rawD.startsWith(now.getDate() + '/' + curM);
+                            if (isToday) appointmentsToday++;
+                        }
+                    });
+                }
+            } catch (aErr) {}
+
             const currentYearBE = new Date().getFullYear() + 543;
             const trend = [
                 { year: currentYearBE - 2, rate: Math.max(0, overallRate - 4.5) },
@@ -6587,13 +6637,23 @@
                 success: true,
                 summary: {
                     total,
+                    totalChildren: total,
                     complete: totalGood,
+                    completeCount: totalGood,
                     onTime,
+                    onTimeCount: totalGood,
                     missed,
+                    missedCount: missed,
                     refused,
-                    rate: overallRate
+                    rate: overallRate,
+                    overallRate: overallRate,
+                    apptThisMonth: appointmentsThisMonth,
+                    appointmentsThisMonth: appointmentsThisMonth,
+                    apptToday: appointmentsToday,
+                    appointmentsToday: appointmentsToday
                 },
-                ageGroups: ageGroupTargets,
+                ageGroups: ageGroupsList,
+                ageGroupTargets: ageGroupTargets,
                 ageDistribution,
                 trend,
                 facilities: facilitiesList,
@@ -6604,8 +6664,6 @@
                 }
             };
         }
-
-    // Health facility tracking
                 if (fnName === 'getDashboardStats') {
             const role = args[0] || (APP.currentUser ? APP.currentUser.role : '');
             const village = args[1] || '';
@@ -8018,41 +8076,45 @@ async function loadPublicDashboard() {
 function renderPublicStats(summary, ageGroups) {
     const el = document.getElementById('publicStatsGrid');
     if (!el) return;
+    summary = summary || {};
 
+    const totalChild = (summary.totalChildren !== undefined && summary.totalChildren !== null) ? summary.totalChildren : (summary.total || 0);
+    const goodChild  = (summary.onTimeCount !== undefined && summary.onTimeCount !== null) ? summary.onTimeCount : ((summary.complete !== undefined ? summary.complete : summary.onTime) || 0);
+    const apptCount  = (summary.apptThisMonth !== undefined && summary.apptThisMonth !== null) ? summary.apptThisMonth : (summary.appointmentsThisMonth || 0);
+    const missCount  = (summary.missedCount !== undefined && summary.missedCount !== null) ? summary.missedCount : (summary.missed || 0);
 
-    // ✅ ใช้ข้อมูลเดียวกับหน้า Dashboard ในระบบ
     const cards = [
         {
             icon: 'fa-child',
             accent: '#667eea',
             accentSoft: '#eef2ff',
-            label: 'เด็ก 0-5 ปีทั้งหมด',
-            value: summary.totalChildren || 0,
-            unit: 'คน'
+            label: '\u0e40\u0e14\u0e47\u0e01 0-5 \u0e1b\u0e35\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14',
+            value: totalChild,
+            unit: '\u0e04\u0e19'
         },
         {
             icon: 'fa-check-circle',
             accent: '#10b981',
             accentSoft: '#d1fae5',
-            label: 'มาตามนัดปกติ/ครบเกณฑ์',
-            value: summary.onTimeCount || 0,
-            unit: 'คน'
+            label: '\u0e21\u0e32\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34/\u0e04\u0e23\u0e1a\u0e40\u0e01\u0e13\u0e11\u0e4c',
+            value: goodChild,
+            unit: '\u0e04\u0e19'
         },
         {
             icon: 'fa-calendar-alt',
             accent: '#f59e0b',
             accentSoft: '#fef3c7',
-            label: 'นัดหมายเดือนนี้',
-            value: summary.apptThisMonth || 0,
-            unit: 'นัด'
+            label: '\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e14\u0e37\u0e2d\u0e19\u0e19\u0e35\u0e49',
+            value: apptCount,
+            unit: '\u0e19\u0e31\u0e14'
         },
         {
             icon: 'fa-exclamation-triangle',
             accent: '#ef4444',
             accentSoft: '#fee2e2',
-            label: 'ขาดนัดปัจจุบัน',
-            value: summary.missedCount || 0,
-            unit: 'คน'
+            label: '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14\u0e1b\u0e31\u0e08\u0e08\u0e38\u0e1a\u0e31\u0e19',
+            value: missCount,
+            unit: '\u0e04\u0e19'
         }
     ];
 
@@ -8069,7 +8131,6 @@ function renderPublicStats(summary, ageGroups) {
         </div>
     `).join('');
 }
-
 function renderPublicTrendChart(trend) {
     const ctx = document.getElementById('publicTrendChart');
     if (!ctx || !trend.length) return;
@@ -12805,7 +12866,9 @@ window.switchLogTab = function(tab) {
         const dateIdx = headers.findIndex(h => h && h.toString().includes('\u0e27\u0e31\u0e19'));
         const nameIdx = headers.findIndex(h => h && h.toString().includes('\u0e0a\u0e37\u0e48\u0e2d'));
         const hnIdx = headers.findIndex(h => h && (h.toString().toUpperCase().includes('HN') || h.toString().includes('\u0e23\u0e2b\u0e31\u0e2a')));
-        const vacIdx = headers.findIndex(h => h && h.toString().includes('\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19'));
+        const vacCodeIdx = headers.findIndex(h => h && h.toString().includes('\u0e23\u0e2b\u0e31\u0e2a\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19'));
+        const vacNameIdx = headers.findIndex(h => h && h.toString().includes('\u0e0a\u0e37\u0e48\u0e2d\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19'));
+        const anyVacIdx  = headers.findIndex(h => h && h.toString().includes('\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19'));
         const apptDateIdx = headers.findIndex(h => h && (h.toString().toLowerCase() === 'appointdate' || h.toString().toLowerCase() === 'date'));
 
         const facilityFilterEl = document.getElementById('calFacilityFilter');
@@ -12845,7 +12908,22 @@ window.switchLogTab = function(tab) {
 
             let name = (nameIdx !== -1 && a[nameIdx]) ? a[nameIdx].toString().trim() : '';
             let hn = (hnIdx !== -1 && a[hnIdx]) ? a[hnIdx].toString().trim() : '';
-            let vac = (vacIdx !== -1 && a[vacIdx]) ? a[vacIdx].toString().trim() : '';
+
+            // [Extract vaccine name or code]
+            let vac = '';
+            if (vacNameIdx !== -1 && a[vacNameIdx] && String(a[vacNameIdx]).trim() !== '-') {
+                vac = String(a[vacNameIdx]).trim();
+            }
+            if ((!vac || vac === '-') && vacCodeIdx !== -1 && a[vacCodeIdx] && String(a[vacCodeIdx]).trim() !== '-') {
+                vac = String(a[vacCodeIdx]).trim();
+            }
+            if ((!vac || vac === '-') && anyVacIdx !== -1 && a[anyVacIdx] && String(a[anyVacIdx]).trim() !== '-') {
+                vac = String(a[anyVacIdx]).trim();
+            }
+            if ((!vac || vac === '-') && typeof a === 'object' && a !== null) {
+                vac = String(a.vaccinename || a.vaccinecode || a.vaccine || '').trim();
+            }
+            if (vac === '-') vac = '';
 
             let key = isoDate + '_' + hcode;
 
@@ -12854,8 +12932,12 @@ window.switchLogTab = function(tab) {
                     isoDate: isoDate,
                     dateStr: dStr || (window.formatThaiDate ? window.formatThaiDate(isoDate) : isoDate),
                     hcode: hcode,
+                    vaccines: [],
                     children: {} 
                 };
+            }
+            if (vac && !mergedEvents[key].vaccines.includes(vac)) {
+                mergedEvents[key].vaccines.push(vac);
             }
             
             let childKey = (hn || '') + '_' + (name || '');
@@ -12883,9 +12965,14 @@ window.switchLogTab = function(tab) {
             let facilityName = getFacilityDisplayName(item.hcode, '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25');
             let count = Object.keys(item.children).length;
             let childrenList = Object.values(item.children);
+            let vacList = item.vaccines && item.vaccines.length > 0 ? item.vaccines : [];
+            let vacSummary = vacList.length > 0 ? ': ' + vacList.join(', ') : '';
+
+            // [Title: Facility (X persons: Vaccines)]
+            let eventTitle = facilityName + ' (' + count + ' \u0e04\u0e19' + vacSummary + ')';
 
             return {
-                title: facilityName + ' (' + count + ' \u0e04\u0e19)',
+                title: eventTitle,
                 start: item.isoDate,
                 allDay: true,
                 extendedProps: {
@@ -12893,6 +12980,7 @@ window.switchLogTab = function(tab) {
                     facilityName: facilityName,
                     dateStr: item.dateStr,
                     count: count,
+                    vaccinesSummary: vacList.join(', '),
                     childrenList: childrenList
                 },
                 backgroundColor: colors[index % colors.length], 
@@ -12919,8 +13007,6 @@ window.switchLogTab = function(tab) {
         const sortedYm = Object.keys(monthsWithEvents).sort();
 
         // [Calculate initialDate]
-        // Auto-navigate to nearest upcoming appointment month if current month is empty
-        // Auto-navigate to nearest upcoming appointment month if current month is empty
         const todayIso = new Date().toISOString().slice(0, 10);
         const currentYm = todayIso.slice(0, 7);
         let initialCalendarDate = todayIso;
@@ -12929,45 +13015,9 @@ window.switchLogTab = function(tab) {
             initialCalendarDate = nextUpcoming ? (nextUpcoming + '-01') : (sortedYm[0] + '-01');
         }
 
-        // [Build Quick-Jump month bar]
-        let summaryBarHtml = '';
-        if (sortedYm.length > 0) {
-            const thaiShortMonths = ['\u0e21.\u0e04.','\u0e01.\u0e1e.','\u0e21\u0e35.\u0e04.','\u0e40\u0e21.\u0e22.','\u0e1e.\u0e04.','\u0e21\u0e34.\u0e22.','\u0e01.\u0e04.','\u0e2a.\u0e04.','\u0e01.\u0e22.','\u0e15.\u0e04.','\u0e1e.\u0e22.','\u0e18.\u0e04.'];
-            const buttonsHtml = sortedYm.map(ym => {
-                const parts = ym.split('-');
-                const y = parseInt(parts[0], 10);
-                const m = parseInt(parts[1], 10);
-                const thaiLabel = thaiShortMonths[m - 1] + ' ' + (y < 2400 ? y + 543 : y);
-                const cnt = monthsWithEvents[ym].count;
-                return `<button type="button" class="btn-cal-jump" style="background:#fff; border:1px solid #cbd5e1; border-radius:20px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; color:#1e293b; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s;" onclick="jumpCalendarTo('${ym}-01')"><i class="fas fa-calendar-day" style="color:#3b82f6;"></i> ${thaiLabel} <span style="background:#e0f2fe; color:#0369a1; padding:1px 6px; border-radius:10px; font-size:11px;">${cnt} \u0e04\u0e19</span></button>`;
-            }).join(' ');
-
-            summaryBarHtml = `
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; margin-bottom:15px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
-                    <div style="font-size:13px; color:#475569;">
-                        <i class="fas fa-calendar-check" style="color:#10b981; margin-right:6px;"></i>
-                        \u0e1e\u0e1a\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22\u0e23\u0e27\u0e21 <strong>${totalMatchedChildren}</strong> \u0e04\u0e19 \u0e43\u0e19 <strong>${sortedYm.length}</strong> \u0e40\u0e14\u0e37\u0e2d\u0e19
-                    </div>
-                    <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-                        <span style="font-size:12px; color:#64748b; margin-right:4px;">\u0e44\u0e1b\u0e22\u0e31\u0e07\u0e40\u0e14\u0e37\u0e2d\u0e19:</span>
-                        ${buttonsHtml}
-                    </div>
-                </div>
-            `;
-        } else {
-            summaryBarHtml = `
-                <div style="background:#fef2f2; border:1px solid #fee2e2; border-radius:10px; padding:12px 16px; margin-bottom:15px; color:#991b1b; font-size:13px;">
-                    <i class="fas fa-info-circle" style="margin-right:6px;"></i> \u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22\u0e17\u0e35\u0e48\u0e15\u0e23\u0e07\u0e01\u0e31\u0e1a\u0e15\u0e31\u0e27\u0e01\u0e23\u0e2d\u0e07\u0e43\u0e19\u0e23\u0e30\u0e1a\u0e1a
-                </div>
-            `;
-        }
-
-        calendarEl.innerHTML = summaryBarHtml + '<div id="fcContainer"></div>';
-
-        const fcEl = document.getElementById('fcContainer');
+        calendarEl.innerHTML = '';
         const canManage = (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS' || APP.currentUser.role === '\u0e40\u0e08\u0e49\u0e32\u0e2b\u0e19\u0e49\u0e32\u0e17\u0e35\u0e48');
-        
-        const calendar = new FullCalendar.Calendar(fcEl, {
+        const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             initialDate: initialCalendarDate,
             locale: 'th',
@@ -12982,8 +13032,8 @@ window.switchLogTab = function(tab) {
                 
                 let tooltipText = "\u0e23\u0e32\u0e22\u0e0a\u0e37\u0e48\u0e2d\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22:\n";
                 children.forEach(c => {
-                    let vac = c.vaccines.join(', ') || '-';
-                    tooltipText += `โ€ข ${c.name} (${vac})\n`;
+                    let vac = (c.vaccines && c.vaccines.length > 0) ? c.vaccines.join(', ') : '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19';
+                    tooltipText += `\u2022 ${c.name} (${vac})\n`;
                 });
                 
                 info.el.setAttribute('title', tooltipText);
@@ -12999,40 +13049,52 @@ window.switchLogTab = function(tab) {
             APP.calendarInstance.gotoDate(isoDate);
         }
     };
+
     function showCalendarEventDetail(props, canManage) {
         let childRows = props.childrenList.map((c, cIdx) => {
-            let vacStr = c.vaccines.join(', ');
-            return '<div style="font-size:13px; padding: 8px 0; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center; gap:8px;">' +
-                    '<div>' +
-                    '<strong>' + esc(c.name) + '</strong> (HN: ' + esc(c.hn || '-') + ')' +
-                    (vacStr ? '<br><span style="color:#0284c7; background:#e0f2fe; padding: 2px 6px; border-radius: 4px; font-size:11px; display:inline-block; margin-top:4px;">' + esc(vacStr) + '</span>' : '') +
+            let vacStr = (c.vaccines && c.vaccines.length > 0) ? c.vaccines.join(', ') : '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19';
+            return '<div style="font-size:13px; padding: 10px 0; border-bottom: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; gap:10px;">' +
+                    '<div style="flex:1;">' +
+                    '<div style="font-weight:600; color:#1e293b; font-size:14px;">' +
+                    '<i class="fas fa-child" style="color:#6366f1; margin-right:6px;"></i>' + esc(c.name) + 
+                    ' <span style="font-weight:normal; font-size:12px; color:#64748b;">(HN: ' + esc(c.hn || '-') + ')</span>' +
                     '</div>' +
-                    '<button class="action-btn" style="color:#0284c7; background:#e0f2fe; padding:4px 8px; border-radius:6px; font-size:12px; white-space:nowrap;" title="พิมพ์ใบนัดเด็กคนนี้" onclick="openSingleSlipFromCalendar(' + props.eventIndex + ', ' + cIdx + ')"><i class="fas fa-print"></i></button>' +
+                    '<div style="margin-top:5px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">' +
+                    '<span style="font-size:12px; color:#475569; font-weight:600;">\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14:</span> ' +
+                    '<span style="color:#0369a1; background:#e0f2fe; border:1px solid #bae6fd; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">' +
+                    '<i class="fas fa-syringe" style="font-size:11px;"></i> ' + esc(vacStr) + '</span>' +
+                    '</div>' +
+                    '</div>' +
+                    '<button class="action-btn" style="color:#0284c7; background:#e0f2fe; padding:6px 12px; border-radius:6px; font-size:12px; white-space:nowrap; border:none; cursor:pointer;" title="\u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e43\u0e1a\u0e19\u0e31\u0e14\u0e40\u0e14\u0e47\u0e01\u0e04\u0e19\u0e19\u0e35\u0e49" onclick="openSingleSlipFromCalendar(' + props.eventIndex + ', ' + cIdx + ')"><i class="fas fa-print"></i> \u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e43\u0e1a\u0e19\u0e31\u0e14</button>' +
                     '</div>';
         }).join('');
 
+        let vacSummaryHtml = props.vaccinesSummary ? '<p style="margin:4px 0 0 0; font-size: 13px; color:#0369a1;"><i class="fas fa-syringe"></i> <strong>\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14\u0e43\u0e19\u0e27\u0e31\u0e19\u0e19\u0e35\u0e49:</strong> ' + esc(props.vaccinesSummary) + '</p>' : '';
+
         let html = '<div style="text-align:left; font-family: Kanit;">' +
-                    '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; flex-wrap:wrap; gap:8px;">' +
-                    '<p style="margin:0; font-size: 15px; color:#555;"><strong>วันที่นัด:</strong> ' + esc(props.dateStr) + '</p>' +
-                    '<button class="btn-print-batch-slip" style="padding:4px 10px; font-size:12px;" onclick="openBatchPrintFromCalendar(' + props.eventIndex + ')"><i class="fas fa-print"></i> พิมพ์ทุกคน (' + props.count + ' คน)</button>' +
+                    '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px; flex-wrap:wrap; gap:8px;">' +
+                    '<div>' +
+                    '<p style="margin:0; font-size: 15px; color:#1e293b;"><strong>\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14:</strong> ' + esc(props.dateStr) + '</p>' +
+                    vacSummaryHtml +
                     '</div>' +
-                    '<div style="background: #f8fafc; padding: 10px 15px; border-radius: 8px; max-height: 250px; overflow-y: auto;">' +
+                    '<button class="btn-print-batch-slip" style="padding:6px 14px; font-size:12px;" onclick="openBatchPrintFromCalendar(' + props.eventIndex + ')"><i class="fas fa-print"></i> \u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e17\u0e38\u0e01\u0e04\u0e19 (' + props.count + ' \u0e04\u0e19)</button>' +
+                    '</div>' +
+                    '<div style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 280px; overflow-y: auto;">' +
                     childRows +
                     '</div>' +
-                    '<p style="font-size: 12px; color: #888; margin-top: 15px;">* หากต้องการลบหรือแก้ไขนัดหมาย กรุณาทำที่หน้า "รายชื่อนัดวัคซีน"</p>' +
+                    '<p style="font-size: 12px; color: #888; margin-top: 15px;">* \u0e2b\u0e32\u0e01\u0e15\u0e49\u0e2d\u0e07\u0e01\u0e32\u0e23\u0e25\u0e1a\u0e2b\u0e23\u0e37\u0e2d\u0e41\u0e01\u0e49\u0e44\u0e02\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22 \u0e01\u0e23\u0e38\u0e13\u0e32\u0e17\u0e33\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e49\u0e32 "\u0e23\u0e32\u0e22\u0e0a\u0e37\u0e48\u0e2d\u0e19\u0e31\u0e14\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19"</p>' +
                     '</div>';
         
         Swal.fire({
-            title: props.facilityName + ' (รวม ' + props.count + ' คน)',
+            title: props.facilityName + ' (\u0e23\u0e27\u0e21 ' + props.count + ' \u0e04\u0e19)',
             html: html,
             icon: 'info',
             showConfirmButton: true,
-            confirmButtonText: 'ปิด',
+            confirmButtonText: '\u0e1b\u0e34\u0e14',
             confirmButtonColor: '#667eea',
-            width: 520
+            width: 540
         });
     }
-
     function parseThaiDateToISO(thaiDateStr) {
         if (!thaiDateStr) return null;
         if (thaiDateStr instanceof Date) {
@@ -17421,10 +17483,20 @@ function renderCoverageTrend(res) {
  *  ============================================================ */
 function renderPublicAgeSummaryCards(ageGroups) {
     const container = document.getElementById('publicAgeStatsGrid');
-    if (!container) return;
-
-    if (!ageGroups || ageGroups.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">ยังไม่มีข้อมูล</div>';
+    let list = Array.isArray(ageGroups) ? ageGroups : [];
+    if (!Array.isArray(ageGroups) && typeof ageGroups === 'object' && ageGroups !== null) {
+        const keyMap = { '1 \u0e1b\u0e35': 'y1', '2 \u0e1b\u0e35': 'y2', '3 \u0e1b\u0e35': 'y3', '5 \u0e1b\u0e35': 'y5' };
+        list = Object.keys(ageGroups).map(k => ({
+            key: keyMap[k] || 'y1',
+            label: '\u0e2d\u0e32\u0e22\u0e38 ' + k,
+            total: ageGroups[k].target || 0,
+            complete: ageGroups[k].complete || 0,
+            rate: ageGroups[k].rate || 0,
+            target: 90
+        }));
+    }
+    if (list.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25</div>';
         return;
     }
 
@@ -17440,7 +17512,7 @@ function renderPublicAgeSummaryCards(ageGroups) {
     // ✅ เกณฑ์ตามกระทรวง
     const defaultTargets = { 'y1': 90, 'y2': 90, 'y3': 95, 'y5': 90 };
 
-    container.innerHTML = ageGroups.map(g => {
+    container.innerHTML = list.map(g => {
         const s = styles[g.key] || styles.y1;
         const target = g.target || defaultTargets[g.key] || 90;
         const isEmpty = g.total === 0;
