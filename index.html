@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
@@ -4855,6 +4855,7 @@
                 <div id="coveragePage" class="page"></div>
                 <div id="duplicateReportPage" class="page"></div>
                 <div id="outOfAreaChildrenPage" class="page"></div>
+                <div id="pcvTargetPage" class="page"></div>
             </div>
         </div>
     </div>
@@ -5075,7 +5076,7 @@
         'BCG', 'HBV1', 'DTP+HB+Hib1', 'Rota1', 'IPV1',
         'DTP+HB+Hib2', 'Rota2', 'IPV2', 'DTP+HB+Hib3', 'OPV3',
         'R23', 'MMR1', 'LJE1', 'DTP4', 'OPV4',
-        'MMR2', 'LJE2', 'DTP5', 'OPV5'
+        'MMR2', 'LJE2', 'DTP5', 'OPV5', 'PCV1', 'PCV2', 'PCV3'
     ];
 
     function checkChildVaccineGiven(row, targetCodes) {
@@ -5836,6 +5837,171 @@
             return { success: true, children };
         }
 
+                // 16.6 รายงานกลุ่มเป้าหมายวัคซีน PCV (เด็กที่เกิดตั้งแต่ 1 ต.ค. 2568)
+        if (fnName === 'getPcvTargetReport') {
+            const filters = args[0] || {};
+            const filterBuilder = (q) => {
+                if (filters.type && filters.type !== 'ทั้งหมด') {
+                    if (filters.type === 'in_area') q = q.in('type', [1, 3]);
+                    else if (filters.type === 'out_of_area') q = q.eq('type', 4);
+                    else q = q.eq('type', Number(filters.type));
+                }
+                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                    const unp = String(filters.hcode).replace(/^0+/, '');
+                    const pad = String(filters.hcode).padStart(5, '0');
+                    q = q.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
+                } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                    const unp = String(filters.userHcode).replace(/^0+/, '');
+                    const pad = String(filters.userHcode).padStart(5, '0');
+                    q = q.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
+                }
+                return q;
+            };
+            const allRows = await fetchAllFromTable('data', '*', filterBuilder);
+
+            // กรองเฉพาะเด็กที่เกิดตั้งแต่ 1 ต.ค. 2568 (2025-10-01) เป็นต้นมา
+            const now = new Date();
+            const children = [];
+
+            (allRows || []).forEach(row => {
+                const rawDob = row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด'] || '';
+                if (!rawDob || rawDob === '-' || rawDob === '0') return;
+                const isoDob = parseThaiDateToISO(rawDob);
+                if (!isoDob || isoDob < '2025-10-01') return; // เงื่อนไขสำคัญ: เด็กที่เกิดตั้งแต่ 1 ต.ค. 2568 เป็นต้นมา
+
+                const rowId = String(row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || '-').trim();
+                const rowHn = String(row.HN || row.hn || row['รหัส'] || '-').trim();
+                const rowName = String(row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-').trim();
+                const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
+                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['สถานพยาบาล']);
+                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(rawDob));
+
+                // คำนวณวันครบกำหนดตามเกณฑ์ 2p+1 (2 เดือน, 4 เดือน, 12 เดือน)
+                const bd = new Date(isoDob);
+                const d1 = new Date(bd.getFullYear(), bd.getMonth() + 2, bd.getDate());
+                const d2 = new Date(bd.getFullYear(), bd.getMonth() + 4, bd.getDate());
+                const d3 = new Date(bd.getFullYear() + 1, bd.getMonth(), bd.getDate());
+
+                const pcv1DueDate = d1.toISOString().slice(0, 10);
+                const pcv2DueDate = d2.toISOString().slice(0, 10);
+                const pcv3DueDate = d3.toISOString().slice(0, 10);
+
+                // ตรวจสอบข้อมูลวัคซีนที่ได้รับ
+                const pcv1Given = row.PCV1 || row.pcv1 || row['PCV1'] || row['pcv_1'] || null;
+                const pcv2Given = row.PCV2 || row.pcv2 || row['PCV2'] || row['pcv_2'] || null;
+                const pcv3Given = row.PCV3 || row.pcv3 || row['PCV3'] || row['pcv_3'] || null;
+
+                // ตรวจสอบวัคซีนที่ฉีดร่วม
+                const coVac1 = row['DTP+HB+Hib1'] || row.dtphbhib1 || row['IPV1'] || row.ipv1 || row['Rota1'] || null;
+                const coVac2 = row['DTP+HB+Hib2'] || row.dtphbhib2 || row['IPV2'] || row.ipv2 || row['Rota2'] || null;
+                const coVac3 = row['LJE1'] || row.lje1 || row.laje1 || row['MMR1'] || row.mmr1 || null;
+
+                let ageMonths = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth());
+                if (now.getDate() < bd.getDate()) ageMonths--;
+                if (ageMonths < 0) ageMonths = 0;
+
+                const daysSinceDue1 = Math.floor((now - d1) / 86400000);
+                const daysSinceDue2 = Math.floor((now - d2) / 86400000);
+                const daysSinceDue3 = Math.floor((now - d3) / 86400000);
+
+                let status = '';
+                let statusCode = '';
+
+                if (pcv3Given || (pcv2Given && ageMonths < 12) || (pcv1Given && ageMonths < 4)) {
+                    if (pcv3Given || (ageMonths >= 12 && pcv3Given) || (ageMonths >= 4 && ageMonths < 12 && pcv2Given) || (ageMonths < 4 && pcv1Given)) {
+                        status = 'ครบตามเกณฑ์อายุ';
+                        statusCode = 'complete';
+                    }
+                }
+                
+                if (!statusCode) {
+                    if (ageMonths < 2) {
+                        status = 'ยังไม่ถึงกำหนดฉีด (< 2 เดือน)';
+                        statusCode = 'not_due';
+                    } else if (ageMonths < 4) {
+                        if (pcv1Given) {
+                            status = 'ฉีดเข็ม 1 แล้ว (รอเข็ม 2)';
+                            statusCode = 'pcv1_done';
+                        } else if (daysSinceDue1 > 30) {
+                            status = 'เกินกำหนดเข็มที่ 1';
+                            statusCode = 'overdue_1';
+                        } else {
+                            status = 'ถึงเกณฑ์ฉีดเข็มที่ 1 (2 เดือน)';
+                            statusCode = 'due_1';
+                        }
+                    } else if (ageMonths < 12) {
+                        if (pcv2Given) {
+                            status = 'ฉีดเข็ม 2 แล้ว (รอเข็มกระตุ้น)';
+                            statusCode = 'pcv2_done';
+                        } else if (pcv1Given) {
+                            if (daysSinceDue2 > 30) {
+                                status = 'เกินกำหนดเข็มที่ 2';
+                                statusCode = 'overdue_2';
+                            } else {
+                                status = 'ถึงเกณฑ์ฉีดเข็มที่ 2 (4 เดือน)';
+                                statusCode = 'due_2';
+                            }
+                        } else {
+                            status = 'เกินกำหนดเข็มที่ 1 และ 2';
+                            statusCode = 'overdue_1_2';
+                        }
+                    } else {
+                        // อายุ >= 12 เดือน (1 ปีขึ้นไป)
+                        if (pcv3Given) {
+                            status = 'ได้รับครบตามเกณฑ์ (3 เข็ม)';
+                            statusCode = 'complete';
+                        } else if (pcv2Given) {
+                            if (daysSinceDue3 > 30) {
+                                status = 'เกินกำหนดเข็มกระตุ้น (เข็ม 3)';
+                                statusCode = 'overdue_3';
+                            } else {
+                                status = 'ถึงเกณฑ์เข็มกระตุ้น (12 เดือน)';
+                                statusCode = 'due_3';
+                            }
+                        } else {
+                            status = 'ค้างรับวัคซีน PCV';
+                            statusCode = 'overdue_all';
+                        }
+                    }
+                }
+
+                children.push({
+                    id: rowId,
+                    cid: rowId,
+                    hn: rowHn,
+                    fullname: rowName,
+                    birthDate: rawDob,
+                    isoDob: isoDob,
+                    age: ageComputed || '-',
+                    ageMonths: ageMonths,
+                    type: row.type || row['ประเภท'] || 1,
+                    typeLabel: Number(row.type) === 4 ? 'Type 4 (นอกเขต)' : `Type ${row.type || 1} (ในเขต)`,
+                    houseNumber: row.house || row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
+                    village: row.moo || row.village_no || row.village || row['หมู่ที่'] || row['หมู่'] || '-',
+                    villageName: row.villname || row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-',
+                    subdistrict: row.subdistname || row.subdistrict || row['ตำบล'] || '-',
+                    hcode: rowHcode,
+                    hname: rowHname,
+                    phone: row.phone || row['โทรศัพท์'] || '-',
+                    pcv1DueDate: pcv1DueDate,
+                    pcv2DueDate: pcv2DueDate,
+                    pcv3DueDate: pcv3DueDate,
+                    pcv1Date: pcv1Given ? String(pcv1Given).slice(0, 10) : '',
+                    pcv2Date: pcv2Given ? String(pcv2Given).slice(0, 10) : '',
+                    pcv3Date: pcv3Given ? String(pcv3Given).slice(0, 10) : '',
+                    coVac1: coVac1 ? String(coVac1).slice(0, 10) : '',
+                    coVac2: coVac2 ? String(coVac2).slice(0, 10) : '',
+                    coVac3: coVac3 ? String(coVac3).slice(0, 10) : '',
+                    status: status,
+                    statusCode: statusCode,
+                    rawRow: row
+                });
+            });
+
+            return { success: true, children: children };
+        }
+
+
         // 16.5 ดึงรายชื่อเด็กนอกเขต Type = 4 (Get Out of Area Children)
         if (fnName === 'getOutOfAreaChildren') {
             const filters = args[0] || {};
@@ -6036,13 +6202,16 @@
                 'MMR2': ['mmr2'],
                 'LJE2': ['lje2', 'laje2', 'je2'],
                 'DTP5': ['dtp5'],
-                'OPV5': ['opv5']
+                'OPV5': ['opv5'],
+                'PCV1': ['pcv1', 'pcv_1', 'pcv-1', 'pcv 1'],
+                'PCV2': ['pcv2', 'pcv_2', 'pcv-2', 'pcv 2'],
+                'PCV3': ['pcv3', 'pcv_3', 'pcv-3', 'pcv 3', 'pcvb', 'pcv_booster']
             };
 
             const DATE_COLS = new Set([
                 'DOB', 'BCG', 'HBV1', 'DTP+HB+Hib1', 'Rota1', 'IPV1', 'DTP+HB+Hib2',
                 'Rota2', 'IPV2', 'DTP+HB+Hib3', 'OPV3', 'Rota3', 'MMR1', 'LJE1',
-                'DTP4', 'OPV4', 'MMR2', 'LJE2', 'DTP5', 'OPV5'
+                'DTP4', 'OPV4', 'MMR2', 'LJE2', 'DTP5', 'OPV5', 'PCV1', 'PCV2', 'PCV3'
             ]);
             const NUMERIC_COLS = new Set(['CID', 'HN', 'moo', 'type']);
 
@@ -7029,7 +7198,7 @@
                 'BCG', 'HBV1', 'DTP+HB+Hib1', 'Rota1', 'IPV1',
                 'DTP+HB+Hib2', 'Rota2', 'IPV2', 'DTP+HB+Hib3', 'OPV3',
                 'R23', 'MMR1', 'LJE1', 'DTP4', 'OPV4',
-                'MMR2', 'LJE2', 'DTP5', 'OPV5'
+                'MMR2', 'LJE2', 'DTP5', 'OPV5', 'PCV1', 'PCV2', 'PCV3'
             ];
             knownVaccines.forEach(v => {
                 vaccines[v] = checkChildVaccineGiven(raw, [v]);
@@ -7190,7 +7359,7 @@
                     minMonths: 48,
                     maxMonths: 60,
                     targetPct: 90,
-                    vaccines: ['DTP5', 'OPV5']
+                    vaccines: ['DTP5', 'OPV5', 'PCV1', 'PCV2', 'PCV3']
                 }
             ];
 
@@ -9308,6 +9477,7 @@ async function warmUpBackend() {
                 { id: 'children', icon: 'fas fa-child', label: 'รายชื่อเด็กทั้งหมด' },
                 { id: 'missing', icon: 'fas fa-user-times', label: 'เด็กขาดนัด' },
                 { id: 'appointments', icon: 'fas fa-calendar-alt', label: 'รายชื่อนัดวัคซีน' },
+                { id: 'pcvTarget', icon: 'fas fa-syringe', label: 'u0e01u0e25u0e38u0e48u0e21u0e40u0e1bu0e49u0e32u0e2bu0e21u0e32u0e22u0e27u0e31u0e04u0e0bu0e35u0e19 PCV' },
                 { id: 'outOfAreaChildren', icon: 'fas fa-street-view', label: 'เด็กนอกเขต (Type 4)' },
                 { sep: 'ติดตาม' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
@@ -9322,6 +9492,7 @@ async function warmUpBackend() {
                 { id: 'children', icon: 'fas fa-child', label: 'รายชื่อเด็ก' },
                 { id: 'missing', icon: 'fas fa-user-times', label: 'เด็กขาดนัด' },
                 { id: 'appointments', icon: 'fas fa-calendar-alt', label: 'รายชื่อนัดวัคซีน' },
+                { id: 'pcvTarget', icon: 'fas fa-syringe', label: 'u0e01u0e25u0e38u0e48u0e21u0e40u0e1bu0e49u0e32u0e2bu0e21u0e32u0e22u0e27u0e31u0e04u0e0bu0e35u0e19 PCV' },
                 { id: 'outOfAreaChildren', icon: 'fas fa-street-view', label: 'เด็กนอกเขต (Type 4)' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
@@ -9333,6 +9504,7 @@ async function warmUpBackend() {
             items = [
                 { id: 'dashboard', icon: 'fas fa-home', label: 'หน้าแรก' },
                 { id: 'missing', icon: 'fas fa-user-times', label: 'เด็กขาดนัด' },
+                { id: 'pcvTarget', icon: 'fas fa-syringe', label: 'u0e01u0e25u0e38u0e48u0e21u0e40u0e1bu0e49u0e32u0e2bu0e21u0e32u0e22u0e27u0e31u0e04u0e0bu0e35u0e19 PCV' },
                 { id: 'trackingForm', icon: 'fas fa-plus-circle', label: 'รายงานการติดตาม' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' }
             ];
@@ -9489,7 +9661,8 @@ const PAGE_TITLES = {
     report: 'รายงานสรุปการติดตามวัคซีน',
     coverage: 'ความครอบคลุมวัคซีน',
     duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำ)',
-    outOfAreaChildren: 'ค้นหารายชื่อเด็กนอกเขต (Type 4)'
+    outOfAreaChildren: 'ค้นหารายชื่อเด็กนอกเขต (Type 4)',
+    pcvTarget: 'u0e23u0e32u0e22u0e07u0e32u0e19u0e01u0e25u0e38u0e48u0e21u0e40u0e1bu0e49u0e32u0e2bu0e21u0e32u0e22u0e27u0e31u0e04u0e0bu0e35u0e19 PCV (u0e40u0e14u0e47u0e01u0e40u0e01u0e34u0e14u0e15u0e31u0e49u0e07u0e41u0e15u0e48 1 u0e15.u0e04. 2568)'
 };
 function navigateTo(page) {
     // ✅ ปิด Bottom Sheet ถ้าเปิดอยู่
@@ -9531,6 +9704,10 @@ function navigateTo(page) {
         case 'duplicateReport':
             document.getElementById('duplicateReportPage').classList.add('active');
             loadDuplicateReportPage();
+            break;
+        case 'pcvTarget':
+            document.getElementById('pcvTargetPage').classList.add('active');
+            loadPcvTargetPage();
             break;
         case 'outOfAreaChildren':
             document.getElementById('outOfAreaChildrenPage').classList.add('active');
@@ -18543,6 +18720,619 @@ function exportOutOfAreaToExcel() {
         Swal.fire('ผิดพลาด', 'ไม่สามารถส่งออกไฟล์ Excel ได้: ' + err.message, 'error');
     }
 }
+
+    
+// ============================================================
+// 🌟 รายงานกลุ่มเป้าหมายวัคซีน PCV (เด็กที่เกิดตั้งแต่ 1 ต.ค. 2568 เป็นต้นมา)
+// ============================================================
+let PCV_RAW_CHILDREN = [];
+let PCV_FILTERED_CHILDREN = [];
+let PCV_CURRENT_PAGE = 1;
+const PCV_PAGE_SIZE = 50;
+
+async function loadPcvTargetPage() {
+    let page = document.getElementById('pcvTargetPage');
+    if (!page) {
+        page = document.createElement('div');
+        page.id = 'pcvTargetPage';
+        page.className = 'page';
+        document.getElementById('contentArea').appendChild(page);
+    }
+    page.classList.add('active');
+    showLoading('กำลังโหลดข้อมูลกลุ่มเป้าหมายวัคซีน PCV...');
+
+    try {
+        const fRes = await callGAS('getFacilityMap', []);
+        APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
+
+        const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทุกสถานพยาบาล --');
+        const isSpecialOfficer = isSpecialOfficerUser();
+        let facilityFilterHtml = '';
+        if (isAdminAmpurUser() || isSpecialOfficer) {
+            facilityFilterHtml = `
+                <div class="filter-group">
+                    <label>สถานพยาบาล</label>
+                    <select id="pcvFacility">${facilityOptions}</select>
+                </div>
+            `;
+        }
+
+        page.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                <div>
+                    <div class="page-title" style="margin-bottom:4px;"><i class="fas fa-syringe" style="color:#0284c7;"></i> รายงานกลุ่มเป้าหมายวัคซีน PCV</div>
+                    <div style="color:#64748b; font-size:13px;">เด็กที่เกิดตั้งแต่วันที่ 1 ตุลาคม 2568 เป็นต้นมา ตามแผนงานสร้างเสริมภูมิคุ้มกันโรค กระทรวงสาธารณสุข (ตารางมาตรฐานแบบ 2p+1: อายุ 2, 4 และ 12 เดือน)</div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button id="pcvRefreshBtn" class="btn" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:8px 14px; border-radius:8px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fas fa-sync-alt"></i> รีเฟรช
+                    </button>
+                    <button id="pcvPrintBtn" class="btn" style="background:#f8fafc; color:#0284c7; border:1px solid #bae6fd; padding:8px 14px; border-radius:8px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" onclick="window.print()">
+                        <i class="fas fa-print"></i> พิมพ์
+                    </button>
+                    <button id="pcvExportBtn" class="btn" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 4px rgba(16,185,129,0.2);">
+                        <i class="fas fa-file-excel"></i> ส่งออก Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Infographic แผนการให้วัคซีน PCV ตามประกาศ สธ. (สูตร 2p+1) -->
+            <div style="background:linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%); border:1px solid #bbf7d0; border-radius:14px; padding:18px 20px; margin-bottom:20px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:36px; height:36px; border-radius:8px; background:#059669; color:white; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin:0; font-size:15px; font-weight:700; color:#065f46;">กำหนดการให้บริการวัคซีน PCV ตามตารางมาตรฐาน (สูตร 2p+1)</h4>
+                            <span style="font-size:12px; color:#475569;">วัคซีนชุดพื้นฐาน (Primary series) 2 โดส + เข็มกระตุ้น (Booster) 1 โดส ที่ช่วงอายุ 2, 4 และ 12 เดือน</span>
+                        </div>
+                    </div>
+                    <span style="font-size:12px; background:#dcfce7; color:#15803d; padding:4px 12px; border-radius:20px; font-weight:600; border:1px solid #86efac;">
+                        <i class="fas fa-baby"></i> เงื่อนไข: เด็กเกิดตั้งแต่ 1 ต.ค. 2568 เป็นต้นมา
+                    </span>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+                    <!-- เข็มที่ 1 -->
+                    <div style="background:white; border-radius:10px; padding:14px 16px; border-top:4px solid #8b5cf6; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="background:#ede9fe; color:#7c3aed; font-weight:700; font-size:11px; padding:3px 8px; border-radius:12px;">เข็มที่ 1 (PCV 1)</span>
+                            <span style="font-weight:700; color:#6d28d9; font-size:13px;"><i class="fas fa-clock"></i> อายุครบ 2 เดือน</span>
+                        </div>
+                        <div style="font-size:13px; color:#1e293b; font-weight:600; margin-bottom:6px;">ให้บริการวัคซีน PCV โดสที่ 1</div>
+                        <div style="font-size:11px; color:#64748b; background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px dashed #cbd5e1; line-height:1.5;">
+                            <span style="font-weight:600; color:#475569;"><i class="fas fa-check-circle" style="color:#8b5cf6;"></i> ให้บริการพร้อมกับ:</span><br>
+                            1. DTP-HB-Hib โดสที่ 1<br>
+                            2. IPV โดสที่ 1<br>
+                            3. Rota โดสที่ 1
+                        </div>
+                    </div>
+
+                    <!-- เข็มที่ 2 -->
+                    <div style="background:white; border-radius:10px; padding:14px 16px; border-top:4px solid #ec4899; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="background:#fce7f3; color:#db2777; font-weight:700; font-size:11px; padding:3px 8px; border-radius:12px;">เข็มที่ 2 (PCV 2)</span>
+                            <span style="font-weight:700; color:#be185d; font-size:13px;"><i class="fas fa-clock"></i> อายุครบ 4 เดือน</span>
+                        </div>
+                        <div style="font-size:13px; color:#1e293b; font-weight:600; margin-bottom:6px;">ให้บริการวัคซีน PCV โดสที่ 2 <span style="font-size:11px; color:#be185d; font-weight:normal;">(ห่างจากเข็ม 1 &ge; 8 สัปดาห์)</span></div>
+                        <div style="font-size:11px; color:#64748b; background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px dashed #cbd5e1; line-height:1.5;">
+                            <span style="font-weight:600; color:#475569;"><i class="fas fa-check-circle" style="color:#ec4899;"></i> ให้บริการพร้อมกับ:</span><br>
+                            1. DTP-HB-Hib โดสที่ 2<br>
+                            2. IPV โดสที่ 2<br>
+                            3. Rota โดสที่ 2
+                        </div>
+                    </div>
+
+                    <!-- เข็มที่ 3 / Booster -->
+                    <div style="background:white; border-radius:10px; padding:14px 16px; border-top:4px solid #0284c7; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="background:#e0f2fe; color:#0284c7; font-weight:700; font-size:11px; padding:3px 8px; border-radius:12px;">เข็มที่ 3 (Booster)</span>
+                            <span style="font-weight:700; color:#0369a1; font-size:13px;"><i class="fas fa-clock"></i> อายุครบ 12 เดือน (1 ปี)</span>
+                        </div>
+                        <div style="font-size:13px; color:#1e293b; font-weight:600; margin-bottom:6px;">ให้บริการวัคซีน PCV โดสที่ 3 เข็มกระตุ้น</div>
+                        <div style="font-size:11px; color:#64748b; background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px dashed #cbd5e1; line-height:1.5;">
+                            <span style="font-weight:600; color:#475569;"><i class="fas fa-check-circle" style="color:#0284c7;"></i> ให้บริการพร้อมกับ:</span><br>
+                            1. วัคซีน LAJE โดสที่ 1 (หรือ MMR1)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- สรุปตัวเลขสถิติเป้าหมาย PCV -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:20px;">
+                <div style="background:white; border-radius:12px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:14px; border-left:4px solid #0284c7;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fas fa-baby"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#64748b; font-weight:500;">กลุ่มเป้าหมายทั้งหมด</div>
+                        <div id="pcvStatTotal" style="font-size:22px; font-weight:700; color:#1e293b;">0 <span style="font-size:13px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+                <div style="background:white; border-radius:12px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:14px; border-left:4px solid #94a3b8;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:#f1f5f9; color:#64748b; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fas fa-hourglass-start"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#64748b; font-weight:500;">ยังไม่ถึงกำหนด (< 2 ด.)</div>
+                        <div id="pcvStatNotDue" style="font-size:22px; font-weight:700; color:#475569;">0 <span style="font-size:13px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+                <div style="background:white; border-radius:12px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:14px; border-left:4px solid #8b5cf6;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:#ede9fe; color:#7c3aed; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fas fa-syringe"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#64748b; font-weight:500;">ถึงเกณฑ์เข็ม 1 (2-3 ด.)</div>
+                        <div id="pcvStatDue1" style="font-size:22px; font-weight:700; color:#6d28d9;">0 <span style="font-size:13px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+                <div style="background:white; border-radius:12px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:14px; border-left:4px solid #ec4899;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:#fce7f3; color:#db2777; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fas fa-syringe"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#64748b; font-weight:500;">ถึงเกณฑ์เข็ม 2 (4-11 ด.)</div>
+                        <div id="pcvStatDue2" style="font-size:22px; font-weight:700; color:#be185d;">0 <span style="font-size:13px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+                <div style="background:white; border-radius:12px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:14px; border-left:4px solid #0284c7;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:#e0f2fe; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#64748b; font-weight:500;">ถึงเกณฑ์เข็ม 3 (12 ด. ขึ้นไป)</div>
+                        <div id="pcvStatDue3" style="font-size:22px; font-weight:700; color:#0369a1;">0 <span style="font-size:13px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+                <div style="background:white; border-radius:12px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:14px; border-left:4px solid #10b981;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:#dcfce7; color:#10b981; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:11px; color:#64748b; font-weight:500;">ได้รับครบตามเกณฑ์อายุ</div>
+                        <div id="pcvStatComplete" style="font-size:22px; font-weight:700; color:#059669;">0 <span style="font-size:13px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- กล่องตัวกรอง -->
+            <div class="filter-bar" style="background:white; border-radius:12px; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end;">
+                ${facilityFilterHtml}
+                <div class="filter-group" style="min-width:140px;">
+                    <label>ประเภทเด็ก</label>
+                    <select id="pcvType">
+                        <option value="ทั้งหมด">ทั้งหมด (ในเขตและนอกเขต)</option>
+                        <option value="in_area" selected>ในเขตรับผิดชอบ (Type 1, 3)</option>
+                        <option value="out_of_area">นอกเขต (Type 4)</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="min-width:180px;">
+                    <label>สถานะประเมิน PCV</label>
+                    <select id="pcvStatus">
+                        <option value="ทั้งหมด">-- ทุกสถานะ --</option>
+                        <option value="not_due">ยังไม่ถึงกำหนดฉีด (< 2 เดือน)</option>
+                        <option value="due_1">ถึงเกณฑ์ฉีดเข็มที่ 1 (2-3 เดือน)</option>
+                        <option value="due_2">ถึงเกณฑ์ฉีดเข็มที่ 2 (4-11 เดือน)</option>
+                        <option value="due_3">ถึงเกณฑ์เข็มกระตุ้น (12 เดือน)</option>
+                        <option value="complete">ได้รับครบตามเกณฑ์อายุ</option>
+                        <option value="overdue">เกินกำหนด / ขาดนัด</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="flex:1.5; min-width:220px;">
+                    <label>ค้นหา (เลขบัตรประชาชน / HN / ชื่อ-สกุล / เบอร์โทร)</label>
+                    <input type="text" id="pcvSearch" placeholder="พิมพ์เพื่อค้นหา..." autocomplete="off">
+                </div>
+            </div>
+
+            <!-- ตารางข้อมูล -->
+            <div style="background:white; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05); overflow:hidden;">
+                <div style="padding:14px 20px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div style="font-weight:600; color:#1e293b; font-size:14px;">
+                        <i class="fas fa-list" style="color:#0284c7; margin-right:6px;"></i> รายชื่อเด็กกลุ่มเป้าหมายวัคซีน PCV 
+                        <span id="pcvTableCountBadge" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:12px; margin-left:6px;">0 คน</span>
+                    </div>
+                </div>
+
+                <div style="overflow-x:auto;">
+                    <table class="data-table" style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#475569; font-weight:600; white-space:nowrap;">
+                                <th style="padding:12px 14px; width:45px; text-align:center;">#</th>
+                                <th style="padding:12px 14px;">เลขบัตร ปชช. / HN</th>
+                                <th style="padding:12px 14px;">ชื่อ-สกุล</th>
+                                <th style="padding:12px 14px;">วันเกิด (ว/ด/ป)</th>
+                                <th style="padding:12px 14px;">อายุปัจจุบัน</th>
+                                <th style="padding:12px 14px;">ประเภท</th>
+                                <th style="padding:12px 14px;">สถานพยาบาล</th>
+                                <th style="padding:12px 14px;">ที่อยู่ / เบอร์โทร</th>
+                                <th style="padding:12px 14px; text-align:center; background:#faf5ff;">เข็ม 1 (2 ด.)</th>
+                                <th style="padding:12px 14px; text-align:center; background:#fdf2f8;">เข็ม 2 (4 ด.)</th>
+                                <th style="padding:12px 14px; text-align:center; background:#f0f9ff;">เข็ม 3 (12 ด.)</th>
+                                <th style="padding:12px 14px; text-align:center;">สถานะประเมิน</th>
+                                <th style="padding:12px 14px; text-align:center; width:90px;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pcvTableBody">
+                            <tr>
+                                <td colspan="13" style="text-align:center; padding:30px; color:#64748b;">กำลังโหลดข้อมูล...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="pcvPagination" style="padding:12px 20px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:13px; color:#64748b;">
+                </div>
+            </div>
+        `;
+
+        await fetchAndRenderPcvData();
+
+        // Bind filter event listeners
+        const facEl = document.getElementById('pcvFacility');
+        if (facEl) facEl.addEventListener('change', fetchAndRenderPcvData);
+        document.getElementById('pcvType').addEventListener('change', fetchAndRenderPcvData);
+        document.getElementById('pcvStatus').addEventListener('change', filterAndDisplayPcvTable);
+        document.getElementById('pcvSearch').addEventListener('input', debounce(filterAndDisplayPcvTable, 300));
+        document.getElementById('pcvRefreshBtn').addEventListener('click', fetchAndRenderPcvData);
+        document.getElementById('pcvExportBtn').addEventListener('click', exportPcvExcel);
+
+    } catch (err) {
+        console.error('loadPcvTargetPage error:', err);
+        page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + esc(err.message) + '</div>';
+    } finally {
+        hideLoading();
+    }
+}
+
+async function fetchAndRenderPcvData() {
+    showLoading('กำลังโหลดรายชื่อเด็กเป้าหมาย PCV...');
+    try {
+        const facEl = document.getElementById('pcvFacility');
+        const selectedFacility = facEl ? facEl.value : 'ทั้งหมด';
+        const typeEl = document.getElementById('pcvType');
+        const selectedType = typeEl ? typeEl.value : 'in_area';
+
+        const res = await callGAS('getPcvTargetReport', [{
+            hcode: selectedFacility,
+            type: selectedType,
+            userRole: APP.currentUser ? APP.currentUser.role : '',
+            userHcode: APP.currentUser ? APP.currentUser.hcode : ''
+        }]);
+
+        if (res && res.success) {
+            PCV_RAW_CHILDREN = res.children || [];
+        } else {
+            PCV_RAW_CHILDREN = [];
+        }
+
+        updatePcvStats(PCV_RAW_CHILDREN);
+        filterAndDisplayPcvTable();
+
+    } catch (e) {
+        console.error('fetchAndRenderPcvData error:', e);
+        PCV_RAW_CHILDREN = [];
+        updatePcvStats([]);
+        filterAndDisplayPcvTable();
+    } finally {
+        hideLoading();
+    }
+}
+
+function updatePcvStats(list) {
+    let notDue = 0, due1 = 0, due2 = 0, due3 = 0, complete = 0;
+    (list || []).forEach(c => {
+        if (c.statusCode === 'not_due') notDue++;
+        else if (c.statusCode === 'due_1' || c.statusCode === 'overdue_1') due1++;
+        else if (c.statusCode === 'due_2' || c.statusCode === 'overdue_2' || c.statusCode === 'overdue_1_2') due2++;
+        else if (c.statusCode === 'due_3' || c.statusCode === 'overdue_3' || c.statusCode === 'overdue_all') due3++;
+        else if (c.statusCode === 'complete' || c.statusCode === 'pcv1_done' || c.statusCode === 'pcv2_done') complete++;
+        else complete++;
+    });
+
+    const setEl = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `${val} <span style="font-size:13px; font-weight:400; color:#64748b;">คน</span>`;
+    };
+
+    setEl('pcvStatTotal', list.length);
+    setEl('pcvStatNotDue', notDue);
+    setEl('pcvStatDue1', due1);
+    setEl('pcvStatDue2', due2);
+    setEl('pcvStatDue3', due3);
+    setEl('pcvStatComplete', complete);
+}
+
+function filterAndDisplayPcvTable() {
+    const statusVal = document.getElementById('pcvStatus') ? document.getElementById('pcvStatus').value : 'ทั้งหมด';
+    const searchVal = document.getElementById('pcvSearch') ? document.getElementById('pcvSearch').value.toLowerCase().trim() : '';
+
+    PCV_FILTERED_CHILDREN = PCV_RAW_CHILDREN.filter(c => {
+        if (statusVal !== 'ทั้งหมด') {
+            if (statusVal === 'not_due' && c.statusCode !== 'not_due') return false;
+            if (statusVal === 'due_1' && c.statusCode !== 'due_1') return false;
+            if (statusVal === 'due_2' && c.statusCode !== 'due_2') return false;
+            if (statusVal === 'due_3' && c.statusCode !== 'due_3') return false;
+            if (statusVal === 'complete' && c.statusCode !== 'complete') return false;
+            if (statusVal === 'overdue' && !c.statusCode.startsWith('overdue')) return false;
+        }
+
+        if (searchVal) {
+            const rowText = `${c.cid || ''} ${c.hn || ''} ${c.fullname || ''} ${c.phone || ''} ${c.subdistrict || ''}`.toLowerCase();
+            if (!rowText.includes(searchVal)) return false;
+        }
+
+        return true;
+    });
+
+    PCV_CURRENT_PAGE = 1;
+    renderPcvTargetTable();
+}
+
+function renderPcvTargetTable() {
+    const tbody = document.getElementById('pcvTableBody');
+    const badgeCount = document.getElementById('pcvTableCountBadge');
+    const paginationEl = document.getElementById('pcvPagination');
+    if (!tbody) return;
+
+    if (badgeCount) badgeCount.textContent = `${PCV_FILTERED_CHILDREN.length} คน`;
+
+    if (PCV_FILTERED_CHILDREN.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="13" style="text-align:center; padding:40px 20px; color:#64748b;">
+                    <div style="font-size:36px; margin-bottom:10px; color:#cbd5e1;"><i class="fas fa-folder-open"></i></div>
+                    <div style="font-size:15px; font-weight:600; color:#334155;">ไม่พบข้อมูลเด็กที่ตรงตามเงื่อนไข</div>
+                    <div style="font-size:13px; color:#94a3b8; margin-top:4px;">(เงื่อนไข: เด็กเกิดตั้งแต่วันที่ 1 ต.ค. 2568 เป็นต้นมา)</div>
+                </td>
+            </tr>
+        `;
+        if (paginationEl) paginationEl.innerHTML = '';
+        return;
+    }
+
+    const totalPages = Math.ceil(PCV_FILTERED_CHILDREN.length / PCV_PAGE_SIZE);
+    const startIdx = (PCV_CURRENT_PAGE - 1) * PCV_PAGE_SIZE;
+    const pageItems = PCV_FILTERED_CHILDREN.slice(startIdx, startIdx + PCV_PAGE_SIZE);
+
+    const getStatusBadge = (c) => {
+        if (c.statusCode === 'not_due') {
+            return '<span style="background:#f1f5f9; color:#475569; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-hourglass-start"></i> ยังไม่ถึงเกณฑ์ (< 2 ด.)</span>';
+        }
+        if (c.statusCode === 'due_1') {
+            return '<span style="background:#ede9fe; color:#6d28d9; border:1px solid #ddd6fe; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-syringe"></i> ถึงเกณฑ์เข็ม 1</span>';
+        }
+        if (c.statusCode === 'pcv1_done') {
+            return '<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-check"></i> ฉีดเข็ม 1 แล้ว</span>';
+        }
+        if (c.statusCode === 'due_2') {
+            return '<span style="background:#fce7f3; color:#be185d; border:1px solid #fbcfe8; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-syringe"></i> ถึงเกณฑ์เข็ม 2</span>';
+        }
+        if (c.statusCode === 'pcv2_done') {
+            return '<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-check-double"></i> ฉีดเข็ม 2 แล้ว</span>';
+        }
+        if (c.statusCode === 'due_3') {
+            return '<span style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-star"></i> ถึงเกณฑ์เข็มกระตุ้น</span>';
+        }
+        if (c.statusCode === 'complete') {
+            return '<span style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-check-circle"></i> ครบตามเกณฑ์</span>';
+        }
+        return '<span style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-exclamation-triangle"></i> ' + esc(c.status) + '</span>';
+    };
+
+    const formatVacCell = (vacDate, dueDate, coVac) => {
+        if (vacDate) {
+            const dStr = window.formatThaiDateShort ? window.formatThaiDateShort(vacDate) : vacDate;
+            return `<div style="color:#059669; font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:3px;"><i class="fas fa-check-circle"></i> ${esc(dStr)}</div>`;
+        }
+        const dueStr = window.formatThaiDateShort ? window.formatThaiDateShort(dueDate) : dueDate;
+        let coHtml = coVac ? `<div style="font-size:10px; color:#64748b; margin-top:2px;">(ร่วม: ${esc(window.formatThaiDateShort ? window.formatThaiDateShort(coVac) : coVac)})</div>` : '';
+        return `<div><span style="color:#64748b; font-size:11px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">นัด: ${esc(dueStr)}</span>${coHtml}</div>`;
+    };
+
+    tbody.innerHTML = pageItems.map((c, idx) => {
+        const facName = getFacilityDisplayName(c.hcode, c.hname);
+        const dobStr = window.formatThaiDateShort ? window.formatThaiDateShort(c.birthDate) : c.birthDate;
+        const typeBadge = Number(c.type) === 4 ? 
+            '<span style="background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px; font-size:11px;">Type 4 (นอกเขต)</span>' : 
+            `<span style="background:#e0e7ff; color:#4338ca; padding:2px 6px; border-radius:4px; font-size:11px;">Type ${esc(c.type)}</span>`;
+
+        return `
+            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <td style="padding:10px 14px; text-align:center; color:#94a3b8; font-size:12px;">${startIdx + idx + 1}</td>
+                <td style="padding:10px 14px;">
+                    <div style="font-weight:600; color:#1e293b; font-size:12px;">${esc(c.cid || '-')}</div>
+                    <div style="font-size:11px; color:#64748b;">HN: ${esc(c.hn || '-')}</div>
+                </td>
+                <td style="padding:10px 14px;">
+                    <div style="font-weight:600; color:#0f172a; font-size:13px;">${esc(c.fullname)}</div>
+                </td>
+                <td style="padding:10px 14px; font-size:12px; color:#334155; white-space:nowrap;">
+                    ${esc(dobStr)}
+                </td>
+                <td style="padding:10px 14px; font-size:12px; color:#334155; white-space:nowrap;">
+                    <strong>${esc(c.age)}</strong>
+                </td>
+                <td style="padding:10px 14px; white-space:nowrap;">
+                    ${typeBadge}
+                </td>
+                <td style="padding:10px 14px; font-size:12px; color:#334155;">
+                    <div style="font-weight:500;">${esc(facName)}</div>
+                    <div style="font-size:11px; color:#94a3b8;">(${esc(c.hcode)})</div>
+                </td>
+                <td style="padding:10px 14px; font-size:12px; color:#475569;">
+                    <div>${esc(c.houseNumber ? 'บ.' + c.houseNumber : '')} ${esc(c.village ? 'ม.' + c.village : '')} ${esc(c.subdistrict ? 'ต.' + c.subdistrict : '')}</div>
+                    ${c.phone && c.phone !== '-' ? `<div style="font-size:11px; color:#0284c7;"><i class="fas fa-phone-alt" style="font-size:9px;"></i> ${esc(c.phone)}</div>` : ''}
+                </td>
+                <td style="padding:10px 14px; text-align:center; background:#faf5ff;">
+                    ${formatVacCell(c.pcv1Date, c.pcv1DueDate, c.coVac1)}
+                </td>
+                <td style="padding:10px 14px; text-align:center; background:#fdf2f8;">
+                    ${formatVacCell(c.pcv2Date, c.pcv2DueDate, c.coVac2)}
+                </td>
+                <td style="padding:10px 14px; text-align:center; background:#f0f9ff;">
+                    ${formatVacCell(c.pcv3Date, c.pcv3DueDate, c.coVac3)}
+                </td>
+                <td style="padding:10px 14px; text-align:center;">
+                    ${getStatusBadge(c)}
+                </td>
+                <td style="padding:10px 14px; text-align:center; white-space:nowrap;">
+                    <button class="action-btn" style="background:#e0f2fe; color:#0369a1; border:none; width:30px; height:30px; border-radius:6px; cursor:pointer; margin-right:4px;" title="ดูประวัติวัคซีน" onclick="viewPcvChildDetail('${esc(c.cid || c.hn)}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="action-btn" style="background:#f1f5f9; color:#475569; border:none; width:30px; height:30px; border-radius:6px; cursor:pointer;" title="พิมพ์ใบนัด" onclick="openPrintModalForChild('${esc(c.cid || c.hn)}')">
+                        <i class="fas fa-print"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Render pagination
+    if (paginationEl) {
+        paginationEl.innerHTML = `
+            <div>แสดง ${startIdx + 1} ถึง ${Math.min(startIdx + PCV_PAGE_SIZE, PCV_FILTERED_CHILDREN.length)} จากทั้งหมด ${PCV_FILTERED_CHILDREN.length} คน (หน้า ${PCV_CURRENT_PAGE}/${totalPages || 1})</div>
+            <div style="display:flex; gap:6px;">
+                <button class="btn" style="padding:4px 10px; font-size:12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" ${PCV_CURRENT_PAGE <= 1 ? 'disabled' : ''} onclick="changePcvPage(${PCV_CURRENT_PAGE - 1})">ก่อนหน้า</button>
+                <button class="btn" style="padding:4px 10px; font-size:12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer;" ${PCV_CURRENT_PAGE >= totalPages ? 'disabled' : ''} onclick="changePcvPage(${PCV_CURRENT_PAGE + 1})">ถัดไป</button>
+            </div>
+        `;
+    }
+}
+
+function changePcvPage(newPage) {
+    const totalPages = Math.ceil(PCV_FILTERED_CHILDREN.length / PCV_PAGE_SIZE);
+    if (newPage >= 1 && newPage <= totalPages) {
+        PCV_CURRENT_PAGE = newPage;
+        renderPcvTargetTable();
+    }
+}
+
+function viewPcvChildDetail(cidOrHn) {
+    if (!cidOrHn) return;
+    if (typeof openChildHistoryModal === 'function') {
+        openChildHistoryModal(cidOrHn);
+    } else if (typeof showChildDetail === 'function') {
+        showChildDetail(cidOrHn);
+    } else {
+        const c = PCV_RAW_CHILDREN.find(x => x.cid === cidOrHn || x.hn === cidOrHn);
+        if (!c) return;
+        Swal.fire({
+            title: c.fullname,
+            html: `
+                <div style="text-align:left; font-family:Kanit; font-size:13px; line-height:1.6;">
+                    <p><strong>CID:</strong> ${esc(c.cid)} | <strong>HN:</strong> ${esc(c.hn)}</p>
+                    <p><strong>วันเกิด:</strong> ${esc(c.birthDate)} | <strong>อายุ:</strong> ${esc(c.age)}</p>
+                    <p><strong>สถานพยาบาล:</strong> ${esc(getFacilityDisplayName(c.hcode, c.hname))} (${esc(c.hcode)})</p>
+                    <p><strong>ที่อยู่:</strong> บ.${esc(c.houseNumber)} ม.${esc(c.village)} ต.${esc(c.subdistrict)}</p>
+                    <p><strong>สถานะ PCV:</strong> ${esc(c.status)}</p>
+                    <hr style="margin:10px 0; border:none; border-top:1px solid #e2e8f0;">
+                    <p><strong>PCV เข็ม 1 (2 ด.):</strong> ${c.pcv1Date ? '<span style="color:#059669;">ได้รับแล้ว: ' + esc(c.pcv1Date) + '</span>' : 'ครบกำหนด: ' + esc(c.pcv1DueDate)}</p>
+                    <p><strong>PCV เข็ม 2 (4 ด.):</strong> ${c.pcv2Date ? '<span style="color:#059669;">ได้รับแล้ว: ' + esc(c.pcv2Date) + '</span>' : 'ครบกำหนด: ' + esc(c.pcv2DueDate)}</p>
+                    <p><strong>PCV เข็ม 3 (12 ด.):</strong> ${c.pcv3Date ? '<span style="color:#059669;">ได้รับแล้ว: ' + esc(c.pcv3Date) + '</span>' : 'ครบกำหนด: ' + esc(c.pcv3DueDate)}</p>
+                </div>
+            `,
+            confirmButtonText: 'ปิด',
+            confirmButtonColor: '#0284c7'
+        });
+    }
+}
+
+function exportPcvExcel() {
+    if (!PCV_FILTERED_CHILDREN || PCV_FILTERED_CHILDREN.length === 0) {
+        Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก Excel', 'info');
+        return;
+    }
+
+    try {
+        showLoading('กำลังสร้างไฟล์ Excel...');
+        const wb = XLSX.utils.book_new();
+        const today = new Date();
+        const thaiDateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear() + 543}`;
+
+        const rows = [
+            ['รายงานกลุ่มเป้าหมายวัคซีน PCV (เด็กที่เกิดตั้งแต่ 1 ต.ค. 2568 เป็นต้นมา)'],
+            ['ตามแผนงานสร้างเสริมภูมิคุ้มกันโรค กระทรวงสาธารณสุข (สูตร 2p+1: อายุ 2, 4 และ 12 เดือน)'],
+            [`วันที่ออกรายงาน: ${thaiDateStr} | จำนวนเด็กกลุ่มเป้าหมายทั้งหมด: ${PCV_FILTERED_CHILDREN.length} คน`],
+            [],
+            ['#', 'รหัสสถานพยาบาล', 'สถานพยาบาล', 'เลขประจำตัวประชาชน (CID)', 'HN', 'ชื่อ-สกุล', 'ว/ด/ปเกิด', 'อายุปัจจุบัน', 'ประเภท', 'บ้านเลขที่', 'หมู่ที่', 'ตำบล', 'เบอร์โทรศัพท์', 'วันครบกำหนด PCV1 (2ด.)', 'วันที่ได้รับ PCV1', 'วันครบกำหนด PCV2 (4ด.)', 'วันที่ได้รับ PCV2', 'วันครบกำหนด PCV3 (12ด.)', 'วันที่ได้รับ PCV3', 'การประเมินสถานะ PCV']
+        ];
+
+        PCV_FILTERED_CHILDREN.forEach((c, idx) => {
+            const facName = getFacilityDisplayName(c.hcode, c.hname);
+            rows.push([
+                idx + 1,
+                c.hcode || '',
+                facName,
+                String(c.cid || c.id || ''),
+                c.hn || '',
+                c.fullname || '',
+                c.birthDate || '',
+                c.age || '',
+                c.typeLabel || '',
+                c.houseNumber || '',
+                c.village || '',
+                c.subdistrict || '',
+                c.phone || '',
+                c.pcv1DueDate || '',
+                c.pcv1Date || '',
+                c.pcv2DueDate || '',
+                c.pcv2Date || '',
+                c.pcv3DueDate || '',
+                c.pcv3Date || '',
+                c.status || ''
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 19 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 19 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 19 } }
+        ];
+        ws['!cols'] = [
+            { wch: 6 },   // #
+            { wch: 14 },  // รหัสสถานพยาบาล
+            { wch: 28 },  // สถานพยาบาล
+            { wch: 20 },  // CID
+            { wch: 14 },  // HN
+            { wch: 26 },  // ชื่อ-สกุล
+            { wch: 14 },  // วันเกิด
+            { wch: 12 },  // อายุ
+            { wch: 18 },  // ประเภท
+            { wch: 10 },  // บ้านเลขที่
+            { wch: 8 },   // หมู่
+            { wch: 16 },  // ตำบล
+            { wch: 16 },  // โทรศัพท์
+            { wch: 18 },  // กำหนด PCV1
+            { wch: 16 },  // ได้รับ PCV1
+            { wch: 18 },  // กำหนด PCV2
+            { wch: 16 },  // ได้รับ PCV2
+            { wch: 18 },  // กำหนด PCV3
+            { wch: 16 },  // ได้รับ PCV3
+            { wch: 28 }   // สถานะประเมิน
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'กลุ่มเป้าหมาย_PCV');
+        const fileName = 'รายงานกลุ่มเป้าหมายวัคซีน_PCV_เกิดตั้งแต่_1ตค2568_' + today.toISOString().slice(0, 10) + '.xlsx';
+        XLSX.writeFile(wb, fileName);
+
+        hideLoading();
+        Swal.fire({
+            icon: 'success',
+            title: 'ส่งออกไฟล์สำเร็จ!',
+            html: `<div style="font-family:Kanit; font-size:14px;"><p>ไฟล์: <strong>${esc(fileName)}</strong></p><p style="color:#64748b; font-size:13px; margin-top:8px;">จำนวนเด็กทั้งหมด ${PCV_FILTERED_CHILDREN.length} คน</p></div>`,
+            timer: 3000,
+            showConfirmButton: false
+        });
+    } catch (err) {
+        console.error('exportPcvExcel error:', err);
+        hideLoading();
+        Swal.fire('ผิดพลาด', 'ไม่สามารถส่งออกไฟล์ Excel ได้: ' + err.message, 'error');
+    }
+}
+
 
     console.log('✅ ระบบติดตามวัคซีนเด็ก 0-5 ปี พร้อมทำงาน');
 </script>
