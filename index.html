@@ -5471,7 +5471,7 @@
             const users = (data || []).map(u => {
                 const uHcode = u.hcode || u.Hcode || '-';
                 return {
-                    id: u.id,
+                    id: (u.id !== undefined && u.id !== null ? u.id : (u.Id !== undefined ? u.Id : (u.ID !== undefined ? u.ID : ''))),
                     username: u.username || u.Username || '',
                     fullname: u.fullname || u.Fullname || '',
                     role: u.role || u.Role || 'เจ้าหน้าที่',
@@ -5577,17 +5577,96 @@
         if (fnName === 'activateUserStatus') {
             const username = String(args[0] || '').trim();
             const status = String(args[1] || 'active').trim();
-            if (!username) return { success: false, message: 'ไม่พบชื่อผู้ใช้' };
-            let { error } = await supabaseClient.from('users').update({ status }).eq('username', username);
-            if (error) {
-                const fb = await supabaseClient.from('users').update({ status }).ilike('username', username);
-                error = fb.error;
+            const passedId = args[2] || null;
+            if (!username && !passedId) return { success: false, message: 'ไม่พบชื่อผู้ใช้' };
+
+            try {
+                // 1) หากส่ง id มาโดยตรง ให้อัปเดตตรงที่ id ทันที
+                if (passedId !== null && passedId !== undefined && passedId !== '') {
+                    const { data: sampleData } = await supabaseClient.from('users').select('*').limit(1);
+                    const sampleKeys = sampleData && sampleData[0] ? Object.keys(sampleData[0]) : [];
+                    const statusCol = sampleKeys.find(k => k.toLowerCase() === 'status') || 'status';
+                    const idCol = sampleKeys.find(k => k.toLowerCase() === 'id') || 'id';
+
+                    let payload = {};
+                    payload[statusCol] = status;
+                    let idRes = await supabaseClient.from('users').update(payload).eq(idCol, passedId);
+                    if (!idRes.error) {
+                        return { success: true, message: 'อนุมัติการใช้งานสำเร็จ' };
+                    }
+                    const altStatus = statusCol === 'status' ? 'Status' : 'status';
+                    payload = {};
+                    payload[altStatus] = status;
+                    idRes = await supabaseClient.from('users').update(payload).eq(idCol, passedId);
+                    if (!idRes.error) {
+                        return { success: true, message: 'อนุมัติการใช้งานสำเร็จ' };
+                    }
+                }
+
+                // 2) ดึงแถวผู้ใช้เพื่อตรวจหา id และชื่อคอลัมน์จริงในตาราง users
+                let userRow = null;
+                const { data: allUsers } = await supabaseClient.from('users').select('*').limit(200);
+                if (allUsers && allUsers.length > 0) {
+                    userRow = allUsers.find(u => {
+                        const un = String(u.Username || u.username || u.user || u.name || '').trim();
+                        return un.toLowerCase() === username.toLowerCase();
+                    });
+                }
+
+                const sampleRow = userRow || (allUsers && allUsers[0]) || {};
+                const keys = Object.keys(sampleRow);
+                const findCol = (name, def) => keys.find(k => k.toLowerCase() === name.toLowerCase()) || def;
+
+                const usernameCol = findCol('username', 'Username');
+                const statusCol = findCol('status', 'status');
+                const idCol = findCol('id', 'id');
+
+                let updateRes = null;
+
+                // อัปเดตผ่าน id
+                if (userRow && userRow[idCol] !== undefined && userRow[idCol] !== null) {
+                    const payload = {};
+                    payload[statusCol] = status;
+                    updateRes = await supabaseClient.from('users').update(payload).eq(idCol, userRow[idCol]);
+                }
+
+                // อัปเดตผ่าน usernameCol
+                if (!updateRes || updateRes.error) {
+                    const payload = {};
+                    payload[statusCol] = status;
+                    updateRes = await supabaseClient.from('users').update(payload).ilike(usernameCol, username);
+                }
+
+                // Fallback: ทดสอบทุกคู่ [Username, username] x [status, Status]
+                if (updateRes && updateRes.error) {
+                    const candidateCols = ['Username', 'username'];
+                    const candidateStatus = ['status', 'Status'];
+                    for (const uCol of candidateCols) {
+                        for (const sCol of candidateStatus) {
+                            const p = {};
+                            p[sCol] = status;
+                            const fb = await supabaseClient.from('users').update(p).ilike(uCol, username);
+                            if (!fb.error) {
+                                updateRes = fb;
+                                break;
+                            }
+                        }
+                        if (updateRes && !updateRes.error) break;
+                    }
+                }
+
+                if (updateRes && updateRes.error) {
+                    console.error('activateUserStatus error:', updateRes.error);
+                    return { success: false, message: updateRes.error.message };
+                }
+
+                return { success: true, message: 'อนุมัติการใช้งานสำเร็จ' };
+            } catch (err) {
+                console.error('activateUserStatus exception:', err);
+                return { success: false, message: err.message || 'เกิดข้อผิดพลาดในการอนุมัติผู้ใช้งาน' };
             }
-            if (error) return { success: false, message: error.message };
-            return { success: true, message: 'อนุมัติการใช้งานสำเร็จ' };
         }
 
-// 6. ดึงรายชื่อหมู่บ้าน (Villages)
         if (fnName === 'getVillages') {
             let role = '';
             let hcode = '';
@@ -10975,7 +11054,7 @@ function updateBottomNavActive(page) {
                         if (APP.currentUser.role === 'Admin_HOS' && u.hcode === APP.currentUser.hcode) canApprove = true;
                     }
                     
-                    let approveBtn = canApprove ? `<button class="action-btn" style="color:#28c76f;" title="อนุมัติการใช้งาน" onclick="approveUser('${esc(u.username)}')"><i class="fas fa-user-check"></i></button>` : '';
+                    let approveBtn = canApprove ? `<button class="action-btn" style="color:#28c76f;" title="อนุมัติการใช้งาน" onclick="approveUser('${esc(u.username)}', '${esc(u.id || '')}')"><i class="fas fa-user-check"></i></button>` : '';
 
                     return '<tr>' +
                         '<td><span style="color:#667eea; font-weight:500;">' + esc(getFacilityDisplayName(u.hcode)) + '</span></td>' +
@@ -11235,7 +11314,7 @@ function updateBottomNavActive(page) {
             } else Swal.fire('ผิดพลาด', res.message, 'error');
         } catch (e) { hideLoading(); Swal.fire('ผิดพลาด', e.message, 'error'); }
     };
-    window.approveUser = async function(username) {
+    window.approveUser = async function(username, userId) {
         const r = await Swal.fire({
             title: 'ยืนยันการอนุมัติ',
             text: 'ต้องการเปิดใช้งาน (Active) ผู้ใช้นี้ใช่หรือไม่?',
@@ -11249,7 +11328,7 @@ function updateBottomNavActive(page) {
 
         showLoading('กำลังอนุมัติ...');
         try {
-            const res = await callGAS('activateUserStatus', [username]);
+            const res = await callGAS('activateUserStatus', [username, 'active', userId]);
             hideLoading();
             if (res.success) {
                 Swal.fire({ icon: 'success', title: 'อนุมัติแล้ว', timer: 1200, showConfirmButton: false });
