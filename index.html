@@ -6047,15 +6047,17 @@
             }
 
             try {
+                const logHcode = userHcode || (records[0] ? records[0].hcode : '-') || '-';
+                const hcodeNum = Number(String(logHcode).replace(/\D/g, '')) || 0;
                 await supabaseClient.from('Activity_Log').insert([{
-                    username: APP.currentUser ? APP.currentUser.username : 'admin',
-                    fullname: APP.currentUser ? APP.currentUser.fullname : 'ผู้ดูแลระบบ',
-                    role: userRole || (APP.currentUser ? APP.currentUser.role : 'เจ้าหน้าที่'),
-                    hcode: userHcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
-                    action: 'IMPORT_DATA',
-                    category: 'import',
-                    details: `นำเข้าข้อมูลเด็ก 0-5 ปี สำเร็จ (${records.length} รายการ)`,
-                    created_at: new Date().toISOString()
+                    Username: APP.currentUser ? APP.currentUser.username : 'admin',
+                    Fullname: APP.currentUser ? APP.currentUser.fullname : 'ผู้ดูแลระบบ',
+                    Role: userRole || (APP.currentUser ? APP.currentUser.role : 'เจ้าหน้าที่'),
+                    Hcode: hcodeNum,
+                    Action: 'IMPORT_DATA',
+                    Category: 'import',
+                    Details: `นำเข้าข้อมูลเด็ก 0-5 ปี สำเร็จ (${records.length} รายการ)`,
+                    Timestamp: new Date().toLocaleString('th-TH')
                 }]);
             } catch(e) {}
 
@@ -6205,15 +6207,17 @@
             }
 
             try {
+                const logHcode = userHcode || (records[0] ? records[0].hcode : '-') || '-';
+                const hcodeNum = Number(String(logHcode).replace(/\D/g, '')) || 0;
                 await supabaseClient.from('Activity_Log').insert([{
-                    username: APP.currentUser ? APP.currentUser.username : 'admin',
-                    fullname: APP.currentUser ? APP.currentUser.fullname : 'ผู้ดูแลระบบ',
-                    role: userRole || (APP.currentUser ? APP.currentUser.role : 'เจ้าหน้าที่'),
-                    hcode: userHcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
-                    action: 'IMPORT_APPT',
-                    category: 'import',
-                    details: `นำเข้าข้อมูลนัดหมายสำเร็จ (${records.length} รายการ)`,
-                    created_at: new Date().toISOString()
+                    Username: APP.currentUser ? APP.currentUser.username : 'admin',
+                    Fullname: APP.currentUser ? APP.currentUser.fullname : 'ผู้ดูแลระบบ',
+                    Role: userRole || (APP.currentUser ? APP.currentUser.role : 'เจ้าหน้าที่'),
+                    Hcode: hcodeNum,
+                    Action: 'IMPORT_APPT',
+                    Category: 'import',
+                    Details: `นำเข้าข้อมูลนัดหมายสำเร็จ (${records.length} รายการ)`,
+                    Timestamp: new Date().toLocaleString('th-TH')
                 }]);
             } catch(e) {}
 
@@ -7578,14 +7582,213 @@
             return { success: true, timestamp: Date.now() };
         }
 
-    // Health facility tracking
+        // 38. รายงานประวัติและสถานะการนำเข้าข้อมูลรายสถานพยาบาล (getImportHistoryReport)
         if (fnName === 'getImportHistoryReport') {
-            let q = supabaseClient.from('Activity_Log').select('*').order('created_at', { ascending: false }).limit(200);
-            const { data } = await q;
+            const role = args[0] || (APP.currentUser ? APP.currentUser.role : '');
+            const userHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
+            const roleNorm = String(role || '').toLowerCase().trim();
+            const isAdminAmpur = (roleNorm === 'admin_ampur' || roleNorm === 'admin');
+            const isOfficer = (roleNorm === 'เจ้าหน้าที่');
+            const isSpecialOfficer = isOfficer && (userHcode === '00860' || userHcode === '11390');
+            const canSeeAll = isAdminAmpur || isSpecialOfficer;
+
+            // 1. รวบรวมรายชื่อสถานพยาบาลทั้งหมด
+            const facilityStats = {};
+
+            function ensureFacility(code, name) {
+                if (!code || code === '-' || code === 'undefined') return null;
+                const c = String(code).trim().replace(/'/g, '');
+                if (!c) return null;
+                const pad = c.length < 5 ? c.padStart(5, '0') : c;
+                const finalName = (name && isNaN(name) && name !== c && name !== pad) 
+                    ? name 
+                    : getFacilityDisplayName(pad, name || ('สถานพยาบาล ' + pad));
+
+                if (!facilityStats[pad]) {
+                    facilityStats[pad] = {
+                        code: pad,
+                        name: finalName,
+                        dataRows: 0,
+                        apptRows: 0,
+                        lastDataImport: null,
+                        lastApptImport: null,
+                        lastAnyImport: null,
+                        totalImports: 0
+                    };
+                }
+                if (name && isNaN(name) && name !== c && name !== pad) {
+                    facilityStats[pad].name = name;
+                }
+                return facilityStats[pad];
+            }
+
+            // 1.1 ใส่สถานพยาบาลทั้งหมดจากฐานข้อมูล hospitals และ OFFICIAL_HOSPITALS
+            try {
+                const { data: hData } = await supabaseClient.from('hospitals').select('*');
+                if (hData && hData.length > 0) {
+                    hData.forEach(h => {
+                        const code = h.hcode || h.hoscode;
+                        const name = h.hosname || h.name;
+                        if (code) ensureFacility(code, name);
+                    });
+                }
+            } catch (e) {
+                console.warn('Error fetching hospitals:', e);
+            }
+
+            Object.keys(OFFICIAL_HOSPITALS || {}).forEach(k => {
+                if (k.length >= 4) ensureFacility(k, OFFICIAL_HOSPITALS[k]);
+            });
+
+            // 1.2 นับจำนวนเด็กในตาราง data ของแต่ละสถานพยาบาล
+            try {
+                const dRows = await fetchAllFromTable('data', 'hcode');
+                if (dRows && dRows.length > 0) {
+                    dRows.forEach(r => {
+                        const hc = String(r.hcode || '').trim();
+                        if (hc) {
+                            const fac = ensureFacility(hc, '');
+                            if (fac) fac.dataRows++;
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Error counting data rows:', e);
+            }
+
+            // 1.3 นับจำนวนนัดหมายในตาราง appoint ของแต่ละสถานพยาบาล
+            try {
+                const aRows = await fetchAllFromTable('appoint', 'hcode');
+                if (aRows && aRows.length > 0) {
+                    aRows.forEach(r => {
+                        const hc = String(r.hcode || '').trim();
+                        if (hc) {
+                            const fac = ensureFacility(hc, '');
+                            if (fac) fac.apptRows++;
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Error counting appoint rows:', e);
+            }
+
+            // 1.4 ดึงประวัติการนำเข้าจาก Activity_Log
+            const importLogs = [];
+            try {
+                const { data: logsData } = await supabaseClient
+                    .from('Activity_Log')
+                    .select('*')
+                    .order('Timestamp', { ascending: false })
+                    .limit(300);
+
+                if (logsData && logsData.length > 0) {
+                    logsData.forEach(item => {
+                        const action = String(item.Action || item.action || '').toUpperCase();
+                        const det = String(item.Details || item.details || '');
+                        const isImport = action.includes('IMPORT') || action === 'UPLOAD' || det.includes('นำเข้า');
+                        if (!isImport) return;
+
+                        const rawHc = String(item.Hcode || item.hcode || '').trim();
+                        const pad = (rawHc && rawHc !== '0' && rawHc !== '-') 
+                            ? (rawHc.length < 5 ? rawHc.padStart(5, '0') : rawHc) 
+                            : '-';
+                        const ts = item.Timestamp || item.timestamp || item.created_at || '-';
+                        const fn = item.Fullname || item.fullname || '-';
+                        const un = item.Username || item.username || '-';
+
+                        const isData = (action === 'IMPORT_DATA' || det.includes('data') || det.includes('เด็ก'));
+                        const isAppt = (action === 'IMPORT_APPT' || det.includes('appoint') || det.includes('นัด'));
+
+                        const logObj = {
+                            timestamp: ts,
+                            datasetType: isData ? 'data' : 'appointment',
+                            hcode: pad,
+                            facilityName: getFacilityDisplayName(pad, ''),
+                            username: un,
+                            fullname: fn,
+                            details: det
+                        };
+                        importLogs.push(logObj);
+
+                        if (pad !== '-') {
+                            const fac = ensureFacility(pad, '');
+                            if (fac) {
+                                fac.totalImports++;
+                                const importInfo = {
+                                    timestamp: ts,
+                                    fullname: fn,
+                                    username: un,
+                                    details: det
+                                };
+                                if (isData && !fac.lastDataImport) fac.lastDataImport = importInfo;
+                                if (isAppt && !fac.lastApptImport) fac.lastApptImport = importInfo;
+                                if (!fac.lastAnyImport) fac.lastAnyImport = importInfo;
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Error fetching Activity_Log:', e);
+            }
+
+            // 2. กรองตามสิทธิ์ของผู้ใช้
+            let facilityList = Object.values(facilityStats);
+            // คัดกรองรหัสที่ไม่ใช่ รพ.สต./หน่วยบริการ (เช่น 00860 สสอ.เทพา)
+            facilityList = facilityList.filter(f => f.code && f.code !== '00860' && f.code !== '860');
+
+            if (!canSeeAll && userHcode && userHcode !== '-') {
+                const myPad = String(userHcode).trim().padStart(5, '0');
+                const myUnp = String(userHcode).trim().replace(/^0+/, '');
+                facilityList = facilityList.filter(f => f.code === myPad || f.code === myUnp || f.code === userHcode);
+            }
+
+            let totalFacilities = facilityList.length;
+            let completedCount = 0;
+            let partialCount = 0;
+            let notImportedCount = 0;
+
+            facilityList.forEach(fac => {
+                const hasData = (fac.dataRows > 0) || (fac.lastDataImport !== null);
+                const hasAppt = (fac.apptRows > 0) || (fac.lastApptImport !== null);
+
+                if (hasData && hasAppt) {
+                    fac.status = 'completed';
+                    fac.statusLabel = 'นำเข้าครบถ้วน';
+                    completedCount++;
+                } else if (hasData || hasAppt) {
+                    fac.status = 'partial';
+                    fac.statusLabel = hasData ? 'มีเฉพาะข้อมูลเด็ก (ยังไม่มีนัดหมาย)' : 'มีเฉพาะนัดหมาย (ยังไม่มีข้อมูลเด็ก)';
+                    partialCount++;
+                } else {
+                    fac.status = 'none';
+                    fac.statusLabel = 'ยังไม่เคยนำเข้า';
+                    notImportedCount++;
+                }
+            });
+
+            // เรียงลำดับ: ยังไม่เคยนำเข้าขึ้นก่อน ตามด้วยนำเข้าบางส่วน และนำเข้าครบถ้วน
+            const statusOrder = { 'none': 1, 'partial': 2, 'completed': 3 };
+            facilityList.sort((a, b) => {
+                if (statusOrder[a.status] !== statusOrder[b.status]) {
+                    return statusOrder[a.status] - statusOrder[b.status];
+                }
+                return (a.name || '').localeCompare(b.name || '', 'th');
+            });
+
             return {
                 success: true,
-                reports: data || [],
-                logs: data || []
+                summary: {
+                    totalFacilities: totalFacilities,
+                    completedCount: completedCount,
+                    partialCount: partialCount,
+                    notImportedCount: notImportedCount,
+                    totalImportLogs: importLogs.length,
+                    canSeeAll: canSeeAll,
+                    userRole: role,
+                    userHcode: userHcode
+                },
+                facilities: facilityList,
+                logs: importLogs
             };
         }
 
@@ -8522,16 +8725,17 @@ function logActivity(action, category, details) {
     // ⚡ บันทึกตรงเข้า Supabase Activity_Log (Real-time)
     if (supabaseClient) {
         try {
+            const hcodeNum = APP.currentUser.hcode ? (Number(String(APP.currentUser.hcode).replace(/\D/g, '')) || 0) : 0;
             supabaseClient.from('Activity_Log').insert([{
-                username: APP.currentUser.username,
-                fullname: APP.currentUser.fullname,
-                role: APP.currentUser.role,
-                hcode: APP.currentUser.hcode,
-                action: action,
-                category: category || 'general',
-                details: details || '-',
-                user_agent: navigator.userAgent.slice(0, 200),
-                created_at: new Date().toISOString()
+                Username: APP.currentUser.username,
+                Fullname: APP.currentUser.fullname,
+                Role: APP.currentUser.role,
+                Hcode: hcodeNum,
+                Action: action,
+                Category: category || 'general',
+                Details: details || '-',
+                UserAgent: navigator.userAgent.slice(0, 200),
+                Timestamp: new Date().toLocaleString('th-TH')
             }]).then(function() {}).catch(function(e) { console.warn('Supabase logActivity warn:', e); });
         } catch (e) {}
     }
