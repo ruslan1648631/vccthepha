@@ -4931,7 +4931,7 @@
         if (!dateVal) return '-';
         const d = (dateVal instanceof Date) ? dateVal : new Date(dateVal);
         if (isNaN(d.getTime())) return dateVal.toString();
-        const thaiMonths = ['เธก.เธ.', 'เธ.เธ.', 'เธกเธต.เธ.', 'เน€เธก.เธข.', 'เธ.เธ.', 'เธกเธด.เธข.', 'เธ.เธ.', 'เธช.เธ.', 'เธ.เธข.', 'เธ•.เธ.', 'เธ.เธข.', 'เธ.เธ.'];
+        const thaiMonths = ['\u0e21.\u0e04.', '\u0e01.\u0e1e.', '\u0e21\u0e35.\u0e04.', '\u0e40\u0e21.\u0e22.', '\u0e1e.\u0e04.', '\u0e21\u0e34.\u0e22.', '\u0e01.\u0e04.', '\u0e2a.\u0e04.', '\u0e01.\u0e22.', '\u0e15.\u0e04.', '\u0e1e.\u0e22.', '\u0e18.\u0e04.'];
         const day = d.getDate();
         const month = thaiMonths[d.getMonth()];
         let y = d.getFullYear();
@@ -4940,7 +4940,7 @@
         if (includeTime) {
             const hh = String(d.getHours()).padStart(2, '0');
             const mm = String(d.getMinutes()).padStart(2, '0');
-            str += ` ${hh}:${mm} เธ.`;
+            str += ` ${hh}:${mm} \u0e19.`;
         }
         return str;
     }
@@ -12801,16 +12801,18 @@ window.switchLogTab = function(tab) {
         const appts = APP.calendarRawAppts || [];
         const headers = APP.calendarHeaders || [];
         
-        const hcodeIdx = headers.findIndex(h => h && (h.toString().toLowerCase() === 'hcode' || h.toString().includes('รหัสสถานพยาบาล')));
-        const dateIdx = headers.findIndex(h => h && h.toString().includes('วัน'));
-        const nameIdx = headers.findIndex(h => h && h.toString().includes('ชื่อ'));
-        const hnIdx = headers.findIndex(h => h && (h.toString().toUpperCase().includes('HN') || h.toString().includes('รหัส')));
-        const vacIdx = headers.findIndex(h => h && h.toString().includes('วัคซีน'));
+        const hcodeIdx = headers.findIndex(h => h && (h.toString().toLowerCase() === 'hcode' || h.toString().includes('\u0e23\u0e2b\u0e31\u0e2a\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25')));
+        const dateIdx = headers.findIndex(h => h && h.toString().includes('\u0e27\u0e31\u0e19'));
+        const nameIdx = headers.findIndex(h => h && h.toString().includes('\u0e0a\u0e37\u0e48\u0e2d'));
+        const hnIdx = headers.findIndex(h => h && (h.toString().toUpperCase().includes('HN') || h.toString().includes('\u0e23\u0e2b\u0e31\u0e2a')));
+        const vacIdx = headers.findIndex(h => h && h.toString().includes('\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19'));
+        const apptDateIdx = headers.findIndex(h => h && (h.toString().toLowerCase() === 'appointdate' || h.toString().toLowerCase() === 'date'));
 
         const facilityFilterEl = document.getElementById('calFacilityFilter');
-        const selectedFacility = facilityFilterEl ? facilityFilterEl.value : 'ทั้งหมด';
+        const selectedFacility = facilityFilterEl ? facilityFilterEl.value : '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14';
 
         let mergedEvents = {};
+        let totalMatchedChildren = 0;
 
         appts.forEach(function(a) {
             let hcode = hcodeIdx !== -1 ? a[hcodeIdx] : '';
@@ -12820,32 +12822,43 @@ window.switchLogTab = function(tab) {
                 if (hcode !== APP.currentUser.hcode) return;
             }
 
-            if (selectedFacility !== 'ทั้งหมด' && hcodeIdx !== -1) {
-                if (hcode !== selectedFacility) return;
+            if (selectedFacility !== '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14' && hcodeIdx !== -1) {
+                const normHcode = String(hcode).replace(/^0+/, '');
+                const normSel = String(selectedFacility).replace(/^0+/, '');
+                if (normHcode !== normSel) return;
             }
 
-            let dStr = a[dateIdx] ? a[dateIdx].toString().trim() : '';
-            if (!dStr || dStr === '-') return;
-            
-            let isoDate = parseThaiDateToISO(dStr);
+            let dStr = (dateIdx !== -1 && a[dateIdx]) ? a[dateIdx].toString().trim() : '';
+
+            // [ISO format YYYY-MM-DD or fallback]
+            let isoDate = '';
+            if (apptDateIdx !== -1 && a[apptDateIdx]) {
+                const rawIso = String(a[apptDateIdx]).trim();
+                if (/^\d{4}-\d{2}-\d{2}/.test(rawIso)) {
+                    isoDate = rawIso.slice(0, 10);
+                }
+            }
+            if (!isoDate && dStr && dStr !== '-') {
+                isoDate = parseThaiDateToISO(dStr);
+            }
             if (!isoDate) return;
 
-            let name = a[nameIdx] ? a[nameIdx].toString().trim() : '';
-            let hn = a[hnIdx] ? a[hnIdx].toString().trim() : '';
-            let vac = a[vacIdx] ? a[vacIdx].toString().trim() : '';
+            let name = (nameIdx !== -1 && a[nameIdx]) ? a[nameIdx].toString().trim() : '';
+            let hn = (hnIdx !== -1 && a[hnIdx]) ? a[hnIdx].toString().trim() : '';
+            let vac = (vacIdx !== -1 && a[vacIdx]) ? a[vacIdx].toString().trim() : '';
 
             let key = isoDate + '_' + hcode;
 
             if (!mergedEvents[key]) {
                 mergedEvents[key] = {
                     isoDate: isoDate,
-                    dateStr: dStr,
+                    dateStr: dStr || (window.formatThaiDate ? window.formatThaiDate(isoDate) : isoDate),
                     hcode: hcode,
                     children: {} 
                 };
             }
             
-            let childKey = hn + '_' + name;
+            let childKey = (hn || '') + '_' + (name || '');
             if (childKey !== '_') {
                 if (!mergedEvents[key].children[childKey]) {
                     mergedEvents[key].children[childKey] = {
@@ -12854,8 +12867,9 @@ window.switchLogTab = function(tab) {
                         vaccines: [],
                         rawRow: a,
                         hcode: hcode,
-                        dateStr: dStr
+                        dateStr: dStr || (window.formatThaiDate ? window.formatThaiDate(isoDate) : isoDate)
                     };
+                    totalMatchedChildren++;
                 }
                 if (vac && !mergedEvents[key].children[childKey].vaccines.includes(vac)) {
                     mergedEvents[key].children[childKey].vaccines.push(vac);
@@ -12866,12 +12880,12 @@ window.switchLogTab = function(tab) {
         const colors = ['#667eea', '#28c76f', '#ff9f43', '#ea5455', '#17a2b8', '#9c27b0', '#e83e8c', '#fd7e14'];
 
         let events = Object.values(mergedEvents).map(function(item, index) {
-            let facilityName = getFacilityDisplayName(item.hcode, 'ไม่ระบุสถานพยาบาล');
+            let facilityName = getFacilityDisplayName(item.hcode, '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25');
             let count = Object.keys(item.children).length;
             let childrenList = Object.values(item.children);
 
             return {
-                title: facilityName + ' (' + count + ' คน)',
+                title: facilityName + ' (' + count + ' \u0e04\u0e19)',
                 start: item.isoDate,
                 allDay: true,
                 extendedProps: {
@@ -12893,12 +12907,71 @@ window.switchLogTab = function(tab) {
         
         calendarEl.innerHTML = ''; 
 
-        const canManage = (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS' || APP.currentUser.role === 'เจ้าหน้าที่');
+        // [Group months for Quick-Jump and stats]
+        const monthsWithEvents = {};
+        events.forEach(ev => {
+            const ym = ev.start.slice(0, 7); // "YYYY-MM"
+            if (!monthsWithEvents[ym]) {
+                monthsWithEvents[ym] = { ym: ym, count: 0, firstDate: ev.start };
+            }
+            monthsWithEvents[ym].count += (ev.extendedProps ? ev.extendedProps.count : 1);
+        });
+        const sortedYm = Object.keys(monthsWithEvents).sort();
+
+        // [Calculate initialDate]
+        // Auto-navigate to nearest upcoming appointment month if current month is empty
+        // Auto-navigate to nearest upcoming appointment month if current month is empty
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const currentYm = todayIso.slice(0, 7);
+        let initialCalendarDate = todayIso;
+        if (!monthsWithEvents[currentYm] && sortedYm.length > 0) {
+            const nextUpcoming = sortedYm.find(ym => ym >= currentYm);
+            initialCalendarDate = nextUpcoming ? (nextUpcoming + '-01') : (sortedYm[0] + '-01');
+        }
+
+        // [Build Quick-Jump month bar]
+        let summaryBarHtml = '';
+        if (sortedYm.length > 0) {
+            const thaiShortMonths = ['\u0e21.\u0e04.','\u0e01.\u0e1e.','\u0e21\u0e35.\u0e04.','\u0e40\u0e21.\u0e22.','\u0e1e.\u0e04.','\u0e21\u0e34.\u0e22.','\u0e01.\u0e04.','\u0e2a.\u0e04.','\u0e01.\u0e22.','\u0e15.\u0e04.','\u0e1e.\u0e22.','\u0e18.\u0e04.'];
+            const buttonsHtml = sortedYm.map(ym => {
+                const parts = ym.split('-');
+                const y = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10);
+                const thaiLabel = thaiShortMonths[m - 1] + ' ' + (y < 2400 ? y + 543 : y);
+                const cnt = monthsWithEvents[ym].count;
+                return `<button type="button" class="btn-cal-jump" style="background:#fff; border:1px solid #cbd5e1; border-radius:20px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; color:#1e293b; display:inline-flex; align-items:center; gap:6px; transition:all 0.2s;" onclick="jumpCalendarTo('${ym}-01')"><i class="fas fa-calendar-day" style="color:#3b82f6;"></i> ${thaiLabel} <span style="background:#e0f2fe; color:#0369a1; padding:1px 6px; border-radius:10px; font-size:11px;">${cnt} \u0e04\u0e19</span></button>`;
+            }).join(' ');
+
+            summaryBarHtml = `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; margin-bottom:15px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+                    <div style="font-size:13px; color:#475569;">
+                        <i class="fas fa-calendar-check" style="color:#10b981; margin-right:6px;"></i>
+                        \u0e1e\u0e1a\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22\u0e23\u0e27\u0e21 <strong>${totalMatchedChildren}</strong> \u0e04\u0e19 \u0e43\u0e19 <strong>${sortedYm.length}</strong> \u0e40\u0e14\u0e37\u0e2d\u0e19
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+                        <span style="font-size:12px; color:#64748b; margin-right:4px;">\u0e44\u0e1b\u0e22\u0e31\u0e07\u0e40\u0e14\u0e37\u0e2d\u0e19:</span>
+                        ${buttonsHtml}
+                    </div>
+                </div>
+            `;
+        } else {
+            summaryBarHtml = `
+                <div style="background:#fef2f2; border:1px solid #fee2e2; border-radius:10px; padding:12px 16px; margin-bottom:15px; color:#991b1b; font-size:13px;">
+                    <i class="fas fa-info-circle" style="margin-right:6px;"></i> \u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22\u0e17\u0e35\u0e48\u0e15\u0e23\u0e07\u0e01\u0e31\u0e1a\u0e15\u0e31\u0e27\u0e01\u0e23\u0e2d\u0e07\u0e43\u0e19\u0e23\u0e30\u0e1a\u0e1a
+                </div>
+            `;
+        }
+
+        calendarEl.innerHTML = summaryBarHtml + '<div id="fcContainer"></div>';
+
+        const fcEl = document.getElementById('fcContainer');
+        const canManage = (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS' || APP.currentUser.role === '\u0e40\u0e08\u0e49\u0e32\u0e2b\u0e19\u0e49\u0e32\u0e17\u0e35\u0e48');
         
-        const calendar = new FullCalendar.Calendar(calendarEl, {
+        const calendar = new FullCalendar.Calendar(fcEl, {
             initialView: 'dayGridMonth',
+            initialDate: initialCalendarDate,
             locale: 'th',
-            buttonText: { today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์', day: 'วัน' },
+            buttonText: { today: '\u0e27\u0e31\u0e19\u0e19\u0e35\u0e49', month: '\u0e40\u0e14\u0e37\u0e2d\u0e19', week: '\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c', day: '\u0e27\u0e31\u0e19' },
             events: events,
             height: 'auto',
             eventClick: function(info) {
@@ -12907,10 +12980,10 @@ window.switchLogTab = function(tab) {
             eventDidMount: function(info) {
                 let children = info.event.extendedProps.childrenList;
                 
-                let tooltipText = "รายชื่อนัดหมาย:\n";
+                let tooltipText = "\u0e23\u0e32\u0e22\u0e0a\u0e37\u0e48\u0e2d\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22:\n";
                 children.forEach(c => {
                     let vac = c.vaccines.join(', ') || '-';
-                    tooltipText += `• ${c.name} (${vac})\n`;
+                    tooltipText += `โ€ข ${c.name} (${vac})\n`;
                 });
                 
                 info.el.setAttribute('title', tooltipText);
@@ -12918,8 +12991,14 @@ window.switchLogTab = function(tab) {
             }
         });
         calendar.render();
+        APP.calendarInstance = calendar;
     }
 
+    window.jumpCalendarTo = function(isoDate) {
+        if (APP && APP.calendarInstance) {
+            APP.calendarInstance.gotoDate(isoDate);
+        }
+    };
     function showCalendarEventDetail(props, canManage) {
         let childRows = props.childrenList.map((c, cIdx) => {
             let vacStr = c.vaccines.join(', ');
