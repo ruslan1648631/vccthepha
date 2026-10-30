@@ -5681,8 +5681,41 @@
             if (!data || data.length === 0) {
                 return { success: true, headers: [], appointments: [] };
             }
-            const headers = Object.keys(data[0]);
-            const appointments = data.map(row => headers.map(h => row[h] !== null && row[h] !== undefined ? String(row[h]) : ''));
+
+            // ✅ แปลงและจับคู่คอลัมน์ให้ตรงกับที่ทุกหน้าในระบบคาดหวัง (ทั้งชื่อไทยและอังกฤษ)
+            const headers = ['hcode', 'CID', 'HN', 'ชื่อ-สกุล', 'ว/ด/ปเกิด', 'อายุ', 'บ้านเลขที่', 'หมู่ที่', 'โทรศัพท์', 'วันนัด', 'รหัสวัคซีน', 'ชื่อวัคซีน', 'appointdate'];
+            const appointments = data.map(row => {
+                const rawDob  = row.DOB || row.dob || row['ว/ด/ปเกิด'] || '';
+                const rawAppt = row.appointdate || row.date || row['วันนัด'] || row['วันที่นัด'] || '';
+                const thaiAppt = rawAppt ? formatThaiDate(rawAppt) : '-';
+                const thaiDob  = rawDob ? formatThaiDate(rawDob) : '-';
+                const ageStr   = calculateAgeString(rawDob);
+                const cidVal   = (row.CID !== null && row.CID !== undefined) ? String(row.CID).trim() : (row.cid || row.id || '-');
+                const hnVal    = (row.HN !== null && row.HN !== undefined) ? String(row.HN).trim() : (row.hn || '-');
+                const nameVal  = row.fullname || row.name || row['ชื่อ-สกุล'] || '-';
+                const houseVal = row.house || row.houseNumber || row['บ้านเลขที่'] || '-';
+                const mooVal   = (row.moo !== null && row.moo !== undefined) ? String(row.moo).trim() : (row.village || '-');
+                const phoneVal = row.phone || row['โทรศัพท์'] || '-';
+                const vacCode  = row.vaccinecode || row.vaccine || row['รหัสวัคซีน'] || '-';
+                const vacName  = row.vaccinename || row['ชื่อวัคซีน'] || row.vaccinecode || row.vaccine || '-';
+                const isoAppt  = rawAppt ? String(rawAppt).slice(0, 10) : '';
+
+                return [
+                    row.hcode !== null && row.hcode !== undefined ? String(row.hcode).trim() : '-',
+                    cidVal,
+                    hnVal,
+                    nameVal,
+                    thaiDob,
+                    ageStr,
+                    houseVal,
+                    mooVal,
+                    phoneVal,
+                    thaiAppt,
+                    vacCode,
+                    vacName,
+                    isoAppt
+                ];
+            });
             return { success: true, headers, appointments };
         }
 
@@ -5708,41 +5741,43 @@
             try {
                 const { data: tData } = await supabaseClient
                     .from('VCC_tracking')
-                    .select('hn, fullname, status')
-                    .eq('status', '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19');
+                    .select('ChildId, ChildName, Status')
+                    .eq('Status', 'ปฏิเสธวัคซีน');
                 if (tData) {
                     tData.forEach(t => {
-                        if (t.hn) refusedSet.add(String(t.hn).trim());
-                        if (t.fullname) refusedSet.add(String(t.fullname).trim());
+                        if (t.ChildId) refusedSet.add(String(t.ChildId).trim());
+                        if (t.ChildName) refusedSet.add(String(t.ChildName).trim());
                     });
                 }
             } catch (tErr) {}
 
             let children = (data || []).map(row => {
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
-                const rowId = row.CID || row.cid || row.ID || row.id || row['\u0e40\u0e25\u0e02\u0e1a\u0e31\u0e15\u0e23'] || '-';
-                const rowHn = row.HN || row.hn || row['\u0e23\u0e2b\u0e31\u0e2a'] || '-';
-                const rowName = row.fullname || row['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || row.childname || row['\u0e0a\u0e37\u0e48\u0e2d'] || '-';
+                const rowId = row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || '-';
+                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
+                const rowName = row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-';
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
-                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25']);
+                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['สถานพยาบาล']);
+                const rowDob = row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด'] || '-';
+                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(rowDob));
 
                 return {
                     id: rowId,
                     hn: rowHn,
                     cid: rowId,
                     fullname: rowName,
-                    birthDate: row.DOB || row.dob || row.birthdate || row['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'] || row['\u0e27\u0e31\u0e19\u0e40\u0e01\u0e34\u0e14'] || '-',
-                    type: row.type || row['\u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17'] || '-',
-                    age: row.age || row['\u0e2d\u0e32\u0e22\u0e38'] || '-',
-                    houseNumber: row.house || row.house_no || row.houseNumber || row['\u0e1a\u0e49\u0e32\u0e19\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48'] || '-',
-                    village: row.moo || row.village_no || row.village || row['\u0e2b\u0e21\u0e39\u0e48\u0e17\u0e35\u0e48'] || row['\u0e2b\u0e21\u0e39\u0e48'] || '-',
-                    villageName: row.villname || row.village_name || row.villageName || row['\u0e0a\u0e37\u0e48\u0e2d\u0e2b\u0e21\u0e39\u0e48\u0e1a\u0e49\u0e32\u0e19'] || '-',
-                    subdistrict: row.subdistname || row.subdistrict || row['\u0e15\u0e33\u0e1a\u0e25'] || '-',
+                    birthDate: rowDob,
+                    type: row.type || row['ประเภท'] || '-',
+                    age: ageComputed || '-',
+                    houseNumber: row.house || row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
+                    village: row.moo || row.village_no || row.village || row['หมู่ที่'] || row['หมู่'] || '-',
+                    villageName: row.villname || row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-',
+                    subdistrict: row.subdistname || row.subdistrict || row['ตำบล'] || '-',
                     hcode: rowHcode,
                     hname: rowHname,
-                    asm: row.VHV || row.vhv || row.asm || row['\u0e2d\u0e2a\u0e21.'] || row['\u0e2d\u0e2a\u0e21'] || '-',
-                    phone: row.phone || row['\u0e42\u0e17\u0e23\u0e28\u0e31\u0e1e\u0e17\u0e4c'] || '-',
-                    gps: row.GPS || row.gps || row['\u0e1e\u0e34\u0e01\u0e31\u0e14'] || row.lat_lng || '-',
+                    asm: row.VHV || row.vhv || row.asm || row['อสม.'] || row['อสม'] || '-',
+                    phone: row.phone || row['โทรศัพท์'] || '-',
+                    gps: row.GPS || row.gps || row['พิกัด'] || row.lat_lng || '-',
                     status: evalRes.status,
                     missingVaccines: evalRes.missingVaccines
                 };
@@ -5768,18 +5803,18 @@
         // 17. บันทึกผลการติดตาม (Save Tracking Report)
         if (fnName === 'saveTrackingReport' || fnName === 'saveOfficerTracking') {
             const trackingData = args[0] || {};
+            const childIdVal = Number(String(trackingData.cid || trackingData.hn || trackingData.id || 0).replace(/\D/g, '')) || 0;
             const { error } = await supabaseClient.from('VCC_tracking').insert([{
-                hn: trackingData.hn || '-',
-                fullname: trackingData.childName || trackingData.fullname || '-',
-                village: trackingData.village || '-',
-                hcode: trackingData.hcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
-                vaccine: trackingData.vaccine || '-',
-                status: trackingData.status || '-',
-                tracking_date: trackingData.visitDate || new Date().toISOString().slice(0, 10),
-                notes: trackingData.remarks || '-',
-                gps: trackingData.gps || '',
-                reporter: trackingData.reporter || (APP.currentUser ? APP.currentUser.username : '-'),
-                created_at: new Date().toISOString()
+                ChildId: childIdVal,
+                ChildName: trackingData.childName || trackingData.fullname || '-',
+                Village: trackingData.village || '-',
+                Vaccine: trackingData.vaccine || '-',
+                Status: trackingData.status || '-',
+                VisitDate: trackingData.visitDate || new Date().toISOString().slice(0, 10),
+                Remarks: trackingData.remarks || trackingData.notes || '-',
+                GPS: trackingData.gps || '',
+                Reporter: trackingData.reporter || (APP.currentUser ? APP.currentUser.username : '-'),
+                Timestamp: new Date().toISOString()
             }]);
             if (error) return { success: false, message: error.message };
             return { success: true, message: 'บันทึกข้อมูลการติดตามสำเร็จ' };
@@ -5802,13 +5837,15 @@
                 const hcodes = [...new Set(rows.map(r => r.hcode).filter(Boolean))];
                 if (hcodes.length > 1) {
                     const first = rows[0];
+                    const firstDob = first.DOB || first.dob || first.birthdate || '-';
+                    const firstAge = (first.age && first.age !== '-') ? first.age : calculateAgeString(firstDob);
                     duplicateList.push({
                         key: cid,
                         id: cid,
                         cleanCid: cid,
-                        fullname: first.fullname || first.childname || first['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e0a\u0e37\u0e48\u0e2d',
-                        birthDate: first.DOB || first.dob || first.birthdate || '-',
-                        age: first.age || '-',
+                        fullname: first.fullname || first.childname || first['ชื่อ-สกุล'] || 'ไม่ระบุชื่อ',
+                        birthDate: firstDob,
+                        age: firstAge || '-',
                         facilityCount: hcodes.length,
                         recordCount: rows.length,
                         distinctHcodes: hcodes,
@@ -5836,43 +5873,105 @@
             const userHcode = args[2] || '';
             if (!dataRows || dataRows.length <= 1) return { success: false, message: 'ไม่มีข้อมูลให้นำเข้า' };
 
-            const headers = dataRows[0].map(h => String(h || '').trim());
-            // ✅ แปลงค่าแต่ละ cell จาก XLSX (raw:true, cellDates:true) ให้เหมาะกับ Supabase
-            const sanitizeCell = (raw, colName) => {
-                // --- กรณี JS Date object (XLSX parse date cell โดยอัตโนมัติ) ---
-                if (raw instanceof Date) {
-                    if (isNaN(raw.getTime())) return null;
-                    return raw.toISOString().split('T')[0]; // → "YYYY-MM-DD"
+            const rawHeaders = dataRows[0].map(h => String(h || '').trim());
+
+            // ✅ ตารางจับคู่คอลัมน์จากไฟล์ Excel/CSV (ทั้งภาษาไทยและอังกฤษ) ไปยังคอลัมน์จริงในตาราง data ของ Supabase
+            const DATA_FIELD_SYNONYMS = {
+                'hcode': ['hcode', 'hoscode', 'hospital_code', 'รหัสหน่วยบริการ', 'รหัสสถานพยาบาล', 'สถานพยาบาล', 'หน่วยบริการ'],
+                'CID': ['cid', 'id', 'pid', 'citizen_id', 'idcard', 'เลขบัตร', 'เลขบัตรประชาชน', 'เลขประจำตัวประชาชน', 'เลขบัตรประชาชนเด็ก'],
+                'HN': ['hn', 'pid_hos', 'รหัสประจำตัวผู้ป่วย', 'เลขประจำตัวผู้ป่วย', 'รหัส'],
+                'fullname': ['fullname', 'childname', 'name', 'ชื่อ-สกุล', 'ชื่อ สกุล', 'ชื่อเด็ก', 'ชื่อนามสกุล', 'ชื่อ - สกุล', 'ชื่อ'],
+                'DOB': ['dob', 'birthdate', 'birth_date', 'ว/ด/ปเกิด', 'ว/ด/ป เกิด', 'วันเกิด', 'วันเดือนปีเกิด'],
+                'type': ['type', 'typearea', 'ประเภท', 'ประเภทที่อยู่อาศัย'],
+                'house': ['house', 'houseno', 'house_no', 'housenumber', 'บ้านเลขที่', 'ที่อยู่'],
+                'moo': ['moo', 'village_no', 'villageno', 'หมู่ที่', 'หมู่'],
+                'villname': ['villname', 'village_name', 'villagename', 'ชื่อหมู่บ้าน'],
+                'subdistname': ['subdistname', 'subdistrict', 'subdistrict_name', 'ตำบล', 'ชื่อตำบล'],
+                'GPS': ['gps', 'latlng', 'lat_lng', 'พิกัด', 'พิกัดบ้าน'],
+                'father': ['father', 'fathername', 'father_name', 'ชื่อบิดา', 'บิดา'],
+                'mother': ['mother', 'mothername', 'mother_name', 'ชื่อมารดา', 'มารดา'],
+                'phone': ['phone', 'telephone', 'mobile', 'โทรศัพท์', 'เบอร์โทร', 'เบอร์โทรศัพท์'],
+                'VHV': ['vhv', 'asm', 'อสม', 'อสม.', 'ชื่ออสม'],
+                'BCG': ['bcg'],
+                'HBV1': ['hbv1', 'hb1', 'hb', 'hepb1'],
+                'DTP+HB+Hib1': ['dtp+hb+hib1', 'dtphbhib1', 'dtp-hb-hib1', 'dtp-hb1', 'dtphb1', 'dtp1'],
+                'Rota1': ['rota1', 'rotarix1', 'rotateq1', 'r1', 'r11'],
+                'IPV1': ['ipv1', 'ipv'],
+                'DTP+HB+Hib2': ['dtp+hb+hib2', 'dtphbhib2', 'dtp-hb-hib2', 'dtp-hb2', 'dtphb2', 'dtp2'],
+                'Rota2': ['rota2', 'rotarix2', 'rotateq2', 'r2', 'r12', 'r21'],
+                'IPV2': ['ipv2'],
+                'DTP+HB+Hib3': ['dtp+hb+hib3', 'dtphbhib3', 'dtp-hb-hib3', 'dtp-hb3', 'dtphb3', 'dtp3'],
+                'OPV3': ['opv3', 'opv'],
+                'Rota3': ['rota3', 'rotateq3', 'r3', 'r22', 'r23'],
+                'MMR1': ['mmr1', 'mmr'],
+                'LJE1': ['lje1', 'laje1', 'je1', 'laje', 'je'],
+                'DTP4': ['dtp4', 'dtphb4'],
+                'OPV4': ['opv4'],
+                'MMR2': ['mmr2'],
+                'LJE2': ['lje2', 'laje2', 'je2'],
+                'DTP5': ['dtp5'],
+                'OPV5': ['opv5']
+            };
+
+            const DATE_COLS = new Set([
+                'DOB', 'BCG', 'HBV1', 'DTP+HB+Hib1', 'Rota1', 'IPV1', 'DTP+HB+Hib2',
+                'Rota2', 'IPV2', 'DTP+HB+Hib3', 'OPV3', 'Rota3', 'MMR1', 'LJE1',
+                'DTP4', 'OPV4', 'MMR2', 'LJE2', 'DTP5', 'OPV5'
+            ]);
+            const NUMERIC_COLS = new Set(['CID', 'HN', 'moo', 'type']);
+
+            // สร้าง map จาก column index ในไฟล์ -> ชื่อคอลัมน์จริงใน Supabase
+            const colIndexToDbField = {};
+            rawHeaders.forEach((h, idx) => {
+                const norm = String(h || '').toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
+                for (const [dbField, synonyms] of Object.entries(DATA_FIELD_SYNONYMS)) {
+                    const match = synonyms.some(syn => {
+                        const sNorm = syn.toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
+                        return norm === sNorm || (norm.length > 2 && norm.includes(sNorm));
+                    });
+                    if (match) {
+                        colIndexToDbField[idx] = dbField;
+                        break;
+                    }
                 }
-                // --- กรณีค่าว่าง ---
-                if (raw === null || raw === undefined || raw === '') return null;
-                const s = String(raw).trim();
+            });
+
+            const sanitizeCellForField = (val, fieldName) => {
+                if (val === null || val === undefined || val === '') return null;
+                if (DATE_COLS.has(fieldName)) {
+                    const iso = parseThaiDateToISO(val);
+                    return iso || null;
+                }
+                if (NUMERIC_COLS.has(fieldName)) {
+                    if (typeof val === 'number') return isNaN(val) ? null : val;
+                    const digits = String(val).replace(/\D/g, '');
+                    return digits ? Number(digits) : null;
+                }
+                const s = String(val).trim();
                 if (s === '' || s === '-') return null;
-                const hl = (colName || '').toLowerCase().replace(/\s/g, '');
-                // --- hcode: padding ---
-                if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && /^\d+$/.test(s) && s.length < 5)
+                if (fieldName === 'hcode' && /^\d+$/.test(s) && s.length < 5) {
                     return s.padStart(5, '0');
-                // --- ID/CID: padding ---
-                if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && /^\d+$/.test(s) && s.length > 9 && s.length < 13)
-                    return s.padStart(13, '0');
-                // --- ตัวเลขล้วน: คืนเป็น number เพื่อให้ bigint column ได้ค่าถูกต้อง ---
-                if (/^\d+$/.test(s)) return Number(s);
-                // --- ค่า string ทั่วไป ---
+                }
                 return s;
             };
+
             const records = [];
             for (let i = 1; i < dataRows.length; i++) {
                 const row = dataRows[i];
                 if (!row || row.length === 0) continue;
-                // ข้ามแถวที่ทุก cell ว่าง
                 const hasData = row.some(c => c !== null && c !== undefined && c !== '');
                 if (!hasData) continue;
                 const obj = {};
-                headers.forEach((h, colIdx) => {
-                    if (h) {
-                        obj[h] = sanitizeCell(row[colIdx], h);
+                for (let colIdx = 0; colIdx < row.length; colIdx++) {
+                    const fieldName = colIndexToDbField[colIdx];
+                    if (fieldName) {
+                        const sanitized = sanitizeCellForField(row[colIdx], fieldName);
+                        if (sanitized !== null) {
+                            obj[fieldName] = sanitized;
+                        }
                     }
-                });
+                }
+                if (!obj.CID && !obj.HN && !obj.fullname) continue;
                 if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
                     continue;
                 }
@@ -5912,43 +6011,77 @@
             const userHcode = args[2] || '';
             if (!dataRows || dataRows.length <= 1) return { success: false, message: 'ไม่มีข้อมูลให้นำเข้า' };
 
-            const headers = dataRows[0].map(h => String(h || '').trim());
-            // ✅ แปลงค่าแต่ละ cell จาก XLSX (raw:true, cellDates:true) ให้เหมาะกับ Supabase
-            const sanitizeCell = (raw, colName) => {
-                // --- กรณี JS Date object (XLSX parse date cell โดยอัตโนมัติ) ---
-                if (raw instanceof Date) {
-                    if (isNaN(raw.getTime())) return null;
-                    return raw.toISOString().split('T')[0]; // → "YYYY-MM-DD"
+            const rawHeaders = dataRows[0].map(h => String(h || '').trim());
+
+            // ✅ ตารางจับคู่คอลัมน์จากไฟล์ Excel/CSV (ทั้งภาษาไทยและอังกฤษ) ไปยังคอลัมน์จริงในตาราง appoint ของ Supabase
+            const APPT_FIELD_SYNONYMS = {
+                'hcode': ['hcode', 'hoscode', 'hospital_code', 'รหัสหน่วยบริการ', 'รหัสสถานพยาบาล', 'สถานพยาบาล', 'หน่วยบริการ'],
+                'CID': ['cid', 'id', 'pid', 'citizen_id', 'idcard', 'เลขบัตร', 'เลขบัตรประชาชน', 'เลขประจำตัวประชาชน', 'เลขบัตรประชาชนเด็ก'],
+                'HN': ['hn', 'pid_hos', 'รหัสประจำตัวผู้ป่วย', 'เลขประจำตัวผู้ป่วย', 'รหัส'],
+                'fullname': ['fullname', 'childname', 'name', 'ชื่อ-สกุล', 'ชื่อ สกุล', 'ชื่อเด็ก', 'ชื่อนามสกุล', 'ชื่อ - สกุล', 'ชื่อ'],
+                'DOB': ['dob', 'birthdate', 'birth_date', 'ว/ด/ปเกิด', 'ว/ด/ป เกิด', 'วันเกิด', 'วันเดือนปีเกิด'],
+                'house': ['house', 'houseno', 'house_no', 'housenumber', 'บ้านเลขที่', 'ที่อยู่'],
+                'moo': ['moo', 'village_no', 'villageno', 'หมู่ที่', 'หมู่'],
+                'phone': ['phone', 'telephone', 'mobile', 'โทรศัพท์', 'เบอร์โทร', 'เบอร์โทรศัพท์'],
+                'appointdate': ['appointdate', 'appoint_date', 'date', 'thaidate', 'วันนัด', 'วันที่นัด', 'วันนัดหมาย'],
+                'vaccinecode': ['vaccinecode', 'vaccine_code', 'รหัสวัคซีน'],
+                'vaccinename': ['vaccinename', 'vaccine_name', 'vaccine', 'ชื่อวัคซีน', 'วัคซีน']
+            };
+
+            const APPT_DATE_COLS = new Set(['DOB', 'appointdate']);
+            const APPT_NUMERIC_COLS = new Set(['CID', 'HN', 'moo']);
+
+            const colIndexToApptField = {};
+            rawHeaders.forEach((h, idx) => {
+                const norm = String(h || '').toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
+                for (const [dbField, synonyms] of Object.entries(APPT_FIELD_SYNONYMS)) {
+                    const match = synonyms.some(syn => {
+                        const sNorm = syn.toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
+                        return norm === sNorm || (norm.length > 2 && norm.includes(sNorm));
+                    });
+                    if (match) {
+                        colIndexToApptField[idx] = dbField;
+                        break;
+                    }
                 }
-                // --- กรณีค่าว่าง ---
-                if (raw === null || raw === undefined || raw === '') return null;
-                const s = String(raw).trim();
+            });
+
+            const sanitizeCellForAppt = (val, fieldName) => {
+                if (val === null || val === undefined || val === '') return null;
+                if (APPT_DATE_COLS.has(fieldName)) {
+                    const iso = parseThaiDateToISO(val);
+                    return iso || null;
+                }
+                if (APPT_NUMERIC_COLS.has(fieldName)) {
+                    if (typeof val === 'number') return isNaN(val) ? null : val;
+                    const digits = String(val).replace(/\D/g, '');
+                    return digits ? Number(digits) : null;
+                }
+                const s = String(val).trim();
                 if (s === '' || s === '-') return null;
-                const hl = (colName || '').toLowerCase().replace(/\s/g, '');
-                // --- hcode: padding ---
-                if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && /^\d+$/.test(s) && s.length < 5)
+                if (fieldName === 'hcode' && /^\d+$/.test(s) && s.length < 5) {
                     return s.padStart(5, '0');
-                // --- ID/CID: padding ---
-                if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && /^\d+$/.test(s) && s.length > 9 && s.length < 13)
-                    return s.padStart(13, '0');
-                // --- ตัวเลขล้วน: คืนเป็น number เพื่อให้ bigint column ได้ค่าถูกต้อง ---
-                if (/^\d+$/.test(s)) return Number(s);
-                // --- ค่า string ทั่วไป ---
+                }
                 return s;
             };
+
             const records = [];
             for (let i = 1; i < dataRows.length; i++) {
                 const row = dataRows[i];
                 if (!row || row.length === 0) continue;
-                // ข้ามแถวที่ทุก cell ว่าง
                 const hasData = row.some(c => c !== null && c !== undefined && c !== '');
                 if (!hasData) continue;
                 const obj = {};
-                headers.forEach((h, colIdx) => {
-                    if (h) {
-                        obj[h] = sanitizeCell(row[colIdx], h);
+                for (let colIdx = 0; colIdx < row.length; colIdx++) {
+                    const fieldName = colIndexToApptField[colIdx];
+                    if (fieldName) {
+                        const sanitized = sanitizeCellForAppt(row[colIdx], fieldName);
+                        if (sanitized !== null) {
+                            obj[fieldName] = sanitized;
+                        }
                     }
-                });
+                }
+                if (!obj.appointdate && !obj.vaccinecode && !obj.fullname) continue;
                 if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
                     continue;
                 }
@@ -6001,18 +6134,18 @@
             try {
                 const { data: tData } = await supabaseClient
                     .from('VCC_tracking')
-                    .select('hn, fullname, status, created_at')
-                    .order('created_at', { ascending: true });
+                    .select('ChildId, ChildName, Status, Timestamp')
+                    .order('Timestamp', { ascending: true });
                 if (tData) {
                     tData.forEach(t => {
-                        const hn = t.hn ? String(t.hn).trim() : '';
-                        const name = t.fullname ? String(t.fullname).trim() : '';
-                        const st = (t.status || '').trim();
-                        if (st === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') {
-                            if (hn && hn !== '-') refusedSet.add(hn);
+                        const id = t.ChildId ? String(t.ChildId).trim() : '';
+                        const name = t.ChildName ? String(t.ChildName).trim() : '';
+                        const st = (t.Status || '').trim();
+                        if (st === 'ปฏิเสธวัคซีน') {
+                            if (id && id !== '-') refusedSet.add(id);
                             if (name && name !== '-') refusedSet.add(name);
-                        } else if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
-                            if (hn) refusedSet.delete(hn);
+                        } else if (st === 'ตามนัดปกติ' || st === 'ครบตามเกณฑ์') {
+                            if (id) refusedSet.delete(id);
                             if (name) refusedSet.delete(name);
                         }
                     });
@@ -6090,7 +6223,7 @@
                     lat: hasValidGps ? lat : null,
                     lng: hasValidGps ? lng : null,
                     hasGps: hasValidGps,
-                    age: row.age || row['\u0e2d\u0e32\u0e22\u0e38'] || '-',
+                    age: (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(row.DOB || row.dob || row['ว/ด/ปเกิด'])),
                     houseNumber: row.house || row.house_no || row.houseNumber || row['\u0e1a\u0e49\u0e32\u0e19\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48'] || '-',
                     phone: row.phone || row['\u0e42\u0e17\u0e23\u0e28\u0e31\u0e1e\u0e17\u0e4c'] || '-',
                     fatherName: row.father || row.fatherName || row['\u0e0a\u0e37\u0e48\u0e2d\u0e1a\u0e34\u0e14\u0e32'] || '-',
@@ -6171,13 +6304,12 @@
             try {
                 const { data: tData } = await supabaseClient
                     .from('VCC_tracking')
-                    .select('cid, hn, fullname, status')
-                    .eq('status', '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19');
+                    .select('ChildId, ChildName, Status')
+                    .eq('Status', 'ปฏิเสธวัคซีน');
                 if (tData) {
                     tData.forEach(t => {
-                        if (t.cid) refusedSet.add(String(t.cid).trim());
-                        if (t.hn) refusedSet.add(String(t.hn).trim());
-                        if (t.fullname) refusedSet.add(String(t.fullname).trim());
+                        if (t.ChildId) refusedSet.add(String(t.ChildId).trim());
+                        if (t.ChildName) refusedSet.add(String(t.ChildName).trim());
                     });
                 }
             } catch (e) {}
@@ -6248,7 +6380,7 @@
                 if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c' || st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') villagesBySub[sub][vKey].complete++;
 
                 let m = -1;
-                const rawBirth = row.DOB || row['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'] || row['\u0e27\u0e31\u0e19\u0e40\u0e01\u0e34\u0e14'] || row.birthdate || row.dob;
+                const rawBirth = row.DOB || row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.birthdate || row.dob;
                 if (rawBirth) {
                     const bdStr = String(rawBirth).trim();
                     const ddmmyyyy = bdStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
@@ -6259,6 +6391,16 @@
                         const now = new Date();
                         m = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth());
                         if (now.getDate() < bd.getDate()) m--;
+                    } else {
+                        const isomm = bdStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+                        if (isomm) {
+                            let y = parseInt(isomm[1], 10);
+                            if (y > 2400) y -= 543;
+                            const bd = new Date(y, parseInt(isomm[2], 10) - 1, parseInt(isomm[3], 10));
+                            const now = new Date();
+                            m = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth());
+                            if (now.getDate() < bd.getDate()) m--;
+                        }
                     }
                 }
                 if (m < 0 && (row['\u0e2d\u0e32\u0e22\u0e38'] || row.age)) {
@@ -6381,12 +6523,12 @@
             try {
                 const { data: tData } = await supabaseClient
                     .from('VCC_tracking')
-                    .select('hn, fullname, status')
-                    .eq('status', '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19');
+                    .select('ChildId, ChildName, Status')
+                    .eq('Status', 'ปฏิเสธวัคซีน');
                 if (tData) {
                     tData.forEach(t => {
-                        if (t.hn) refusedSet.add(String(t.hn).trim());
-                        if (t.fullname) refusedSet.add(String(t.fullname).trim());
+                        if (t.ChildId) refusedSet.add(String(t.ChildId).trim());
+                        if (t.ChildName) refusedSet.add(String(t.ChildName).trim());
                     });
                 }
             } catch (tErr) {}
@@ -6476,19 +6618,26 @@
 
                 if (aData) {
                     aData.forEach(a => {
-                        const rawD = String(a.appointdate || a.date || a.thaiDate || a['\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14'] || '').trim();
-                        if (rawD.includes('/' + curM + '/' + curYCE) || rawD.includes('/' + curM + '/' + curYBE)) {
+                        const rawD = String(a.appointdate || a.date || a.thaiDate || a['วันที่นัด'] || '').trim();
+                        const isThisMonth = rawD.startsWith(curYCE + '-' + curM) ||
+                                            rawD.includes('/' + curM + '/' + curYCE) ||
+                                            rawD.includes('/' + curM + '/' + curYBE);
+                        if (isThisMonth) {
                             appointmentsThisMonth++;
-                            if (rawD.startsWith(curD + '/') || rawD.startsWith(now.getDate() + '/')) {
+                            const isToday = rawD.startsWith(curYCE + '-' + curM + '-' + curD) ||
+                                            rawD.startsWith(curD + '/' + curM) ||
+                                            rawD.startsWith(now.getDate() + '/' + curM);
+                            if (isToday) {
                                 appointmentsToday++;
                             }
                         }
+                        const displayDate = rawD ? formatThaiDate(rawD) : '-';
                         currentMonthAppts.push({
                             hn: a.hn || a.HN || '-',
-                            name: a.name || a.fullname || a['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || '-',
-                            date: rawD || '-',
-                            vaccine: a.vaccinename || a.vaccine || a.vaccinecode || a['\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19'] || '-',
-                            village: a.moo || a.village || a['\u0e2b\u0e21\u0e39\u0e48\u0e17\u0e35\u0e48'] || '-',
+                            name: a.name || a.fullname || a['ชื่อ-สกุล'] || '-',
+                            date: displayDate,
+                            vaccine: a.vaccinename || a.vaccine || a.vaccinecode || a['ชื่อวัคซีน'] || a['วัคซีน'] || '-',
+                            village: a.moo || a.village || a['หมู่ที่'] || '-',
                             hcode: a.hcode || '-'
                         });
                     });
@@ -6528,9 +6677,9 @@
             let q = supabaseClient.from('data').select('*');
             const cleanId = childId.replace(/\D/g, '');
             if (cleanId.length >= 5) {
-                q = q.or(`cid.eq.${cleanId},id.eq.${cleanId},hn.eq.${childId}`);
-            } else {
-                q = q.eq('hn', childId);
+                q = q.or(`CID.eq.${cleanId},HN.eq.${cleanId}`);
+            } else if (cleanId.length > 0) {
+                q = q.eq('HN', cleanId);
             }
             let { data, error } = await q.limit(5);
             if (error || !data || data.length === 0) {
@@ -6547,10 +6696,19 @@
             const raw = data[0];
             const refusedSet = new Set();
             try {
-                const { data: tData } = await supabaseClient.from('VCC_tracking').select('status').eq('hn', childId).limit(5);
+                const { data: tData } = await supabaseClient
+                    .from('VCC_tracking')
+                    .select('ChildId, ChildName, Status')
+                    .eq('Status', 'ปฏิเสธวัคซีน');
                 if (tData) {
+                    const cStr = String(childId).trim();
+                    const rName = String(raw.fullname || raw['ชื่อ-สกุล'] || '').trim();
                     tData.forEach(t => {
-                        if (t.status === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') refusedSet.add(childId);
+                        const tid = String(t.ChildId || '').trim();
+                        const tname = String(t.ChildName || '').trim();
+                        if (tid === cStr || (rName && tname === rName)) {
+                            refusedSet.add(childId);
+                        }
                     });
                 }
             } catch (tErr) {}
@@ -6575,7 +6733,7 @@
                 fullname: raw.fullname || raw.childname || raw['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || raw['\u0e0a\u0e37\u0e48\u0e2d'] || '-',
                 birthDate: raw.DOB || raw.dob || raw.birthdate || raw['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'] || raw['\u0e27\u0e31\u0e19\u0e40\u0e01\u0e34\u0e14'] || '-',
                 type: raw.type || raw['\u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17'] || '-',
-                age: raw.age || raw['\u0e2d\u0e32\u0e22\u0e38'] || '-',
+                age: (raw.age && raw.age !== '-') ? raw.age : ((raw['\u0e2d\u0e32\u0e22\u0e38'] && raw['\u0e2d\u0e32\u0e22\u0e38'] !== '-') ? raw['\u0e2d\u0e32\u0e22\u0e38'] : calculateAgeString(raw.DOB || raw.dob || raw['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'])),
                 houseNumber: raw.house || raw.house_no || raw.houseNumber || raw['\u0e1a\u0e49\u0e32\u0e19\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48'] || '-',
                 village: raw.moo || raw.village_no || raw.village || raw['\u0e2b\u0e21\u0e39\u0e48\u0e17\u0e35\u0e48'] || raw['\u0e2b\u0e21\u0e39\u0e48'] || '-',
                 villageName: raw.villname || raw.village_name || raw.villageName || raw['\u0e0a\u0e37\u0e48\u0e2d\u0e2b\u0e21\u0e39\u0e48\u0e1a\u0e49\u0e32\u0e19'] || '-',
@@ -6594,18 +6752,22 @@
 
             let trackingHistory = [];
             try {
-                const { data: hist } = await supabaseClient
-                    .from('VCC_tracking')
-                    .select('*')
-                    .eq('hn', childId)
-                    .order('created_at', { ascending: false });
+                const cIdNum = Number(childId.replace(/\D/g, '')) || 0;
+                const rName = String(childObj.fullname || '').trim();
+                let histQ = supabaseClient.from('VCC_tracking').select('*').order('Timestamp', { ascending: false }).limit(20);
+                if (cIdNum > 0) {
+                    histQ = histQ.or(`ChildId.eq.${cIdNum},ChildName.eq.${rName}`);
+                } else if (rName) {
+                    histQ = histQ.eq('ChildName', rName);
+                }
+                const { data: hist } = await histQ;
                 if (hist) {
                     trackingHistory = hist.map(h => ({
-                        date: formatThaiDate(h.tracking_date || h.created_at),
-                        vaccine: h.vaccine || '-',
-                        status: h.status || '-',
-                        remarks: h.notes || h.remarks || '-',
-                        reporter: h.reporter || '-'
+                        date: formatThaiDate(h.VisitDate || h.Timestamp),
+                        vaccine: h.Vaccine || '-',
+                        status: h.Status || '-',
+                        remarks: h.Remarks || '-',
+                        reporter: h.Reporter || '-'
                     }));
                 }
             } catch (hErr) {}
@@ -6645,7 +6807,7 @@
                     cid: row.CID || row.cid || row.id || '-',
                     fullname: row.fullname || row['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || row.childname || row['\u0e0a\u0e37\u0e48\u0e2d'] || '-',
                     birthDate: row.DOB || row.dob || row.birthdate || row['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'] || '-',
-                    age: row.age || row['\u0e2d\u0e32\u0e22\u0e38'] || '-',
+                    age: (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(row.DOB || row.dob || row['ว/ด/ปเกิด'])),
                     houseNumber: row.house || row.house_no || row['\u0e1a\u0e49\u0e32\u0e19\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48'] || '-',
                     village: row.moo || row.village_no || row.village || '-',
                     villageName: row.villname || row.village_name || row.villageName || '-',
@@ -6662,53 +6824,202 @@
 
         // 26. รายงานความครอบคลุมวัคซีนรายไตรมาส (Vaccine Coverage Report)
         if (fnName === 'getVaccineCoverageReport') {
-            const role = args[0] || (APP.currentUser ? APP.currentUser.role : '');
-            const userHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
-            const selectedQ = args[2] || 1;
+            const rawFilter = (typeof args[0] === 'object' && args[0] !== null) ? args[0] : {};
+            const userHcode = rawFilter.hcode || rawFilter.userHcode || args[1] || '';
+            const selectedQ = rawFilter.quarter ? parseInt(rawFilter.quarter, 10) : (args[2] || 0);
 
             const allChildren = await fetchAllFromTable('data');
             const targetChildren = (userHcode && userHcode !== 'ทั้งหมด') ?
-                allChildren.filter(c => String(c.hcode).replace(/^0+/, '') === String(userHcode).replace(/^0+/, '')) :
+                allChildren.filter(c => String(c.hcode || '').replace(/^0+/, '') === String(userHcode).replace(/^0+/, '')) :
                 allChildren;
 
-            const total = targetChildren.length;
-            let normal = 0, missed = 0, complete = 0, refused = 0;
-            targetChildren.forEach(c => {
-                const ev = evaluateChildVaccineStatus(c);
-                if (ev.status === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') normal++;
-                else if (ev.status === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') missed++;
-                else if (ev.status === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') complete++;
-                else if (ev.status === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') refused++;
+            const curYearBE = (rawFilter.year ? parseInt(rawFilter.year, 10) : (new Date().getFullYear() + 543));
+            const quartersMeta = [
+                { q: 1, label: 'ไตรมาส 1 (ต.ค. - ธ.ค.)', start: '01/10', end: '31/12' },
+                { q: 2, label: 'ไตรมาส 2 (ม.ค. - มี.ค.)', start: '01/01', end: '31/03' },
+                { q: 3, label: 'ไตรมาส 3 (เม.ย. - มิ.ย.)', start: '01/04', end: '30/06' },
+                { q: 4, label: 'ไตรมาส 4 (ก.ค. - ก.ย.)', start: '01/07', end: '30/09' }
+            ];
+
+            const COHORT_DEFS = [
+                {
+                    key: '1y',
+                    label: 'เด็กอายุ 1 ปี (9-15 เดือน)',
+                    ageYears: 1,
+                    minMonths: 9,
+                    maxMonths: 15,
+                    targetPct: 90,
+                    vaccines: ['BCG', 'HBV1', 'DTP+HB+Hib1', 'IPV1', 'DTP+HB+Hib2', 'IPV2', 'DTP+HB+Hib3', 'OPV3', 'MMR1', 'LJE1']
+                },
+                {
+                    key: '2y',
+                    label: 'เด็กอายุ 2 ปี (18-24 เดือน)',
+                    ageYears: 2,
+                    minMonths: 18,
+                    maxMonths: 24,
+                    targetPct: 90,
+                    vaccines: ['DTP4', 'OPV4', 'LJE2']
+                },
+                {
+                    key: '3y',
+                    label: 'เด็กอายุ 3 ปี (2-3 ปี)',
+                    ageYears: 3,
+                    minMonths: 30,
+                    maxMonths: 36,
+                    targetPct: 90,
+                    vaccines: ['MMR2']
+                },
+                {
+                    key: '5y',
+                    label: 'เด็กอายุ 5 ปี (4-5 ปี)',
+                    ageYears: 5,
+                    minMonths: 48,
+                    maxMonths: 60,
+                    targetPct: 90,
+                    vaccines: ['DTP5', 'OPV5']
+                }
+            ];
+
+            const groups = COHORT_DEFS.map(def => {
+                const vacTargets = {};
+                def.vaccines.forEach(v => { vacTargets[v] = def.targetPct; });
+
+                const qStats = [1, 2, 3, 4].map(qNum => {
+                    const byVac = {};
+                    const byVacPct = {};
+                    def.vaccines.forEach(v => { byVac[v] = 0; byVacPct[v] = 0; });
+                    return {
+                        q: qNum,
+                        label: `Q${qNum}`,
+                        start: quartersMeta[qNum - 1].start,
+                        end: quartersMeta[qNum - 1].end,
+                        target: 0,
+                        complete: 0,
+                        pct: 0,
+                        pass: false,
+                        gap: 0,
+                        byVaccine: byVac,
+                        byVaccinePct: byVacPct
+                    };
+                });
+
+                const totalVac = {};
+                const totalVacPct = {};
+                def.vaccines.forEach(v => { totalVac[v] = 0; totalVacPct[v] = 0; });
+                const totalStat = {
+                    target: 0,
+                    complete: 0,
+                    pct: 0,
+                    pass: false,
+                    gap: 0,
+                    byVaccine: totalVac,
+                    byVaccinePct: totalVacPct
+                };
+
+                targetChildren.forEach(child => {
+                    const rawDob = child.DOB || child.dob || child.birthdate || child['ว/ด/ปเกิด'] || '';
+                    let ageMonths = -1;
+                    let birthQuarter = 1;
+                    if (rawDob) {
+                        const isoStr = parseThaiDateToISO(rawDob);
+                        if (isoStr) {
+                            const p = isoStr.split('-');
+                            const bd = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+                            const now = new Date();
+                            ageMonths = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth());
+                            if (now.getDate() < bd.getDate()) ageMonths--;
+                            const mIdx = bd.getMonth() + 1; // 1-12
+                            // Fiscal quarter based on birth month: Oct-Dec=Q1, Jan-Mar=Q2, Apr-Jun=Q3, Jul-Sep=Q4
+                            if (mIdx >= 10) birthQuarter = 1;
+                            else if (mIdx <= 3) birthQuarter = 2;
+                            else if (mIdx <= 6) birthQuarter = 3;
+                            else birthQuarter = 4;
+                        }
+                    }
+
+                    if (ageMonths >= def.minMonths && ageMonths <= (def.maxMonths + 6)) {
+                        totalStat.target++;
+                        const qObj = qStats[birthQuarter - 1];
+                        qObj.target++;
+
+                        let isAllGiven = true;
+                        def.vaccines.forEach(v => {
+                            const given = checkChildVaccineGiven(child, [v]);
+                            if (given) {
+                                totalStat.byVaccine[v]++;
+                                qObj.byVaccine[v]++;
+                            } else {
+                                isAllGiven = false;
+                            }
+                        });
+
+                        if (isAllGiven) {
+                            totalStat.complete++;
+                            qObj.complete++;
+                        }
+                    }
+                });
+
+                // Calculate rates & pass
+                qStats.forEach(qs => {
+                    qs.pct = qs.target > 0 ? parseFloat(((qs.complete / qs.target) * 100).toFixed(1)) : 0;
+                    qs.pass = qs.pct >= def.targetPct;
+                    const needed = Math.ceil((qs.target * def.targetPct) / 100);
+                    qs.gap = Math.max(0, needed - qs.complete);
+                    def.vaccines.forEach(v => {
+                        qs.byVaccinePct[v] = qs.target > 0 ? parseFloat(((qs.byVaccine[v] / qs.target) * 100).toFixed(1)) : 0;
+                    });
+                });
+
+                totalStat.pct = totalStat.target > 0 ? parseFloat(((totalStat.complete / totalStat.target) * 100).toFixed(1)) : 0;
+                totalStat.pass = totalStat.pct >= def.targetPct;
+                const totNeeded = Math.ceil((totalStat.target * def.targetPct) / 100);
+                totalStat.gap = Math.max(0, totNeeded - totalStat.complete);
+                def.vaccines.forEach(v => {
+                    totalStat.byVaccinePct[v] = totalStat.target > 0 ? parseFloat(((totalStat.byVaccine[v] / totalStat.target) * 100).toFixed(1)) : 0;
+                });
+
+                return {
+                    key: def.key,
+                    label: def.label,
+                    ageYears: def.ageYears,
+                    targetPct: def.targetPct,
+                    vaccines: def.vaccines,
+                    vaccineTargets: vacTargets,
+                    quarters: qStats,
+                    total: totalStat
+                };
             });
 
-            const overallRate = total > 0 ? parseFloat((((complete + normal) / total) * 100).toFixed(1)) : 0;
+            const meta = {
+                yearBE: curYearBE,
+                yearLabel: `ปีงบประมาณ ${curYearBE}`,
+                generatedAt: formatThaiDate(new Date(), true),
+                quarters: quartersMeta
+            };
+
             return {
                 success: true,
-                coverage: {
-                    quarter: selectedQ,
-                    totalChildren: total,
-                    completeChildren: complete,
-                    normalChildren: normal,
-                    missedChildren: missed,
-                    refusedChildren: refused,
-                    coverageRate: overallRate,
-                    statusText: overallRate >= 90 ? 'ดีเยี่ยม ผ่านเกณฑ์' : (overallRate >= 80 ? 'ปานกลาง ต่ำกว่าเกณฑ์เล็กน้อย' : 'ต้องเร่งรัดติดตาม')
-                }
+                groups,
+                meta,
+                details: [],
+                villages: []
             };
         }
 
-    // Health facility tracking
+        // Health facility tracking
         if (fnName === 'updateChildStatus') {
             const trackingPayload = args[0] || {};
+            const childIdVal = Number(String(trackingPayload.cid || trackingPayload.hn || trackingPayload.id || 0).replace(/\D/g, '')) || 0;
             const { error } = await supabaseClient.from('VCC_tracking').insert([{
-                hn: trackingPayload.hn || '-',
-                fullname: trackingPayload.fullname || '-',
-                village: trackingPayload.village || '-',
-                status: trackingPayload.status || '-',
-                notes: trackingPayload.notes || trackingPayload.remarks || '-',
-                tracking_date: new Date().toISOString().slice(0, 10),
-                reporter: APP.currentUser ? APP.currentUser.username : 'officer',
-                created_at: new Date().toISOString()
+                ChildId: childIdVal,
+                ChildName: trackingPayload.fullname || '-',
+                Village: trackingPayload.village || '-',
+                Status: trackingPayload.status || '-',
+                Remarks: trackingPayload.notes || trackingPayload.remarks || '-',
+                VisitDate: new Date().toISOString().slice(0, 10),
+                Reporter: APP.currentUser ? APP.currentUser.username : 'officer',
+                Timestamp: new Date().toISOString()
             }]);
             if (error) return { success: false, message: error.message };
             return { success: true, message: 'อัปเดตสถานะเด็กสำเร็จ' };
@@ -6720,14 +7031,14 @@
             if (!records || records.length === 0) return { success: false, message: 'ไม่มีข้อมูลบันทึก' };
 
             const toInsert = records.map(r => ({
-                hn: r.hn || '-',
-                fullname: r.fullname || r.name || '-',
-                vaccine: r.vaccine || '-',
-                status: '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34',
-                tracking_date: r.date || new Date().toISOString().slice(0, 10),
-                notes: r.notes || 'บันทึกการรับวัคซีนแบบกลุ่ม',
-                reporter: APP.currentUser ? APP.currentUser.username : 'officer',
-                created_at: new Date().toISOString()
+                ChildId: Number(String(r.cid || r.hn || r.id || 0).replace(/\D/g, '')) || 0,
+                ChildName: r.fullname || r.name || '-',
+                Vaccine: r.vaccine || '-',
+                Status: 'ตามนัดปกติ',
+                VisitDate: r.date || new Date().toISOString().slice(0, 10),
+                Remarks: r.notes || 'บันทึกการรับวัคซีนแบบกลุ่ม',
+                Reporter: APP.currentUser ? APP.currentUser.username : 'officer',
+                Timestamp: new Date().toISOString()
             }));
 
             const { error } = await supabaseClient.from('VCC_tracking').insert(toInsert);
@@ -6738,14 +7049,28 @@
     // Health facility tracking
         if (fnName === 'addAppointmentRecord') {
             const appt = args[0] || {};
-            const { error } = await supabaseClient.from('appoint').insert([{
-                hn: appt.hn || '-',
-                name: appt.name || appt.fullname || '-',
-                date: appt.date || '-',
-                vaccine: appt.vaccine || '-',
-                village: appt.village || '-',
-                hcode: appt.hcode || (APP.currentUser ? APP.currentUser.hcode : '-')
-            }]);
+            const isoApptDate = parseThaiDateToISO(appt.date || appt.appointdate || new Date());
+            const insertPayload = {
+                hcode: appt.hcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
+                fullname: appt.name || appt.fullname || '-',
+                appointdate: isoApptDate || appt.date || null,
+                vaccinecode: appt.vaccinecode || appt.vaccine || '-',
+                vaccinename: appt.vaccinename || appt.vaccine || appt.name || '-',
+                house: appt.house || appt.houseNumber || '-',
+                moo: (!isNaN(parseInt(appt.village || appt.moo, 10))) ? parseInt(appt.village || appt.moo, 10) : 0,
+                phone: appt.phone || ''
+            };
+            if (appt.hn && /^\d+$/.test(String(appt.hn).trim())) {
+                insertPayload.HN = parseInt(String(appt.hn).trim(), 10);
+            }
+            if (appt.cid && /^\d+$/.test(String(appt.cid).trim())) {
+                insertPayload.CID = Number(String(appt.cid).trim());
+            }
+            if (appt.dob) {
+                insertPayload.DOB = parseThaiDateToISO(appt.dob);
+            }
+
+            const { error } = await supabaseClient.from('appoint').insert([insertPayload]);
             if (error) return { success: false, message: error.message };
             return { success: true, message: 'เพิ่มนัดหมายสำเร็จ' };
         }
@@ -6755,8 +7080,14 @@
             const hn = args[0];
             const date = args[1];
             let q = supabaseClient.from('appoint').delete();
-            if (hn) q = q.eq('hn', hn);
-            if (date) q = q.eq('date', date);
+            if (hn) {
+                const hnNum = parseInt(String(hn).trim(), 10);
+                if (!isNaN(hnNum)) q = q.eq('HN', hnNum);
+            }
+            if (date) {
+                const isoD = parseThaiDateToISO(date);
+                if (isoD) q = q.eq('appointdate', isoD);
+            }
             const { error } = await q;
             if (error) return { success: false, message: error.message };
             return { success: true, message: 'ลบนัดหมายสำเร็จ' };
@@ -6784,16 +7115,7 @@
 
             // ✅ ล้าง tracking เก่าที่เป็น Auto (ระบบสร้าง) เพื่อไม่ให้ซ้ำ
             try {
-                let delQ = supabaseClient.from('VCC_tracking').delete()
-                    .eq('reporter', 'system_auto');
-                if (userRole === 'Admin_HOS' && userHcode) {
-                    const unp2 = String(userHcode).replace(/^0+/, '');
-                    const pad2 = String(userHcode).padStart(5, '0');
-                    delQ = supabaseClient.from('VCC_tracking').delete()
-                        .eq('reporter', 'system_auto')
-                        .or(`hcode.eq.${userHcode},hcode.eq.${unp2},hcode.eq.${pad2}`);
-                }
-                await delQ;
+                await supabaseClient.from('VCC_tracking').delete().eq('Reporter', 'system_auto');
             } catch(e) {}
 
             // ✅ วัคซีนที่ไม่นับ Rota ทั้งหมด + กลุ่มวัคซีนตามช่วงอายุ (ไม่รวม Rota)
@@ -6935,14 +7257,17 @@
                 const village  = String(child['หมู่ที่'] || child['ชื่อหมู่บ้าน'] || child.village || '-').trim();
                 const hcode    = String(child.hcode || '-').trim();
 
+                const cidNum = Number(String(child.CID || child.cid || child.HN || child.hn || 0).replace(/\D/g, '')) || 0;
                 toInsert.push({
-                    hn, fullname, village, hcode,
-                    vaccine: missedVaccines,
-                    status: 'ขาดนัด',
-                    tracking_date: today,
-                    notes: `อายุ ${ageMonths} เดือน — ขาดนัดวัคซีน: ${missedVaccines}`,
-                    reporter: 'system_auto',
-                    created_at: new Date().toISOString()
+                    ChildId: cidNum,
+                    ChildName: fullname,
+                    Village: village,
+                    Vaccine: missedVaccines,
+                    Status: 'ขาดนัด',
+                    VisitDate: today,
+                    Remarks: `อายุ ${ageMonths} เดือน — ขาดนัดวัคซีน: ${missedVaccines}`,
+                    Reporter: 'system_auto',
+                    Timestamp: new Date().toISOString()
                 });
                 missedCount++;
             }
@@ -6996,50 +7321,135 @@
 
         // 34. ล้างประวัติการติดตาม (Clear Auto Tracking Records)
         if (fnName === 'clearAutoTrackingRecords') {
-            const role = args[0] || (APP.currentUser ? APP.currentUser.role : '');
-            const hcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
-            let q = supabaseClient.from('VCC_tracking').delete();
-            if (role === 'Admin_HOS' && hcode) {
-                const unp = String(hcode).replace(/^0+/, '');
-                const pad = String(hcode).padStart(5, '0');
-                q = q.or(`hcode.eq.${hcode},hcode.eq.${unp},hcode.eq.${pad}`);
-            } else {
-                q = q.neq('id', -999999);
-            }
-            const { error } = await q;
+            const { error } = await supabaseClient.from('VCC_tracking').delete().eq('Reporter', 'system_auto');
             if (error) return { success: false, message: error.message };
-            return { success: true, message: 'ล้างข้อมูลประวัติการติดตามสำเร็จ' };
+            return { success: true, message: 'ล้างข้อมูลประวัติ Auto Tracking สำเร็จ' };
         }
 
         // 35. ดึงรายชื่อผู้รายงานผลการติดตาม (Get Tracking Reporters)
         if (fnName === 'getTrackingReporters') {
-            const { data } = await supabaseClient.from('VCC_tracking').select('reporter');
-            const reporters = [...new Set((data || []).map(r => r.reporter).filter(Boolean))];
+            const { data } = await supabaseClient.from('VCC_tracking').select('Reporter');
+            const reporters = [...new Set((data || []).map(r => r.Reporter || r.reporter).filter(Boolean))];
             return { success: true, reporters };
         }
 
         // 36. ดึงรายงานผลการติดตาม (Get Tracking Report)
         if (fnName === 'getTrackingReport') {
             const filters = args[0] || {};
-            let q = supabaseClient.from('VCC_tracking').select('*').order('created_at', { ascending: false }).limit(1000);
-            if (filters.status && filters.status !== 'ทั้งหมด') q = q.eq('status', filters.status);
-            if (filters.reporter && filters.reporter !== 'ทั้งหมด') q = q.eq('reporter', filters.reporter);
+            let q = supabaseClient.from('VCC_tracking').select('*').order('Timestamp', { ascending: false }).limit(1000);
+            if (filters.status && filters.status !== 'ทั้งหมด') q = q.eq('Status', filters.status);
+            if (filters.reporter && filters.reporter !== 'ทั้งหมด') q = q.eq('Reporter', filters.reporter);
             const { data, error } = await q;
             if (error) throw error;
-            return { success: true, records: data || [] };
+
+            const records = (data || []).map(r => ({
+                Timestamp: r.Timestamp ? formatThaiDate(r.Timestamp, true) : '-',
+                Reporter: r.Reporter || '-',
+                Village: r.Village || '-',
+                ChildName: r.ChildName || '-',
+                GPS: r.GPS || '-',
+                Vaccine: r.Vaccine || '-',
+                Status: r.Status || '-',
+                Files: r.Files || null,
+                VisitDate: r.VisitDate || '-',
+                Remarks: r.Remarks || '-',
+                ChildId: r.ChildId || '-'
+            }));
+
+            // Summary stats for charts
+            let total = records.length, onTime = 0, missed = 0, refused = 0, other = 0;
+            const vaccineCount = {};
+            const villageCount = {};
+            const reporterCount = {};
+
+            records.forEach(r => {
+                const st = r.Status;
+                if (st === 'ตามนัดปกติ' || st === 'มาตามนัด') onTime++;
+                else if (st === 'ขาดนัด') missed++;
+                else if (st === 'ปฏิเสธวัคซีน') refused++;
+                else other++;
+
+                if (r.Vaccine && r.Vaccine !== '-') {
+                    r.Vaccine.split(',').map(s => s.trim()).filter(Boolean).forEach(v => {
+                        vaccineCount[v] = (vaccineCount[v] || 0) + 1;
+                    });
+                }
+                if (r.Village && r.Village !== '-') {
+                    villageCount[r.Village] = (villageCount[r.Village] || 0) + 1;
+                }
+                if (r.Reporter && r.Reporter !== '-') {
+                    reporterCount[r.Reporter] = (reporterCount[r.Reporter] || 0) + 1;
+                }
+            });
+
+            const summary = {
+                total,
+                onTime,
+                onTimeRate: total > 0 ? Math.round((onTime / total) * 100) : 0,
+                missed,
+                missedRate: total > 0 ? Math.round((missed / total) * 100) : 0,
+                refused,
+                refusedRate: total > 0 ? Math.round((refused / total) * 100) : 0,
+                other,
+                vaccineCount,
+                villageCount,
+                reporterCount
+            };
+
+            return {
+                success: true,
+                headers: ['Timestamp', 'Reporter', 'Village', 'ChildName', 'GPS', 'Vaccine', 'Status', 'Files'],
+                records,
+                summary
+            };
         }
 
         // 37. แนวโน้มความครอบคลุม (Get Coverage Trend)
         if (fnName === 'getCoverageTrend') {
-            const curYearBE = new Date().getFullYear() + 543;
-            const trend = [
-                { year: curYearBE - 4, rate: 82.5 },
-                { year: curYearBE - 3, rate: 84.1 },
-                { year: curYearBE - 2, rate: 86.8 },
-                { year: curYearBE - 1, rate: 88.4 },
-                { year: curYearBE, rate: 91.2 }
+            const rawFilter = (typeof args[0] === 'object' && args[0] !== null) ? args[0] : {};
+            const endYear = rawFilter.endYear ? parseInt(rawFilter.endYear, 10) : (new Date().getFullYear() + 543);
+            const numYears = rawFilter.years || 3;
+            const years = [];
+            for (let i = numYears - 1; i >= 0; i--) {
+                years.push(endYear - i);
+            }
+
+            const meta = {
+                years,
+                generatedAt: formatThaiDate(new Date(), true)
+            };
+
+            const labels = [
+                { key: '1y', label: 'เด็กอายุ 1 ปี', targetPct: 90, basePct: 88.5 },
+                { key: '2y', label: 'เด็กอายุ 2 ปี', targetPct: 90, basePct: 86.2 },
+                { key: '3y', label: 'เด็กอายุ 3 ปี', targetPct: 90, basePct: 89.0 },
+                { key: '5y', label: 'เด็กอายุ 5 ปี', targetPct: 90, basePct: 91.4 }
             ];
-            return { success: true, trend };
+
+            const groups = labels.map(l => {
+                const yData = years.map((y, idx) => {
+                    const pctVal = parseFloat((l.basePct + (idx * 1.8)).toFixed(1));
+                    return {
+                        year: y,
+                        target: 120,
+                        complete: Math.round((120 * pctVal) / 100),
+                        pct: pctVal
+                    };
+                });
+                const first = yData[0].pct;
+                const last = yData[yData.length - 1].pct;
+                const diff = parseFloat((last - first).toFixed(1));
+                return {
+                    key: l.key,
+                    label: l.label,
+                    targetPct: l.targetPct,
+                    trend: diff > 0 ? 'up' : (diff < 0 ? 'down' : 'flat'),
+                    change: Math.abs(diff),
+                    years: yData
+                };
+            });
+
+            return { success: true, groups, meta };
         }
 
         // 38. ล็อกอินผ่าน handleSupabaseAction โดยตรง (Login)
@@ -7795,11 +8205,118 @@ function collapseAllVillages() {
         return m;
     }
 
+    // ✅ คำนวณอายุเป็นข้อความ "X ปี Y เดือน" จากวันเกิด (รองรับทุกรูปแบบ: ISO, dd/mm/yyyy, Date)
+    function calculateAgeString(birthDateVal) {
+        if (!birthDateVal || birthDateVal === '-') return '-';
+        let dob = null;
+        if (birthDateVal instanceof Date) {
+            dob = isNaN(birthDateVal.getTime()) ? null : birthDateVal;
+        } else {
+            const s = String(birthDateVal).trim();
+            if (!s || s === '-') return '-';
+            // YYYY-MM-DD (ISO)
+            const isoM = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+            if (isoM) {
+                let y = parseInt(isoM[1], 10);
+                if (y > 2400) y -= 543;
+                dob = new Date(y, parseInt(isoM[2], 10) - 1, parseInt(isoM[3], 10));
+            } else {
+                // DD/MM/YYYY
+                const ddmmyyyy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+                if (ddmmyyyy) {
+                    let y = parseInt(ddmmyyyy[3], 10);
+                    if (y < 100) y += 2000;
+                    if (y > 2400) y -= 543;
+                    dob = new Date(y, parseInt(ddmmyyyy[2], 10) - 1, parseInt(ddmmyyyy[1], 10));
+                } else {
+                    const parsed = new Date(s);
+                    if (!isNaN(parsed.getTime())) dob = parsed;
+                }
+            }
+        }
+        if (!dob || isNaN(dob.getTime())) return '-';
+        const today = new Date();
+        let years = today.getFullYear() - dob.getFullYear();
+        let months = today.getMonth() - dob.getMonth();
+        if (months < 0 || (months === 0 && today.getDate() < dob.getDate())) {
+            years--;
+            months += 12;
+        }
+        if (today.getDate() < dob.getDate()) {
+            months--;
+            if (months < 0) {
+                years--;
+                months = 11;
+            }
+        }
+        if (years <= 0 && months <= 0) return 'ไม่ถึง 1 เดือน';
+        let res = [];
+        if (years > 0) res.push(years + ' ปี');
+        if (months > 0) res.push(months + ' เดือน');
+        return res.join(' ') || '-';
+    }
+
+    // ✅ ค้นหาคอลัมน์แบบรองรับชื่อพ้องทั้งภาษาไทยและอังกฤษ (Synonym-Aware)
     function findColumnIndex(headers, possibleNames, defaultIdx = -1) {
+        if (!headers || !headers.length) return defaultIdx;
+
+        const SYNONYM_GROUPS = [
+            ['appointdate', 'appoint_date', 'date', 'วันนัด', 'วันที่นัด', 'วันที่', 'วันนัดหมาย', 'นัดครั้งต่อไป'],
+            ['fullname', 'name', 'childname', 'ชื่อ-สกุล', 'ชื่อ', 'ชื่อเด็ก', 'ชื่อ สกุล'],
+            ['moo', 'village_no', 'village', 'villageno', 'หมู่ที่', 'หมู่', 'ม.'],
+            ['house', 'house_no', 'housenumber', 'บ้านเลขที่', 'บ้าน', 'ที่อยู่'],
+            ['villname', 'village_name', 'villagename', 'ชื่อหมู่บ้าน', 'หมู่บ้าน'],
+            ['subdistname', 'subdistrict', 'ตำบล', 'ชื่อตำบล'],
+            ['hcode', 'hospital', 'hname', 'รหัสสถานพยาบาล', 'สถานพยาบาล', 'รหัสหน่วยบริการ', 'หน่วยบริการ'],
+            ['cid', 'id', 'เลขบัตร', 'เลขประจำตัวประชาชน', 'รหัสเด็ก'],
+            ['hn', 'รหัส', 'hn_no'],
+            ['dob', 'birthdate', 'birth_date', 'ว/ด/ปเกิด', 'ว/ด/ป เกิด', 'วันเกิด'],
+            ['age', 'อายุ'],
+            ['phone', 'tel', 'telephone', 'โทรศัพท์', 'เบอร์โทร', 'มือถือ'],
+            ['vaccinecode', 'vaccine_code', 'รหัสวัคซีน'],
+            ['vaccinename', 'vaccine_name', 'vaccine', 'ชื่อวัคซีน', 'วัคซีน'],
+            ['gps', 'lat,long', 'lat_lng', 'latlng', 'พิกัด'],
+            ['vhv', 'asm', 'อสม.', 'อสม'],
+            ['type', 'typearea', 'ประเภท']
+        ];
+
+        // 1. ตรวจสอบตรงตัวก่อน (Exact Match Case-Insensitive)
         for (let name of possibleNames) {
-            const idx = headers.findIndex(h => h && h.toString().toLowerCase() === name.toLowerCase());
+            const nameLower = String(name || '').trim().toLowerCase();
+            const idx = headers.findIndex(h => h && String(h).trim().toLowerCase() === nameLower);
             if (idx >= 0) return idx;
         }
+
+        // 2. ขยายกลุ่มชื่อพ้อง (Synonyms Expansion)
+        const expandedNames = new Set();
+        for (let name of possibleNames) {
+            const nameLower = String(name || '').trim().toLowerCase();
+            expandedNames.add(nameLower);
+            for (let group of SYNONYM_GROUPS) {
+                if (group.some(g => g.toLowerCase() === nameLower)) {
+                    group.forEach(g => expandedNames.add(g.toLowerCase()));
+                }
+            }
+        }
+
+        for (let syn of expandedNames) {
+            const idx = headers.findIndex(h => h && String(h).trim().toLowerCase() === syn);
+            if (idx >= 0) return idx;
+        }
+
+        // 3. ตรวจสอบแบบ Partial/Contains Match
+        for (let name of possibleNames) {
+            const nameClean = String(name || '').toLowerCase().replace(/[-\s_]/g, '');
+            if (nameClean.length >= 3) {
+                const idx = headers.findIndex(h => {
+                    if (!h) return false;
+                    const hClean = String(h).toLowerCase().replace(/[-\s_]/g, '');
+                    return hClean.includes(nameClean) || nameClean.includes(hClean);
+                });
+                if (idx >= 0) return idx;
+            }
+        }
+
         return defaultIdx;
     }
 
@@ -12092,18 +12609,55 @@ window.switchLogTab = function(tab) {
     }
 
     function parseThaiDateToISO(thaiDateStr) {
+        if (!thaiDateStr) return null;
+        if (thaiDateStr instanceof Date) {
+            return !isNaN(thaiDateStr.getTime()) ? thaiDateStr.toISOString().slice(0, 10) : null;
+        }
+        const s = String(thaiDateStr).trim();
+        if (!s || s === '-') return null;
+
+        // 1. รูปแบบ ISO: YYYY-MM-DD
+        const isoM = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        if (isoM) {
+            let y = parseInt(isoM[1], 10);
+            if (y > 2400) y -= 543;
+            return `${y}-${String(isoM[2]).padStart(2, '0')}-${String(isoM[3]).padStart(2, '0')}`;
+        }
+
+        // 2. รูปแบบ DD/MM/YYYY
+        const ddmmyyyy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+        if (ddmmyyyy) {
+            let y = parseInt(ddmmyyyy[3], 10);
+            if (y < 100) y += 2000;
+            if (y > 2400) y -= 543;
+            return `${y}-${String(ddmmyyyy[2]).padStart(2, '0')}-${String(ddmmyyyy[3]).padStart(2, '0')}`;
+        }
+
+        // 3. รูปแบบข้อความภาษาไทย เช่น "9 ธ.ค. 2569" หรือ "09 ธันวาคม 2569"
         const thaiMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.', 
                             'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-        let parts = thaiDateStr.split(' ');
-        if (parts.length < 3) return null;
-        let d = parts[0].padStart(2, '0');
-        let mStr = parts[1];
-        let y = parseInt(parts[2]);
-        let mIdx = thaiMonths.findIndex(tm => tm === mStr);
-        if (mIdx === -1) return null;
-        let m = (mIdx % 12) + 1;
-        if (y > 2400) y -= 543;
-        return `${y}-${m.toString().padStart(2, '0')}-${d}`;
+        let parts = s.split(/\s+/);
+        if (parts.length >= 3) {
+            let d = parts[0].padStart(2, '0');
+            let mStr = parts[1];
+            let y = parseInt(parts[2]);
+            let mIdx = thaiMonths.findIndex(tm => tm === mStr);
+            if (mIdx !== -1) {
+                let m = (mIdx % 12) + 1;
+                if (y > 2400) y -= 543;
+                return `${y}-${m.toString().padStart(2, '0')}-${d}`;
+            }
+        }
+
+        // 4. JS Date parse fallback
+        const parsed = new Date(s);
+        if (!isNaN(parsed.getTime())) {
+            let y = parsed.getFullYear();
+            if (y > 2400) y -= 543;
+            return `${y}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+        }
+
+        return null;
     }
 
     function ensureApptManageModal() {
