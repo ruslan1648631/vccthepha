@@ -5782,92 +5782,40 @@
             if (!dataRows || dataRows.length <= 1) return { success: false, message: 'ไม่มีข้อมูลให้นำเข้า' };
 
             const headers = dataRows[0].map(h => String(h || '').trim());
-            // ✅ แปลงวันที่จาก Excel serial / string → ISO (YYYY-MM-DD) หรือ null ถ้าว่าง
-            const toISODate = (val) => {
-                if (val === null || val === undefined || val === '') return null;
-                const s = String(val).trim();
-                if (!s || s === '-' || s === '0') return null;
-                // Excel Date object ที่ XLSX parse มาเป็น JS Date แล้ว
-                if (val instanceof Date) {
-                    if (isNaN(val.getTime())) return null;
-                    return val.toISOString().split('T')[0];
+            // ✅ แปลงค่าแต่ละ cell จาก XLSX (raw:true, cellDates:true) ให้เหมาะกับ Supabase
+            const sanitizeCell = (raw, colName) => {
+                // --- กรณี JS Date object (XLSX parse date cell โดยอัตโนมัติ) ---
+                if (raw instanceof Date) {
+                    if (isNaN(raw.getTime())) return null;
+                    return raw.toISOString().split('T')[0]; // → "YYYY-MM-DD"
                 }
-                // Excel serial number (ตัวเลข 5 หลัก เช่น 44927)
-                if (/^\d{4,5}$/.test(s) && parseInt(s) > 1000) {
-                    const excelEpoch = new Date(1899, 11, 30);
-                    const d = new Date(excelEpoch.getTime() + parseInt(s) * 86400000);
-                    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-                }
-                // รูปแบบ dd/mm/yyyy หรือ dd-mm-yyyy (รองรับทั้ง ค.ศ. และ พ.ศ.)
-                const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
-                if (m) {
-                    let [, d, mo, y] = m;
-                    y = parseInt(y); mo = parseInt(mo) - 1; d = parseInt(d);
-                    if (y < 100) y += 2000;
-                    if (y > 2400) y -= 543; // พ.ศ. → ค.ศ.
-                    const dt = new Date(y, mo, d);
-                    if (!isNaN(dt.getTime())) return dt.toISOString().split('T')[0];
-                }
-                // ISO format หรือรูปแบบอื่น
-                const dt2 = new Date(s);
-                if (!isNaN(dt2.getTime())) return dt2.toISOString().split('T')[0];
-                return null;
-            };
-            // ✅ ตรวจจากค่าจริงว่าเป็นวันที่หรือไม่ (ครอบคลุมคอลัมน์วัคซีนทุกตัว)
-            const looksLikeDate = (raw) => {
-                if (raw instanceof Date) return true;
-                if (raw === null || raw === undefined || raw === '') return false;
+                // --- กรณีค่าว่าง ---
+                if (raw === null || raw === undefined || raw === '') return null;
                 const s = String(raw).trim();
-                if (!s || s === '-') return false;
-                // Excel serial 5 หลัก (มีค่า > 1000 เพื่อกรอง ID หรือตัวเลขธรรมดาออก)
-                if (/^\d{4,5}$/.test(s) && parseInt(s) > 10000 && parseInt(s) < 80000) return true;
-                // dd/mm/yyyy หรือ yyyy-mm-dd
-                if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}$/.test(s)) return true;
-                if (/^\d{4}-\d{2}-\d{2}/.test(s)) return true;
-                return false;
+                if (s === '' || s === '-') return null;
+                const hl = (colName || '').toLowerCase().replace(/\s/g, '');
+                // --- hcode: padding ---
+                if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && /^\d+$/.test(s) && s.length < 5)
+                    return s.padStart(5, '0');
+                // --- ID/CID: padding ---
+                if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && /^\d+$/.test(s) && s.length > 9 && s.length < 13)
+                    return s.padStart(13, '0');
+                // --- ตัวเลขล้วน: คืนเป็น number เพื่อให้ bigint column ได้ค่าถูกต้อง ---
+                if (/^\d+$/.test(s)) return Number(s);
+                // --- ค่า string ทั่วไป ---
+                return s;
             };
-            // ✅ คำนวณ dateColFlags: สแกน 5 แถวแรกว่าคอลัมน์ใดดูเหมือนวันที่
-            const dateColFlags = headers.map((h, colIdx) => {
-                if (!h) return false;
-                const hl = h.toLowerCase().replace(/\s/g,'');
-                // ชื่อที่ชัดเจนว่าเป็นวันที่
-                const knownDate = ['ว/ด/ปเกิด','ว/ด/ปเกิด','วันเกิด','dob','birthdate','date_of_birth',
-                                   'วันนัด','appoint_date','นัดหมาย'];
-                if (knownDate.some(d => hl.includes(d.replace(/\s/g,'')))) return true;
-                // สแกนแถวข้อมูล 10 แถวแรก — ถ้ามีค่าที่ดูเหมือนวันที่ → ถือว่าเป็น date column
-                let dateHits = 0, totalFilled = 0;
-                for (let r = 1; r <= Math.min(10, dataRows.length - 1); r++) {
-                    const cell = dataRows[r][colIdx];
-                    if (cell !== null && cell !== undefined && String(cell).trim() !== '') {
-                        totalFilled++;
-                        if (looksLikeDate(cell)) dateHits++;
-                    }
-                }
-                return totalFilled > 0 && dateHits / totalFilled >= 0.5;
-            });
             const records = [];
             for (let i = 1; i < dataRows.length; i++) {
                 const row = dataRows[i];
-                if (!row || row.length === 0 || !row[0]) continue;
+                if (!row || row.length === 0) continue;
+                // ข้ามแถวที่ทุก cell ว่าง
+                const hasData = row.some(c => c !== null && c !== undefined && c !== '');
+                if (!hasData) continue;
                 const obj = {};
                 headers.forEach((h, colIdx) => {
                     if (h) {
-                        const raw = row[colIdx];
-                        const hl = h.toLowerCase();
-                        let val = raw !== undefined ? String(raw).trim() : '';
-                        if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && val && /^\d+$/.test(val) && val.length < 5) {
-                            val = val.padStart(5, '0');
-                        }
-                        if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && val && /^\d+$/.test(val) && val.length > 9 && val.length < 13) {
-                            val = val.padStart(13, '0');
-                        }
-                        // ✅ คอลัมน์วันที่ (ตรวจจากชื่อ + ค่าจริง): ว่าง → null, มีค่า → ISO
-                        if (dateColFlags[colIdx]) {
-                            obj[h] = toISODate(raw);
-                        } else {
-                            // ✅ ค่าว่างทั่วไป: ส่ง null แทน "" เพื่อป้องกัน Supabase type error
-                            obj[h] = (val === '') ? null : val;
-                        }
+                        obj[h] = sanitizeCell(row[colIdx], h);
                     }
                 });
                 if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
@@ -5910,92 +5858,40 @@
             if (!dataRows || dataRows.length <= 1) return { success: false, message: 'ไม่มีข้อมูลให้นำเข้า' };
 
             const headers = dataRows[0].map(h => String(h || '').trim());
-            // ✅ แปลงวันที่จาก Excel serial / string → ISO (YYYY-MM-DD) หรือ null ถ้าว่าง
-            const toISODate = (val) => {
-                if (val === null || val === undefined || val === '') return null;
-                const s = String(val).trim();
-                if (!s || s === '-' || s === '0') return null;
-                // Excel Date object ที่ XLSX parse มาเป็น JS Date แล้ว
-                if (val instanceof Date) {
-                    if (isNaN(val.getTime())) return null;
-                    return val.toISOString().split('T')[0];
+            // ✅ แปลงค่าแต่ละ cell จาก XLSX (raw:true, cellDates:true) ให้เหมาะกับ Supabase
+            const sanitizeCell = (raw, colName) => {
+                // --- กรณี JS Date object (XLSX parse date cell โดยอัตโนมัติ) ---
+                if (raw instanceof Date) {
+                    if (isNaN(raw.getTime())) return null;
+                    return raw.toISOString().split('T')[0]; // → "YYYY-MM-DD"
                 }
-                // Excel serial number (ตัวเลข 5 หลัก เช่น 44927)
-                if (/^\d{4,5}$/.test(s) && parseInt(s) > 1000) {
-                    const excelEpoch = new Date(1899, 11, 30);
-                    const d = new Date(excelEpoch.getTime() + parseInt(s) * 86400000);
-                    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-                }
-                // รูปแบบ dd/mm/yyyy หรือ dd-mm-yyyy (รองรับทั้ง ค.ศ. และ พ.ศ.)
-                const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
-                if (m) {
-                    let [, d, mo, y] = m;
-                    y = parseInt(y); mo = parseInt(mo) - 1; d = parseInt(d);
-                    if (y < 100) y += 2000;
-                    if (y > 2400) y -= 543; // พ.ศ. → ค.ศ.
-                    const dt = new Date(y, mo, d);
-                    if (!isNaN(dt.getTime())) return dt.toISOString().split('T')[0];
-                }
-                // ISO format หรือรูปแบบอื่น
-                const dt2 = new Date(s);
-                if (!isNaN(dt2.getTime())) return dt2.toISOString().split('T')[0];
-                return null;
-            };
-            // ✅ ตรวจจากค่าจริงว่าเป็นวันที่หรือไม่ (ครอบคลุมคอลัมน์วัคซีนทุกตัว)
-            const looksLikeDate = (raw) => {
-                if (raw instanceof Date) return true;
-                if (raw === null || raw === undefined || raw === '') return false;
+                // --- กรณีค่าว่าง ---
+                if (raw === null || raw === undefined || raw === '') return null;
                 const s = String(raw).trim();
-                if (!s || s === '-') return false;
-                // Excel serial 5 หลัก (มีค่า > 1000 เพื่อกรอง ID หรือตัวเลขธรรมดาออก)
-                if (/^\d{4,5}$/.test(s) && parseInt(s) > 10000 && parseInt(s) < 80000) return true;
-                // dd/mm/yyyy หรือ yyyy-mm-dd
-                if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}$/.test(s)) return true;
-                if (/^\d{4}-\d{2}-\d{2}/.test(s)) return true;
-                return false;
+                if (s === '' || s === '-') return null;
+                const hl = (colName || '').toLowerCase().replace(/\s/g, '');
+                // --- hcode: padding ---
+                if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && /^\d+$/.test(s) && s.length < 5)
+                    return s.padStart(5, '0');
+                // --- ID/CID: padding ---
+                if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && /^\d+$/.test(s) && s.length > 9 && s.length < 13)
+                    return s.padStart(13, '0');
+                // --- ตัวเลขล้วน: คืนเป็น number เพื่อให้ bigint column ได้ค่าถูกต้อง ---
+                if (/^\d+$/.test(s)) return Number(s);
+                // --- ค่า string ทั่วไป ---
+                return s;
             };
-            // ✅ คำนวณ dateColFlags: สแกน 5 แถวแรกว่าคอลัมน์ใดดูเหมือนวันที่
-            const dateColFlags = headers.map((h, colIdx) => {
-                if (!h) return false;
-                const hl = h.toLowerCase().replace(/\s/g,'');
-                // ชื่อที่ชัดเจนว่าเป็นวันที่
-                const knownDate = ['ว/ด/ปเกิด','ว/ด/ปเกิด','วันเกิด','dob','birthdate','date_of_birth',
-                                   'วันนัด','appoint_date','นัดหมาย'];
-                if (knownDate.some(d => hl.includes(d.replace(/\s/g,'')))) return true;
-                // สแกนแถวข้อมูล 10 แถวแรก — ถ้ามีค่าที่ดูเหมือนวันที่ → ถือว่าเป็น date column
-                let dateHits = 0, totalFilled = 0;
-                for (let r = 1; r <= Math.min(10, dataRows.length - 1); r++) {
-                    const cell = dataRows[r][colIdx];
-                    if (cell !== null && cell !== undefined && String(cell).trim() !== '') {
-                        totalFilled++;
-                        if (looksLikeDate(cell)) dateHits++;
-                    }
-                }
-                return totalFilled > 0 && dateHits / totalFilled >= 0.5;
-            });
             const records = [];
             for (let i = 1; i < dataRows.length; i++) {
                 const row = dataRows[i];
-                if (!row || row.length === 0 || !row[0]) continue;
+                if (!row || row.length === 0) continue;
+                // ข้ามแถวที่ทุก cell ว่าง
+                const hasData = row.some(c => c !== null && c !== undefined && c !== '');
+                if (!hasData) continue;
                 const obj = {};
                 headers.forEach((h, colIdx) => {
                     if (h) {
-                        const raw = row[colIdx];
-                        const hl = h.toLowerCase();
-                        let val = raw !== undefined ? String(raw).trim() : '';
-                        if ((hl === 'hcode' || hl === 'รหัสสถานพยาบาล') && val && /^\d+$/.test(val) && val.length < 5) {
-                            val = val.padStart(5, '0');
-                        }
-                        if ((hl === 'id' || hl === 'cid' || hl === 'เลขบัตร') && val && /^\d+$/.test(val) && val.length > 9 && val.length < 13) {
-                            val = val.padStart(13, '0');
-                        }
-                        // ✅ คอลัมน์วันที่ (ตรวจจากชื่อ + ค่าจริง): ว่าง → null, มีค่า → ISO
-                        if (dateColFlags[colIdx]) {
-                            obj[h] = toISODate(raw);
-                        } else {
-                            // ✅ ค่าว่างทั่วไป: ส่ง null แทน "" เพื่อป้องกัน Supabase type error
-                            obj[h] = (val === '') ? null : val;
-                        }
+                        obj[h] = sanitizeCell(row[colIdx], h);
                     }
                 });
                 if (userRole === 'Admin_HOS' && userHcode && obj.hcode && obj.hcode !== userHcode) {
@@ -7734,11 +7630,14 @@ function collapseAllVillages() {
 
     async function readExcelData(arrayBuffer) {
         try {
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            // ✅ cellDates:true → วันที่เป็น JS Date, raw:true → ตัวเลขเป็น number จริง
+            const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
-            const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
-            return rawRows.map(row => row.map(cell => String(cell).trim()));
+            // ✅ raw:true เพื่อรักษา type: Date, number, string ตามจริง
+            const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: '' });
+            // ✅ ไม่แปลงทุกอย่างเป็น string ที่นี่ — ปล่อย import function จัดการ type แต่ละ column
+            return rawRows;
         } catch (error) {
             throw new Error('ไม่สามารถอ่านข้อมูลจากไฟล์ได้: ' + error.message);
         }
