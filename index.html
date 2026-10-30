@@ -5497,24 +5497,40 @@
                 pwd = await sha256Hex(pwd);
             }
 
-            const record = {
-                username: username,
-                password: pwd,
-                fullname: String(user.fullname || '').trim(),
-                role: user.role || 'เจ้าหน้าที่',
-                hcode: user.hcode ? String(user.hcode).trim() : '-',
-                village: user.village ? String(user.village).trim() : '-',
-                subdistrict: user.subdistrict ? String(user.subdistrict).trim() : '-',
-                status: user.status || 'register',
-                created_at: new Date().toISOString()
-            };
+            try {
+                const { data: sampleData } = await supabaseClient.from('users').select('*').limit(1);
+                const sampleRow = (sampleData && sampleData[0]) ? sampleData[0] : {};
+                const keys = Object.keys(sampleRow);
+                const findCol = (name, def) => keys.find(k => k.toLowerCase() === name.toLowerCase()) || def;
+                const hasCol = (name) => keys.some(k => k.toLowerCase() === name.toLowerCase());
 
-            const { data, error } = await supabaseClient.from('users').insert([record]).select();
-            if (error) {
-                console.error('addUser error:', error);
-                return { success: false, message: error.message };
+                const record = {};
+                record[findCol('username', 'Username')] = username;
+                record[findCol('password', 'Password')] = pwd;
+
+                const fnCol = findCol('fullname', findCol('name', 'Fullname'));
+                if (hasCol('fullname') || hasCol('name') || !keys.length) {
+                    record[fnCol] = String(user.fullname || '').trim();
+                }
+
+                record[findCol('role', 'Role')] = user.role || 'เจ้าหน้าที่';
+                record[findCol('hcode', 'hcode')] = user.hcode ? String(user.hcode).trim() : '-';
+                if (hasCol('village') || !keys.length) record[findCol('village', 'Village')] = user.village ? String(user.village).trim() : '-';
+                if (hasCol('subdistrict') || !keys.length) record[findCol('subdistrict', 'Subdistrict')] = user.subdistrict ? String(user.subdistrict).trim() : '-';
+                if (hasCol('status') || !keys.length) record[findCol('status', 'Status')] = user.status || 'register';
+                if (hasCol('created_at')) {
+                    record[findCol('created_at', 'created_at')] = new Date().toISOString();
+                }
+
+                let { data, error } = await supabaseClient.from('users').insert([record]).select();
+                if (error) {
+                    console.error('addUser error:', error);
+                    return { success: false, message: error.message };
+                }
+                return { success: true, message: 'เพิ่มผู้ใช้งานเรียบร้อยแล้ว', user: data ? data[0] : record };
+            } catch (err) {
+                return { success: false, message: err.message || 'เกิดข้อผิดพลาดในการเพิ่มผู้ใช้' };
             }
-            return { success: true, message: 'เพิ่มผู้ใช้งานเรียบร้อยแล้ว', user: data ? data[0] : record };
         }
 
         // 3. แก้ไขข้อมูลผู้ใช้ (Update User)
@@ -5522,56 +5538,170 @@
             const origUsername = (typeof args[0] === 'string' ? args[0] : (args[1] || (args[0] && args[0].username) || '')).trim();
             const user = (typeof args[0] === 'object' && args[0] !== null) ? args[0] : (args[1] || {});
             const targetUsername = origUsername || String(user.username || '').trim();
+            const passedId = args[2] || user.id || null;
 
-            if (!targetUsername) return { success: false, message: 'ไม่พบชื่อผู้ใช้ที่ต้องการแก้ไข' };
+            if (!targetUsername && !passedId) return { success: false, message: 'ไม่พบชื่อผู้ใช้ที่ต้องการแก้ไข' };
 
-            const updateData = {
-                fullname: String(user.fullname || '').trim(),
-                role: user.role || 'เจ้าหน้าที่',
-                hcode: user.hcode ? String(user.hcode).trim() : '-',
-                village: user.village ? String(user.village).trim() : '-',
-                subdistrict: user.subdistrict ? String(user.subdistrict).trim() : '-',
-                status: user.status || 'active'
-            };
-
-            // อัปเดตรหัสผ่านเฉพาะเมื่อมีการกรอกรหัสผ่านใหม่
-            if (user.password && String(user.password).trim() !== '') {
-                let pwd = String(user.password).trim();
-                if (!/^[a-f0-9]{64}$/i.test(pwd)) {
-                    pwd = await sha256Hex(pwd);
+            try {
+                // 1) ดึงข้อมูล schema และ userRow จาก users
+                let userRow = null;
+                const { data: allUsers } = await supabaseClient.from('users').select('*').limit(200);
+                if (allUsers && allUsers.length > 0) {
+                    userRow = allUsers.find(u => {
+                        if (passedId && (u.id == passedId || u.Id == passedId || u.ID == passedId)) return true;
+                        const un = String(u.Username || u.username || u.user || u.name || '').trim();
+                        return un.toLowerCase() === targetUsername.toLowerCase();
+                    });
                 }
-                updateData.password = pwd;
-            }
 
-            // ถ้ามีการเปลี่ยน username
-            if (user.username && String(user.username).trim() !== '' && String(user.username).trim() !== targetUsername) {
-                updateData.username = String(user.username).trim();
-            }
+                const sampleRow = userRow || (allUsers && allUsers[0]) || {};
+                const keys = Object.keys(sampleRow);
+                const findCol = (name, def) => keys.find(k => k.toLowerCase() === name.toLowerCase()) || def;
+                const hasCol = (name) => keys.some(k => k.toLowerCase() === name.toLowerCase());
 
-            let updateRes = await supabaseClient.from('users').update(updateData).eq('username', targetUsername);
-            if (updateRes.error) {
-                updateRes = await supabaseClient.from('users').update(updateData).ilike('username', targetUsername);
-            }
+                const idCol = findCol('id', 'id');
+                const usernameCol = findCol('username', 'Username');
 
-            if (updateRes.error) {
-                console.error('updateUser error:', updateRes.error);
-                return { success: false, message: updateRes.error.message };
+                // สร้าง updateData โดยตรงตามชื่อคอลัมน์ใน Supabase
+                const updateData = {};
+
+                // Fullname / Name
+                const fnCol = findCol('fullname', findCol('name', 'Fullname'));
+                if (hasCol('fullname') || hasCol('name') || !keys.length) {
+                    updateData[fnCol] = String(user.fullname || '').trim();
+                }
+
+                // Role
+                if (hasCol('role') || !keys.length) {
+                    updateData[findCol('role', 'Role')] = user.role || 'เจ้าหน้าที่';
+                }
+
+                // hcode
+                if (hasCol('hcode') || !keys.length) {
+                    updateData[findCol('hcode', 'hcode')] = user.hcode ? String(user.hcode).trim() : '-';
+                }
+
+                // Village
+                if (hasCol('village') || !keys.length) {
+                    updateData[findCol('village', 'Village')] = user.village ? String(user.village).trim() : '-';
+                }
+
+                // Subdistrict
+                if (hasCol('subdistrict') || !keys.length) {
+                    updateData[findCol('subdistrict', 'Subdistrict')] = user.subdistrict ? String(user.subdistrict).trim() : '-';
+                }
+
+                // Status
+                if (hasCol('status') || !keys.length) {
+                    updateData[findCol('status', 'Status')] = user.status || 'active';
+                }
+
+                // อัปเดตรหัสผ่านเฉพาะเมื่อมีการกรอกรหัสผ่านใหม่
+                if (user.password && String(user.password).trim() !== '') {
+                    let pwd = String(user.password).trim();
+                    if (!/^[a-f0-9]{64}$/i.test(pwd)) {
+                        pwd = await sha256Hex(pwd);
+                    }
+                    if (hasCol('password') || !keys.length) {
+                        updateData[findCol('password', 'Password')] = pwd;
+                    }
+                }
+
+                // ถ้ามีการเปลี่ยน username
+                if (user.username && String(user.username).trim() !== '' && String(user.username).trim() !== targetUsername) {
+                    if (hasCol('username') || !keys.length) {
+                        updateData[usernameCol] = String(user.username).trim();
+                    }
+                }
+
+                let updateRes = null;
+
+                // อัปเดตผ่าน id ถ้ามี
+                const targetId = (userRow && userRow[idCol] !== undefined && userRow[idCol] !== null) ? userRow[idCol] : passedId;
+                if (targetId !== null && targetId !== undefined && targetId !== '') {
+                    updateRes = await supabaseClient.from('users').update(updateData).eq(idCol, targetId);
+                }
+
+                // ถ้ายังไม่สำเร็จ ให้อัปเดตตาม usernameCol
+                if (!updateRes || updateRes.error) {
+                    updateRes = await supabaseClient.from('users').update(updateData).ilike(usernameCol, targetUsername);
+                }
+
+                // Fallback: ลองทั้ง Username และ username
+                if (updateRes && updateRes.error) {
+                    const candidateCols = ['Username', 'username'];
+                    for (const uCol of candidateCols) {
+                        const fb = await supabaseClient.from('users').update(updateData).ilike(uCol, targetUsername);
+                        if (!fb.error) {
+                            updateRes = fb;
+                            break;
+                        }
+                    }
+                }
+
+                if (updateRes && updateRes.error) {
+                    console.error('updateUser error:', updateRes.error);
+                    return { success: false, message: updateRes.error.message };
+                }
+                return { success: true, message: 'บันทึกข้อมูลผู้ใช้สำเร็จ' };
+            } catch (err) {
+                console.error('updateUser exception:', err);
+                return { success: false, message: err.message || 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลผู้ใช้' };
             }
-            return { success: true, message: 'บันทึกข้อมูลผู้ใช้สำเร็จ' };
         }
 
         // 4. ลบผู้ใช้ (Delete User)
         if (fnName === 'deleteUser') {
             const username = String(args[0] || '').trim();
-            if (!username) return { success: false, message: 'ไม่พบชื่อผู้ใช้ที่ต้องการลบ' };
-            let { error } = await supabaseClient.from('users').delete().eq('username', username);
-            if (error) {
-                const fb = await supabaseClient.from('users').delete().ilike('username', username);
-                error = fb.error;
+            const passedId = args[1] || null;
+            if (!username && !passedId) return { success: false, message: 'ไม่พบชื่อผู้ใช้ที่ต้องการลบ' };
+
+            try {
+                let userRow = null;
+                const { data: allUsers } = await supabaseClient.from('users').select('*').limit(200);
+                if (allUsers && allUsers.length > 0) {
+                    userRow = allUsers.find(u => {
+                        if (passedId && (u.id == passedId || u.Id == passedId || u.ID == passedId)) return true;
+                        const un = String(u.Username || u.username || u.user || u.name || '').trim();
+                        return un.toLowerCase() === username.toLowerCase();
+                    });
+                }
+
+                const sampleRow = userRow || (allUsers && allUsers[0]) || {};
+                const keys = Object.keys(sampleRow);
+                const findCol = (name, def) => keys.find(k => k.toLowerCase() === name.toLowerCase()) || def;
+
+                const idCol = findCol('id', 'id');
+                const usernameCol = findCol('username', 'Username');
+
+                let delRes = null;
+                const targetId = (userRow && userRow[idCol] !== undefined && userRow[idCol] !== null) ? userRow[idCol] : passedId;
+                if (targetId !== null && targetId !== undefined && targetId !== '') {
+                    delRes = await supabaseClient.from('users').delete().eq(idCol, targetId);
+                }
+
+                if (!delRes || delRes.error) {
+                    delRes = await supabaseClient.from('users').delete().ilike(usernameCol, username);
+                }
+
+                if (delRes && delRes.error) {
+                    const fallbackCols = ['Username', 'username'];
+                    for (const uCol of candidateCols) {
+                        const fb = await supabaseClient.from('users').delete().ilike(uCol, username);
+                        if (!fb.error) {
+                            delRes = fb;
+                            break;
+                        }
+                    }
+                }
+
+                if (delRes && delRes.error) return { success: false, message: delRes.error.message };
+                return { success: true, message: 'ลบผู้ใช้สำเร็จ' };
+            } catch (err) {
+                return { success: false, message: err.message || 'เกิดข้อผิดพลาดในการลบผู้ใช้' };
             }
-            if (error) return { success: false, message: error.message };
-            return { success: true, message: 'ลบผู้ใช้สำเร็จ' };
         }
+
 
         // 5. อนุมัติผู้ใช้งาน (Activate User)
         if (fnName === 'activateUserStatus') {
@@ -11089,7 +11219,7 @@ function updateBottomNavActive(page) {
             '<div class="modal-header"><h3 id="userModalTitle">เพิ่มผู้ใช้งาน</h3><button class="modal-close" onclick="closeUserModal()">×</button></div>' +
             '<div class="modal-body">' +
             '<input type="hidden" id="userModalMode" value="add">' +
-            '<input type="hidden" id="userModalOriginal" value="">' +
+            '<input type="hidden" id="userModalOriginal" value=""><input type="hidden" id="userModalId" value="">' +
             '<div class="form-group"><label class="form-label-req">ชื่อผู้ใช้</label><input type="text" id="um_username" placeholder="ตัวอักษรภาษาอังกฤษ/ตัวเลข"></div>' +
             '<div class="form-group"><label class="form-label-req">รหัสผ่าน</label><input type="password" id="um_password" placeholder="อย่างน้อย 6 ตัวอักษร"></div>' +
             '<div class="form-group"><label class="form-label-req">ชื่อ-นามสกุล</label><input type="text" id="um_fullname"></div>' +
@@ -11177,6 +11307,7 @@ function updateBottomNavActive(page) {
         document.getElementById('userModalTitle').textContent = 'เพิ่มผู้ใช้งาน';
         document.getElementById('userModalMode').value = 'add';
         document.getElementById('userModalOriginal').value = '';
+        document.getElementById('userModalId').value = '';
         document.getElementById('um_username').value = '';
         document.getElementById('um_username').disabled = false;
         document.getElementById('um_password').value = '';
@@ -11219,6 +11350,7 @@ function updateBottomNavActive(page) {
             document.getElementById('userModalTitle').textContent = 'แก้ไขผู้ใช้งาน';
             document.getElementById('userModalMode').value = 'edit';
             document.getElementById('userModalOriginal').value = username;
+            document.getElementById('userModalId').value = u.id || '';
             document.getElementById('um_username').value = u.username;
             document.getElementById('um_username').disabled = true;
             document.getElementById('um_password').value = '';
@@ -11274,7 +11406,7 @@ function updateBottomNavActive(page) {
         showLoading('กำลังบันทึก...');
         try {
             const result = mode === 'edit' ?
-                await callGAS('updateUser', [orig, data]) :
+                await callGAS('updateUser', [orig, data, document.getElementById('userModalId') ? document.getElementById('userModalId').value : '']) :
                 await callGAS('addUser', [data]);
 
             hideLoading();
