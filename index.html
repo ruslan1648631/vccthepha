@@ -5156,30 +5156,42 @@
             return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
         }
 
-    // Health facility tracking
-    // Health facility tracking
-        const COVERAGE_GROUPS = [
+        // ✅ รายการวัคซีน Rota ทั้งหมดที่ไม่นับรวมในการประเมินขาดนัด
+        const EXCLUDED_ROTA = new Set(['rota1', 'rota2', 'r23', 'rotarix1', 'rotarix2', 'rotateq1', 'rotateq2', 'rotateq3', 'r11', 'r21', 'r12', 'r22', 'rota']);
+
+        // ✅ กลุ่มวัคซีนตามช่วงอายุ (ไม่รวม Rota)
+        const MILESTONE_GROUPS = [
             {
                 ageMonths: 12,
-                vaccines: [
+                label: '1 ปี',
+                targetVaccines: [
+                    { code: 'MMR1', alts: ['mmr1', 'mmr'] },
+                    { code: 'LJE1', alts: ['lje1', 'laje1', 'je1', 'laje', 'je'] },
+                    { code: 'DTP+HB+Hib3', alts: ['dtp+hb+hib3', 'dtphbhib3', 'dtp-hb3', 'dtphb3', 'dtp3'] },
+                    { code: 'OPV3', alts: ['opv3', 'opv'] }
+                ],
+                allVaccines: [
                     { code: 'BCG', alts: ['bcg'] },
                     { code: 'HBV1', alts: ['hbv1', 'hb1', 'hb', 'hepb1'] },
                     { code: 'DTP+HB+Hib1', alts: ['dtp+hb+hib1', 'dtphbhib1', 'dtp-hb1', 'dtphb1', 'dtp1'] },
                     { code: 'IPV1', alts: ['ipv1', 'ipv'] },
-                    { code: 'Rota1', alts: ['rota1', 'rota', 'r11', 'r21'] },
                     { code: 'DTP+HB+Hib2', alts: ['dtp+hb+hib2', 'dtphbhib2', 'dtp-hb2', 'dtphb2', 'dtp2'] },
-                    { code: 'Rota2', alts: ['rota2', 'r12', 'r22'] },
                     { code: 'IPV2', alts: ['ipv2'] },
                     { code: 'DTP+HB+Hib3', alts: ['dtp+hb+hib3', 'dtphbhib3', 'dtp-hb3', 'dtphb3', 'dtp3'] },
                     { code: 'OPV3', alts: ['opv3', 'opv'] },
-                    { code: 'R23', alts: ['r23', 'rota3'] },
                     { code: 'MMR1', alts: ['mmr1', 'mmr'] },
                     { code: 'LJE1', alts: ['lje1', 'laje1', 'je1', 'laje', 'je'] }
                 ]
             },
             {
                 ageMonths: 24,
-                vaccines: [
+                label: '2 ปี',
+                targetVaccines: [
+                    { code: 'DTP4', alts: ['dtp4', 'dtphb4'] },
+                    { code: 'OPV4', alts: ['opv4'] },
+                    { code: 'LJE2', alts: ['lje2', 'laje2', 'je2'] }
+                ],
+                allVaccines: [
                     { code: 'DTP4', alts: ['dtp4', 'dtphb4'] },
                     { code: 'OPV4', alts: ['opv4'] },
                     { code: 'LJE2', alts: ['lje2', 'laje2', 'je2'] }
@@ -5187,29 +5199,77 @@
             },
             {
                 ageMonths: 36,
-                vaccines: [
+                label: '3 ปี',
+                targetVaccines: [
+                    { code: 'MMR2', alts: ['mmr2'] }
+                ],
+                allVaccines: [
                     { code: 'MMR2', alts: ['mmr2'] }
                 ]
             },
             {
                 ageMonths: 60,
-                vaccines: [
+                label: '5 ปี',
+                targetVaccines: [
+                    { code: 'DTP5', alts: ['dtp5'] },
+                    { code: 'OPV5', alts: ['opv5'] }
+                ],
+                allVaccines: [
                     { code: 'DTP5', alts: ['dtp5'] },
                     { code: 'OPV5', alts: ['opv5'] }
                 ]
             }
         ];
 
+        // เด็กอายุต่ำกว่า 1 ปี ยังไม่ถึงรอบประเมินขาดนัด
+        if (ageMonths < 12) {
+            return { status: 'ตามนัดปกติ', missingVaccines: '' };
+        }
+
+        // ✅ ตรวจสอบวัคซีนล่าสุดเทียบกับอายุ
+        // 1. หากลุ่มเป้าหมายสูงสุดตามอายุของเด็ก
+        let currentMilestone = null;
+        let milestoneIdx = -1;
+        for (let i = 0; i < MILESTONE_GROUPS.length; i++) {
+            if (ageMonths >= MILESTONE_GROUPS[i].ageMonths) {
+                currentMilestone = MILESTONE_GROUPS[i];
+                milestoneIdx = i;
+            }
+        }
+
+        if (!currentMilestone) {
+            return { status: 'ตามนัดปกติ', missingVaccines: '' };
+        }
+
+        // ✅ ตรวจสอบว่าได้รับวัคซีนในกลุ่มเป้าหมายตามอายุ (หรือกลุ่มที่สูงกว่า) แล้วหรือไม่
+        let hasLatestVaccine = false;
+        for (let i = milestoneIdx; i < MILESTONE_GROUPS.length; i++) {
+            const grp = MILESTONE_GROUPS[i];
+            const gotAny = grp.targetVaccines.some(v => checkChildVaccineGiven(row, [v.code, ...v.alts]));
+            if (gotAny) {
+                hasLatestVaccine = true;
+                break;
+            }
+        }
+
+        // ✅ หากได้วัคซีนตามเกณฑ์อายุแล้ว แต่ยังไม่ได้วัคซีนก่อนหน้านั้น ถือว่าได้ตามเกณฑ์
+        if (hasLatestVaccine) {
+            if (hasDtp5 || hasOpv5 || ageMonths >= 60) {
+                return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
+            }
+            return { status: 'ตามนัดปกติ', missingVaccines: '' };
+        }
+
+        // ❌ หากยังไม่ได้วัคซีนตามเกณฑ์อายุ ถือว่าขาดนัด (ค้นหาวัคซีนที่ขาด โดยไม่นับรวม Rota)
         const missed = [];
-        if (ageMonths >= 12) {
-            for (let grp of COVERAGE_GROUPS) {
-                if (ageMonths >= grp.ageMonths) {
-                    for (let v of grp.vaccines) {
-                        const given = checkChildVaccineGiven(row, [v.code, ...v.alts]);
-                        if (!given) {
-                            if (!missed.includes(v.code)) missed.push(v.code);
-                        }
-                    }
+        for (let i = 0; i <= milestoneIdx; i++) {
+            const grp = MILESTONE_GROUPS[i];
+            for (let v of grp.allVaccines) {
+                const codeCln = v.code.toLowerCase().replace(/[-\s_.+]/g, '');
+                if (EXCLUDED_ROTA.has(codeCln)) continue; // ข้าม Rota
+                const given = checkChildVaccineGiven(row, [v.code, ...v.alts]);
+                if (!given && !missed.includes(v.code)) {
+                    missed.push(v.code);
                 }
             }
         }
@@ -5218,13 +5278,9 @@
             return { status: 'ขาดนัด', missingVaccines: missed.join(', ') };
         }
 
-
-        // 5. ถ้าได้รับครบและอายุตั้งแต่ 5 ปีขึ้นไป (60 เดือน) หรือมี DTP5
         if (hasDtp5 || ageMonths >= 60) {
             return { status: 'ครบตามเกณฑ์', missingVaccines: '' };
         }
-
-        // 6. ถ้าได้รับครบตามช่วงอายุถึงปัจจุบัน
         return { status: 'ตามนัดปกติ', missingVaccines: '' };
     }
 
@@ -5652,11 +5708,10 @@
             try {
                 const { data: tData } = await supabaseClient
                     .from('VCC_tracking')
-                    .select('cid, hn, fullname, status')
+                    .select('hn, fullname, status')
                     .eq('status', '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19');
                 if (tData) {
                     tData.forEach(t => {
-                        if (t.cid) refusedSet.add(String(t.cid).trim());
                         if (t.hn) refusedSet.add(String(t.hn).trim());
                         if (t.fullname) refusedSet.add(String(t.fullname).trim());
                     });
@@ -5714,10 +5769,10 @@
         if (fnName === 'saveTrackingReport' || fnName === 'saveOfficerTracking') {
             const trackingData = args[0] || {};
             const { error } = await supabaseClient.from('VCC_tracking').insert([{
-                cid: trackingData.childId || trackingData.cid || '-',
                 hn: trackingData.hn || '-',
                 fullname: trackingData.childName || trackingData.fullname || '-',
                 village: trackingData.village || '-',
+                hcode: trackingData.hcode || (APP.currentUser ? APP.currentUser.hcode : '-'),
                 vaccine: trackingData.vaccine || '-',
                 status: trackingData.status || '-',
                 tracking_date: trackingData.visitDate || new Date().toISOString().slice(0, 10),
@@ -5946,20 +6001,17 @@
             try {
                 const { data: tData } = await supabaseClient
                     .from('VCC_tracking')
-                    .select('cid, hn, fullname, status, created_at')
+                    .select('hn, fullname, status, created_at')
                     .order('created_at', { ascending: true });
                 if (tData) {
                     tData.forEach(t => {
-                        const cid = t.cid ? String(t.cid).trim() : '';
                         const hn = t.hn ? String(t.hn).trim() : '';
                         const name = t.fullname ? String(t.fullname).trim() : '';
                         const st = (t.status || '').trim();
                         if (st === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') {
-                            if (cid && cid !== '-') refusedSet.add(cid);
                             if (hn && hn !== '-') refusedSet.add(hn);
                             if (name && name !== '-') refusedSet.add(name);
                         } else if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
-                            if (cid) refusedSet.delete(cid);
                             if (hn) refusedSet.delete(hn);
                             if (name) refusedSet.delete(name);
                         }
@@ -6329,11 +6381,10 @@
             try {
                 const { data: tData } = await supabaseClient
                     .from('VCC_tracking')
-                    .select('cid, hn, fullname, status')
+                    .select('hn, fullname, status')
                     .eq('status', '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19');
                 if (tData) {
                     tData.forEach(t => {
-                        if (t.cid) refusedSet.add(String(t.cid).trim());
                         if (t.hn) refusedSet.add(String(t.hn).trim());
                         if (t.fullname) refusedSet.add(String(t.fullname).trim());
                     });
@@ -6496,7 +6547,7 @@
             const raw = data[0];
             const refusedSet = new Set();
             try {
-                const { data: tData } = await supabaseClient.from('VCC_tracking').select('status').or(`cid.eq.${childId},hn.eq.${childId}`).limit(5);
+                const { data: tData } = await supabaseClient.from('VCC_tracking').select('status').eq('hn', childId).limit(5);
                 if (tData) {
                     tData.forEach(t => {
                         if (t.status === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') refusedSet.add(childId);
@@ -6546,7 +6597,7 @@
                 const { data: hist } = await supabaseClient
                     .from('VCC_tracking')
                     .select('*')
-                    .or(`cid.eq.${childId},hn.eq.${childId}`)
+                    .eq('hn', childId)
                     .order('created_at', { ascending: false });
                 if (hist) {
                     trackingHistory = hist.map(h => ({
@@ -6650,9 +6701,9 @@
         if (fnName === 'updateChildStatus') {
             const trackingPayload = args[0] || {};
             const { error } = await supabaseClient.from('VCC_tracking').insert([{
-                cid: trackingPayload.cid || trackingPayload.id || '-',
                 hn: trackingPayload.hn || '-',
                 fullname: trackingPayload.fullname || '-',
+                village: trackingPayload.village || '-',
                 status: trackingPayload.status || '-',
                 notes: trackingPayload.notes || trackingPayload.remarks || '-',
                 tracking_date: new Date().toISOString().slice(0, 10),
@@ -6669,7 +6720,6 @@
             if (!records || records.length === 0) return { success: false, message: 'ไม่มีข้อมูลบันทึก' };
 
             const toInsert = records.map(r => ({
-                cid: r.cid || r.id || '-',
                 hn: r.hn || '-',
                 fullname: r.fullname || r.name || '-',
                 vaccine: r.vaccine || '-',
@@ -6712,22 +6762,202 @@
             return { success: true, message: 'ลบนัดหมายสำเร็จ' };
         }
 
-    // Health facility tracking
+        // 31. ประมวลผลเด็กขาดนัดวัคซีน (updateMissingVaccineStatus)
         if (fnName === 'updateMissingVaccineStatus') {
-            const record = args[0] || {};
-            const { error } = await supabaseClient.from('VCC_tracking').insert([{
-                cid: record.cid || record.id || '-',
-                hn: record.hn || '-',
-                fullname: record.fullname || '-',
-                vaccine: record.vaccine || '-',
-                status: record.status || '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14',
-                notes: record.notes || 'อัปเดตสถานะเด็กขาดนัด',
-                tracking_date: new Date().toISOString().slice(0, 10),
-                reporter: APP.currentUser ? APP.currentUser.username : 'officer',
-                created_at: new Date().toISOString()
-            }]);
-            if (error) return { success: false, message: error.message };
-            return { success: true, message: 'บันทึกสถานะเด็กขาดนัดสำเร็จ' };
+            const userRole  = args[0] || (APP.currentUser ? APP.currentUser.role  : '');
+            const userHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
+
+            // ✅ ดึงข้อมูลเด็กทั้งหมดจาก Supabase
+            let allChildren = await fetchAllFromTable('data');
+            if (userRole === 'Admin_HOS' && userHcode) {
+                const unp = String(userHcode).replace(/^0+/, '');
+                const pad = String(userHcode).padStart(5, '0');
+                allChildren = allChildren.filter(c => {
+                    const h = String(c.hcode || '').trim();
+                    return h === userHcode || h === unp || h === pad;
+                });
+            }
+
+            if (!allChildren || allChildren.length === 0) {
+                return { success: false, message: 'ไม่พบข้อมูลเด็กในระบบ' };
+            }
+
+            // ✅ ล้าง tracking เก่าที่เป็น Auto (ระบบสร้าง) เพื่อไม่ให้ซ้ำ
+            try {
+                let delQ = supabaseClient.from('VCC_tracking').delete()
+                    .eq('reporter', 'system_auto');
+                if (userRole === 'Admin_HOS' && userHcode) {
+                    const unp2 = String(userHcode).replace(/^0+/, '');
+                    const pad2 = String(userHcode).padStart(5, '0');
+                    delQ = supabaseClient.from('VCC_tracking').delete()
+                        .eq('reporter', 'system_auto')
+                        .or(`hcode.eq.${userHcode},hcode.eq.${unp2},hcode.eq.${pad2}`);
+                }
+                await delQ;
+            } catch(e) {}
+
+            // ✅ วัคซีนที่ไม่นับ Rota ทั้งหมด + กลุ่มวัคซีนตามช่วงอายุ (ไม่รวม Rota)
+            const SKIP_VACCINES = new Set(['rota1','rota2','r23','rotarix1','rotarix2','rotateq1','rotateq2','rotateq3','r11','r21','r12','r22']);
+
+            // กลุ่มวัคซีนตามช่วงอายุ — ไม่รวม Rota
+            const VAC_GROUPS = [
+                { minMonths: 12, vaccines: [
+                    { code: 'BCG',         alts: ['bcg'] },
+                    { code: 'HBV1',        alts: ['hbv1','hb1','hb','hepb1'] },
+                    { code: 'DTP+HB+Hib1', alts: ['dtp+hb+hib1','dtphbhib1','dtp-hb1','dtphb1','dtp1'] },
+                    { code: 'IPV1',        alts: ['ipv1','ipv'] },
+                    { code: 'DTP+HB+Hib2', alts: ['dtp+hb+hib2','dtphbhib2','dtp-hb2','dtphb2','dtp2'] },
+                    { code: 'IPV2',        alts: ['ipv2'] },
+                    { code: 'DTP+HB+Hib3', alts: ['dtp+hb+hib3','dtphbhib3','dtp-hb3','dtphb3','dtp3'] },
+                    { code: 'OPV3',        alts: ['opv3','opv'] },
+                    { code: 'MMR1',        alts: ['mmr1','mmr'] },
+                    { code: 'LJE1',        alts: ['lje1','laje1','je1','laje','je'] }
+                ]},
+                { minMonths: 24, vaccines: [
+                    { code: 'DTP4', alts: ['dtp4','dtphb4'] },
+                    { code: 'OPV4', alts: ['opv4'] },
+                    { code: 'LJE2', alts: ['lje2','laje2','je2'] }
+                ]},
+                { minMonths: 36, vaccines: [
+                    { code: 'MMR2', alts: ['mmr2'] }
+                ]},
+                { minMonths: 60, vaccines: [
+                    { code: 'DTP5', alts: ['dtp5'] },
+                    { code: 'OPV5', alts: ['opv5'] }
+                ]}
+            ];
+
+            // Helper: คำนวณอายุเป็นเดือน
+            const calcAgeMonths = (row) => {
+                const rawBirth = row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.dob || row.DOB || row.birthdate || '';
+                const rawAge   = row['อายุ'] || row.age || '';
+                if (rawBirth && String(rawBirth).trim() !== '-') {
+                    let bd = String(rawBirth).trim();
+                    const m = bd.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+                    if (m) {
+                        let y = parseInt(m[3]); if (y > 2400) y -= 543;
+                        const d = new Date(y, parseInt(m[2])-1, parseInt(m[1]));
+                        if (!isNaN(d.getTime())) {
+                            const now = new Date();
+                            let mo = (now.getFullYear()-d.getFullYear())*12 + (now.getMonth()-d.getMonth());
+                            if (now.getDate() < d.getDate()) mo--;
+                            return mo;
+                        }
+                    }
+                    const bd2 = new Date(bd);
+                    if (!isNaN(bd2.getTime())) {
+                        let y2 = bd2.getFullYear(); if (y2 > 2400) y2 -= 543;
+                        const bd3 = new Date(y2, bd2.getMonth(), bd2.getDate());
+                        const now = new Date();
+                        let mo = (now.getFullYear()-bd3.getFullYear())*12 + (now.getMonth()-bd3.getMonth());
+                        if (now.getDate() < bd3.getDate()) mo--;
+                        return mo;
+                    }
+                }
+                // fallback: parse อายุ string
+                if (rawAge) {
+                    const ys = String(rawAge).match(/(\d+)\s*ปี/);
+                    const ms = String(rawAge).match(/(\d+)\s*เดือน/);
+                    let total = 0, has = false;
+                    if (ys) { total += parseInt(ys[1])*12; has = true; }
+                    if (ms) { total += parseInt(ms[1]); has = true; }
+                    if (has) return total;
+                }
+                return -1;
+            };
+
+            // ✅ Logic ใหม่: ตรวจสอบวัคซีนล่าสุดตามอายุ
+            // - ถ้าได้วัคซีน "สูงสุด" ตามอายุแล้ว → ถือว่าปกติ (แม้ไม่มีประวัติก่อนหน้า)
+            // - ถ้ายังไม่ได้วัคซีนล่าสุดตามอายุ → ขาดนัด
+            const evaluateMissedNew = (row, ageMonths) => {
+                if (ageMonths < 0) return { missed: false, vaccines: '' };
+                if (ageMonths < 12) return { missed: false, vaccines: '' }; // ยังไม่ถึงเกณฑ์
+
+                // หากลุ่มวัคซีนที่ควรได้ตามอายุ (สูงสุด)
+                let topGroup = null;
+                for (const g of VAC_GROUPS) {
+                    if (ageMonths >= g.minMonths) topGroup = g;
+                    else break;
+                }
+                if (!topGroup) return { missed: false, vaccines: '' };
+
+                // ✅ ตรวจว่าได้วัคซีนในกลุ่มเป้าหมายตามอายุ (หรือกลุ่มที่สูงกว่า) หรือไม่
+                let hasLatestVaccine = false;
+                const topGroupIdx = VAC_GROUPS.indexOf(topGroup);
+                for (let i = topGroupIdx; i < VAC_GROUPS.length; i++) {
+                    const grp = VAC_GROUPS[i];
+                    const gotAny = grp.vaccines.some(v => checkChildVaccineGiven(row, [v.code, ...v.alts]));
+                    if (gotAny) {
+                        hasLatestVaccine = true;
+                        break;
+                    }
+                }
+
+                if (hasLatestVaccine) {
+                    // ✅ ได้วัคซีนระดับล่าสุดตามอายุแล้ว → ไม่ถือว่าขาดนัด (แม้ไม่มีประวัติก่อนหน้า)
+                    return { missed: false, vaccines: '' };
+                }
+
+                // ❌ ยังไม่ได้วัคซีนระดับสูงสุด → ตรวจว่าขาดวัคซีนไหนบ้าง
+                const missingList = [];
+                for (const g of VAC_GROUPS) {
+                    if (ageMonths < g.minMonths) break;
+                    for (const v of g.vaccines) {
+                        const code_low = v.code.toLowerCase().replace(/[-\s_.+]/g,'');
+                        if (SKIP_VACCINES.has(code_low)) continue; // ข้าม Rota
+                        if (!checkChildVaccineGiven(row, [v.code, ...v.alts])) {
+                            missingList.push(v.code);
+                        }
+                    }
+                }
+
+                if (missingList.length === 0) return { missed: false, vaccines: '' };
+                return { missed: true, vaccines: missingList.join(', ') };
+            };
+
+            const today = new Date().toISOString().slice(0, 10);
+            const reporter = APP.currentUser ? APP.currentUser.username : 'system_auto';
+            const toInsert = [];
+            let missedCount = 0;
+
+            for (const child of allChildren) {
+                const existingStatus = String(child.status || child['สถานะ'] || '').trim();
+                if (existingStatus === 'ปฏิเสธวัคซีน' || existingStatus === 'ปฏิเสธ') continue;
+
+                const ageMonths = calcAgeMonths(child);
+                if (ageMonths < 12 || ageMonths > 72) continue; // นอกช่วง 0-5 ปี
+
+                const { missed, vaccines: missedVaccines } = evaluateMissedNew(child, ageMonths);
+                if (!missed) continue;
+
+                const hn       = String(child.HN || child.hn || child['รหัส'] || '-').trim();
+                const fullname = String(child.fullname || child['ชื่อ-สกุล'] || child.childname || '-').trim();
+                const village  = String(child['หมู่ที่'] || child['ชื่อหมู่บ้าน'] || child.village || '-').trim();
+                const hcode    = String(child.hcode || '-').trim();
+
+                toInsert.push({
+                    hn, fullname, village, hcode,
+                    vaccine: missedVaccines,
+                    status: 'ขาดนัด',
+                    tracking_date: today,
+                    notes: `อายุ ${ageMonths} เดือน — ขาดนัดวัคซีน: ${missedVaccines}`,
+                    reporter: 'system_auto',
+                    created_at: new Date().toISOString()
+                });
+                missedCount++;
+            }
+
+            // Insert เป็น batch 100 รายการ
+            for (let i = 0; i < toInsert.length; i += 100) {
+                const chunk = toInsert.slice(i, i + 100);
+                const { error } = await supabaseClient.from('VCC_tracking').insert(chunk);
+                if (error) return { success: false, message: 'บันทึกไม่สำเร็จ: ' + error.message };
+            }
+
+            return {
+                success: true,
+                message: `ประมวลผลสำเร็จ — พบเด็กขาดนัดวัคซีน ${missedCount} ราย (จากทั้งหมด ${allChildren.length} ราย)`
+            };
         }
 
     // Health facility tracking
@@ -13100,7 +13330,7 @@ window.switchLogTab = function(tab) {
             '<i class="fas fa-calculator"></i> 3. ประมวลผลเด็กขาดนัด (Update Status)' +
             '</h5>' +
             '<p style="font-size: 11.5px; color: #475569; margin: 0; line-height: 1.4;">' +
-            'ตรวจสอบคอลัมน์วัคซีน หากอายุถึงเกณฑ์แต่ไม่มีข้อมูลจะปรับเป็น "ขาดนัด"' +
+            'ตรวจสอบวัคซีนล่าสุดเทียบอายุ (ไม่นับ Rota หากได้วัคซีนตามเกณฑ์อายุแล้วถือว่าได้ตามเกณฑ์)' +
             '</p>' +
             '</div>' +
             '<button class="btn-filter" style="border: none; padding: 9px 14px; font-size: 13px; background: #d97706; color: white; white-space: nowrap;" onclick="processMissingVaccines()">' +
@@ -14276,8 +14506,13 @@ window.switchLogTab = function(tab) {
 
     window.processMissingVaccines = async function() {
         const r = await Swal.fire({
-            title: 'ประมวลผลเด็กขาดนัด?',
-            text: "ระบบจะดึง 'อายุ' จากชีต Data ไปเทียบกับ 'Description' ในแคตตาล็อก เพื่อหาวัคซีนรอบล่าสุด หากพบว่าช่องวัคซีนนั้นยังว่างเปล่า จะปรับสถานะเป็น 'ขาดนัด' อัตโนมัติ",
+            title: 'ประมวลผลเด็กขาดนัดวัคซีน?',
+            html: `ระบบจะตรวจสอบวัคซีนล่าสุดเทียบกับอายุเด็กตามเกณฑ์:<br>
+                   <ul style="text-align: left; font-size: 13px; margin: 10px 0 0 15px; color: #4b5563; line-height: 1.6;">
+                     <li><strong>หากได้วัคซีนตามเกณฑ์อายุล่าสุดแล้ว</strong> ถือว่าได้ตามเกณฑ์ (แม้ประวัติก่อนหน้าจะว่างจากการบันทึกไม่ครอบคลุม)</li>
+                     <li><strong>หากยังไม่ได้วัคซีนตามเกณฑ์อายุ</strong> จึงจะถือว่าขาดนัด</li>
+                     <li><strong>ไม่นับรวมวัคซีน Rota</strong> ในเกณฑ์เด็กขาดนัด (เนื่องจากเกินอายุรับไม่ได้)</li>
+                   </ul>`,
             icon: 'info',
             showCancelButton: true,
             confirmButtonColor: '#d97706',
