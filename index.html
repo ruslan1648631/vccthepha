@@ -4854,6 +4854,7 @@
                 <div id="reportPage" class="page"></div>
                 <div id="coveragePage" class="page"></div>
                 <div id="duplicateReportPage" class="page"></div>
+                <div id="outOfAreaChildrenPage" class="page"></div>
             </div>
         </div>
     </div>
@@ -5813,6 +5814,96 @@
                 );
             }
             return { success: true, children };
+        }
+
+        // 16.5 ดึงรายชื่อเด็กนอกเขต Type = 4 (Get Out of Area Children)
+        if (fnName === 'getOutOfAreaChildren') {
+            const filters = args[0] || {};
+            const filterBuilder = (q) => {
+                q = q.eq('type', 4);
+                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                    const unp = String(filters.hcode).replace(/^0+/, '');
+                    const pad = String(filters.hcode).padStart(5, '0');
+                    q = q.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
+                } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                    const unp = String(filters.userHcode).replace(/^0+/, '');
+                    const pad = String(filters.userHcode).padStart(5, '0');
+                    q = q.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
+                }
+                return q;
+            };
+            let data = await fetchAllFromTable('data', '*', filterBuilder);
+            
+            // กรณีไม่มีข้อมูล ให้ลองค้นหาแบบไม่ใส่ eq('type', 4) เผื่อ format เป็น string หรือคอลัมน์ typearea
+            if (!data || data.length === 0) {
+                const allData = await fetchAllFromTable('data', '*');
+                data = (allData || []).filter(row => {
+                    const t = Number(row.type !== undefined && row.type !== null ? row.type :
+                                    (row.typearea !== undefined && row.typearea !== null ? row.typearea :
+                                    (row['ประเภท'] !== undefined && row['ประเภท'] !== null ? row['ประเภท'] : null)));
+                    return t === 4;
+                });
+            }
+
+            const refusedSet = new Set();
+            try {
+                const { data: tData } = await supabaseClient
+                    .from('VCC_tracking')
+                    .select('ChildId, ChildName, Status')
+                    .eq('Status', 'ปฏิเสธวัคซีน');
+                if (tData) {
+                    tData.forEach(t => {
+                        if (t.ChildId) refusedSet.add(String(t.ChildId).trim());
+                        if (t.ChildName) refusedSet.add(String(t.ChildName).trim());
+                    });
+                }
+            } catch (tErr) {}
+
+            let children = (data || []).map(row => {
+                const evalRes = evaluateChildVaccineStatus(row, refusedSet);
+                const rowId = row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '-';
+                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
+                const rowName = row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-';
+                const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
+                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['สถานพยาบาล']);
+                const rowDob = row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด'] || '-';
+                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(rowDob));
+
+                return {
+                    id: rowId,
+                    hn: rowHn,
+                    cid: rowId,
+                    fullname: rowName,
+                    birthDate: rowDob,
+                    type: 4,
+                    age: ageComputed || '-',
+                    houseNumber: row.house || row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
+                    village: row.moo || row.village_no || row.village || row['หมู่ที่'] || row['หมู่'] || '-',
+                    villageName: row.villname || row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-',
+                    subdistrict: row.subdistname || row.subdistrict || row['ตำบล'] || '-',
+                    hcode: rowHcode,
+                    hname: rowHname,
+                    phone: row.phone || row['โทรศัพท์'] || '-',
+                    gps: row.GPS || row.gps || row['พิกัด'] || row.lat_lng || '-',
+                    status: evalRes.status,
+                    missingVaccines: evalRes.missingVaccines
+                };
+            });
+
+            if (filters.search) {
+                const s = String(filters.search).toLowerCase().trim();
+                const sClean = s.replace(/[-\s]/g, '');
+                children = children.filter(c => 
+                    (c.fullname && c.fullname.toLowerCase().includes(s)) ||
+                    (c.cid && String(c.cid).replace(/[-\s]/g, '').includes(sClean)) ||
+                    (c.hn && String(c.hn).toLowerCase().includes(s)) ||
+                    (c.phone && String(c.phone).includes(s))
+                );
+            }
+            if (filters.status && filters.status !== 'ทั้งหมด') {
+                children = children.filter(c => c.status === filters.status);
+            }
+            return { success: true, children, count: children.length };
         }
 
         // 17. บันทึกผลการติดตาม (Save Tracking Report)
@@ -9197,6 +9288,7 @@ async function warmUpBackend() {
                 { id: 'children', icon: 'fas fa-child', label: 'รายชื่อเด็กทั้งหมด' },
                 { id: 'missing', icon: 'fas fa-user-times', label: 'เด็กขาดนัด' },
                 { id: 'appointments', icon: 'fas fa-calendar-alt', label: 'รายชื่อนัดวัคซีน' },
+                { id: 'outOfAreaChildren', icon: 'fas fa-street-view', label: 'เด็กนอกเขต (Type 4)' },
                 { sep: 'ติดตาม' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
@@ -9210,6 +9302,7 @@ async function warmUpBackend() {
                 { id: 'children', icon: 'fas fa-child', label: 'รายชื่อเด็ก' },
                 { id: 'missing', icon: 'fas fa-user-times', label: 'เด็กขาดนัด' },
                 { id: 'appointments', icon: 'fas fa-calendar-alt', label: 'รายชื่อนัดวัคซีน' },
+                { id: 'outOfAreaChildren', icon: 'fas fa-street-view', label: 'เด็กนอกเขต (Type 4)' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
                 { id: 'report', icon: 'fas fa-file-medical-alt', label: 'รายงานการติดตาม' },
@@ -9375,7 +9468,8 @@ const PAGE_TITLES = {
     officerTracking: 'ติดตามวัคซีนเด็ก',
     report: 'รายงานสรุปการติดตามวัคซีน',
     coverage: 'ความครอบคลุมวัคซีน',
-    duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำ)'
+    duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำ)',
+    outOfAreaChildren: 'ค้นหารายชื่อเด็กนอกเขต (Type 4)'
 };
 function navigateTo(page) {
     // ✅ ปิด Bottom Sheet ถ้าเปิดอยู่
@@ -9417,6 +9511,10 @@ function navigateTo(page) {
         case 'duplicateReport':
             document.getElementById('duplicateReportPage').classList.add('active');
             loadDuplicateReportPage();
+            break;
+        case 'outOfAreaChildren':
+            document.getElementById('outOfAreaChildrenPage').classList.add('active');
+            loadOutOfAreaChildrenPage();
             break;
         default: loadDashboard(); break;
     }
@@ -18067,6 +18165,345 @@ async function exportDuplicateReportExcel() {
 
     } catch (err) {
         console.error('exportDuplicateReportExcel error:', err);
+        hideLoading();
+        Swal.fire('ผิดพลาด', 'ไม่สามารถส่งออกไฟล์ Excel ได้: ' + err.message, 'error');
+    }
+}
+
+// ============================================================
+// OUT OF AREA CHILDREN PAGE (Type = 4)
+// ============================================================
+let OUT_OF_AREA_DATA = [];
+
+async function loadOutOfAreaChildrenPage() {
+    let page = document.getElementById('outOfAreaChildrenPage');
+    if (!page) {
+        page = document.createElement('div');
+        page.id = 'outOfAreaChildrenPage';
+        page.className = 'page';
+        document.getElementById('contentArea').appendChild(page);
+    }
+    page.classList.add('active');
+    showLoading('กำลังโหลดข้อมูลเด็กนอกเขต...');
+
+    try {
+        const fRes = await callGAS('getFacilityMap', []);
+        APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
+
+        const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '-- ทุกสถานพยาบาล --');
+        const isSpecialOfficer = isSpecialOfficerUser();
+        let facilityFilterHtml = '';
+        if (isAdminAmpurUser() || isSpecialOfficer) {
+            facilityFilterHtml = `
+                <div class="filter-group">
+                    <label>สถานพยาบาล</label>
+                    <select id="oofFacility">${facilityOptions}</select>
+                </div>
+            `;
+        }
+
+        page.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                <div>
+                    <div class="page-title" style="margin-bottom:4px;"><i class="fas fa-street-view"></i> ค้นหารายชื่อเด็กนอกเขต (Type 4)</div>
+                    <div style="color:#64748b; font-size:13px;">รายชื่อเด็กที่อยู่นอกเขตรับผิดชอบ (Type 4: ไม่มีชื่อในทะเบียนบ้านและไม่ได้อาศัยอยู่จริง แต่มารับบริการ) แยกจากรายงานเด็กในเขต (Type 1, 3)</div>
+                </div>
+                <div>
+                    <button id="oofExportBtn" class="btn" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 4px rgba(16,185,129,0.2);">
+                        <i class="fas fa-file-excel"></i> ส่งออก Excel
+                    </button>
+                </div>
+            </div>
+
+            <!-- สรุปตัวเลขสถิติเด็กนอกเขต -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
+                <div style="background:white; border-radius:12px; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:16px; border-left:4px solid #6366f1;">
+                    <div style="width:48px; height:48px; border-radius:10px; background:#e0e7ff; color:#4f46e5; display:flex; align-items:center; justify-content:center; font-size:20px;">
+                        <i class="fas fa-street-view"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#64748b; font-weight:500;">เด็กนอกเขตทั้งหมด (Type 4)</div>
+                        <div id="oofStatTotal" style="font-size:24px; font-weight:700; color:#1e293b;">0 <span style="font-size:14px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+                <div style="background:white; border-radius:12px; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:16px; border-left:4px solid #10b981;">
+                    <div style="width:48px; height:48px; border-radius:10px; background:#dcfce7; color:#10b981; display:flex; align-items:center; justify-content:center; font-size:20px;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#64748b; font-weight:500;">ตามนัดปกติ / ครบตามเกณฑ์</div>
+                        <div id="oofStatNormal" style="font-size:24px; font-weight:700; color:#059669;">0 <span style="font-size:14px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+                <div style="background:white; border-radius:12px; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05); display:flex; align-items:center; gap:16px; border-left:4px solid #ef4444;">
+                    <div style="width:48px; height:48px; border-radius:10px; background:#fee2e2; color:#ef4444; display:flex; align-items:center; justify-content:center; font-size:20px;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:12px; color:#64748b; font-weight:500;">ขาดนัด</div>
+                        <div id="oofStatMissed" style="font-size:24px; font-weight:700; color:#dc2626;">0 <span style="font-size:14px; font-weight:400; color:#64748b;">คน</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- กล่องตัวกรอง -->
+            <div class="filter-bar" style="background:white; border-radius:12px; padding:16px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.05); margin-bottom:20px;">
+                ${facilityFilterHtml}
+                <div class="filter-group" style="flex:1.5; min-width:240px;">
+                    <label>ค้นหา (เลขบัตร 13 หลัก / HN / ชื่อ-สกุล / เบอร์โทร)</label>
+                    <input type="text" id="oofSearch" placeholder="พิมพ์เพื่อค้นหา..." autocomplete="off">
+                </div>
+                <div class="filter-group">
+                    <label>สถานะวัคซีน</label>
+                    <select id="oofStatus">
+                        <option value="ทั้งหมด">ทั้งหมด</option>
+                        <option value="ตามนัดปกติ">ตามนัดปกติ</option>
+                        <option value="ขาดนัด">ขาดนัด</option>
+                        <option value="ปฏิเสธวัคซีน">ปฏิเสธวัคซีน</option>
+                        <option value="ครบตามเกณฑ์">ครบตามเกณฑ์</option>
+                    </select>
+                </div>
+                <div class="filter-actions" style="display:flex; gap:8px; align-items:flex-end;">
+                    <button class="btn-filter" id="oofSearchBtn"><i class="fas fa-search"></i> ค้นหา</button>
+                    <button class="btn-reset" id="oofResetBtn"><i class="fas fa-undo"></i> รีเซ็ต</button>
+                </div>
+            </div>
+
+            <!-- ตารางข้อมูล -->
+            <div class="data-table" style="width:100%; overflow-x:auto; background:white; border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <table id="outOfAreaTable" class="display nowrap" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>สถานพยาบาล</th>
+                            <th>เลขบัตรประชาชน</th>
+                            <th>HN</th>
+                            <th>ชื่อ-สกุล</th>
+                            <th>ว/ด/ปเกิด</th>
+                            <th>อายุ</th>
+                            <th>ประเภท</th>
+                            <th>บ้านเลขที่</th>
+                            <th>หมู่ที่</th>
+                            <th>ตำบล</th>
+                            <th>เบอร์โทร</th>
+                            <th>สถานะวัคซีน</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="outOfAreaTbody">
+                        <tr><td colspan="13" class="no-data" style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-pulse"></i> กำลังโหลดข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        document.getElementById('oofSearchBtn').addEventListener('click', doOutOfAreaChildSearch);
+        document.getElementById('oofResetBtn').addEventListener('click', function() {
+            const facEl = document.getElementById('oofFacility');
+            if (facEl) facEl.value = 'ทั้งหมด';
+            document.getElementById('oofSearch').value = '';
+            document.getElementById('oofStatus').value = 'ทั้งหมด';
+            doOutOfAreaChildSearch();
+        });
+        document.getElementById('oofSearch').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') doOutOfAreaChildSearch();
+        });
+        document.getElementById('oofExportBtn').addEventListener('click', exportOutOfAreaToExcel);
+
+        await doOutOfAreaChildSearch();
+        hideLoading();
+    } catch (err) {
+        hideLoading();
+        console.error('loadOutOfAreaChildrenPage error:', err);
+        page.innerHTML = '<div class="error-message">เกิดข้อผิดพลาดในการโหลดหน้าเด็กนอกเขต: ' + esc(err.message) + '</div>';
+    }
+}
+
+async function doOutOfAreaChildSearch() {
+    showLoading('กำลังค้นหาข้อมูลเด็กนอกเขต...');
+    
+    const searchVal = document.getElementById('oofSearch') ? document.getElementById('oofSearch').value.trim() : '';
+    const statusVal = document.getElementById('oofStatus') ? document.getElementById('oofStatus').value : 'ทั้งหมด';
+    const facEl = document.getElementById('oofFacility');
+    
+    if (searchVal || statusVal !== 'ทั้งหมด') {
+        logActivity('VIEW', 'view', `ค้นหารายชื่อเด็กนอกเขต Type 4 — คำค้น: "${searchVal || '-'}", สถานะ: ${statusVal}`);
+    }
+
+    const filters = {
+        hcode: facEl ? facEl.value : 'ทั้งหมด',
+        search: searchVal,
+        status: statusVal,
+        userRole: APP.currentUser.role,
+        userHcode: APP.currentUser.hcode
+    };
+
+    try {
+        const result = await callGAS('getOutOfAreaChildren', [filters]);
+        hideLoading();
+        const tbody = document.getElementById('outOfAreaTbody');
+        if (!tbody) return;
+
+        destroyDT('outOfAreaTable');
+
+        OUT_OF_AREA_DATA = (result && result.success && result.children) ? result.children : [];
+
+        // อัปเดตการ์ดสถิติ
+        const total = OUT_OF_AREA_DATA.length;
+        let normalCount = 0;
+        let missedCount = 0;
+
+        OUT_OF_AREA_DATA.forEach(c => {
+            if (c.status === 'ตามนัดปกติ' || c.status === 'ครบตามเกณฑ์') normalCount++;
+            else if (c.status === 'ขาดนัด') missedCount++;
+        });
+
+        const statTotalEl = document.getElementById('oofStatTotal');
+        const statNormalEl = document.getElementById('oofStatNormal');
+        const statMissedEl = document.getElementById('oofStatMissed');
+        if (statTotalEl) statTotalEl.innerHTML = `${total.toLocaleString()} <span style="font-size:14px; font-weight:400; color:#64748b;">คน</span>`;
+        if (statNormalEl) statNormalEl.innerHTML = `${normalCount.toLocaleString()} <span style="font-size:14px; font-weight:400; color:#64748b;">คน</span>`;
+        if (statMissedEl) statMissedEl.innerHTML = `${missedCount.toLocaleString()} <span style="font-size:14px; font-weight:400; color:#64748b;">คน</span>`;
+
+        if (OUT_OF_AREA_DATA.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="13" class="no-data" style="text-align:center; padding:40px;"><i class="fas fa-inbox" style="font-size:24px; margin-bottom:10px; color:#94a3b8;"></i><br>ไม่พบข้อมูลเด็กนอกเขต (Type 4) ตามเงื่อนไขที่ค้นหา</td></tr>';
+        } else {
+            tbody.innerHTML = OUT_OF_AREA_DATA.map(function(c) {
+                const statusOpts = ['ตามนัดปกติ', 'ขาดนัด', 'ปฏิเสธวัคซีน', 'ครบตามเกณฑ์'].map(function(s) {
+                    return `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s}</option>`;
+                }).join('');
+
+                const ageSortVal = parseAgeToMonths(c.age);
+                let statusDisplay = '<span class="status-badge ' + getStatusClass(c.status) + '">' + esc(c.status) + '</span>';
+                if (c.status === 'ขาดนัด' && c.missingVaccines) {
+                    statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 180px; white-space: normal;">ขาด: ' + esc(c.missingVaccines) + '</div>';
+                }
+
+                const displayName = getFacilityDisplayName(c.hcode, c.hname);
+                const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
+                const quickCallBtn = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="action-btn" style="color:#10b981;" title="โทร ' + esc(c.phone) + '"><i class="fas fa-phone-alt"></i></a> ' : '';
+                const quickNavBtn = (c.gps && c.gps.includes(',')) ? '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="action-btn" style="color:#2563eb;" title="นำทาง Google Maps"><i class="fas fa-directions"></i></a> ' : '';
+                const formattedCid = formatCid(c.cid || c.id);
+
+                return '<tr>' +
+                    '<td><span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span></td>' +
+                    '<td style="font-family:monospace; font-size:13px; font-weight:500;">' + esc(formattedCid) + '</td>' +
+                    '<td style="font-family:monospace; font-size:13px;">' + esc(c.hn) + '</td>' +
+                    '<td style="font-weight:500;">' + esc(c.fullname) + '</td>' +
+                    '<td>' + esc(c.birthDate || '-') + '</td>' +
+                    '<td data-sort="' + ageSortVal + '">' + esc(c.age) + '</td>' +
+                    '<td><span style="display:inline-block; font-size:11px; background:#e0e7ff; color:#4338ca; padding:3px 8px; border-radius:6px; font-weight:600;">Type 4 (นอกเขต)</span></td>' +
+                    '<td>' + esc(c.houseNumber) + '</td>' +
+                    '<td>' + esc(c.village) + '</td>' +
+                    '<td>' + esc(c.subdistrict || '-') + '</td>' +
+                    '<td>' + (cleanPhone ? '<span style="color:#10b981; font-weight:500;">' + esc(c.phone) + '</span>' : '-') + '</td>' +
+                    '<td>' + statusDisplay + '</td>' +
+                    '<td style="white-space:nowrap;">' +
+                        quickCallBtn +
+                        quickNavBtn +
+                        '<button class="action-btn view" title="รายละเอียดประวัติวัคซีน" onclick="viewChildFromMap(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
+                        '<select class="status-select" title="เปลี่ยนสถานะ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)" data-childid="' + esc(c.id || c.hn) + '">' +
+                            '<option value="">เปลี่ยนสถานะ</option>' + statusOpts +
+                        '</select>' +
+                    '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        initDT('outOfAreaTable', {
+            scrollX: true,
+            autoWidth: false,
+            order: [[3, 'asc']],
+            columnDefs: [{ orderable: false, targets: [12] }]
+        });
+    } catch (err) {
+        hideLoading();
+        console.error('doOutOfAreaChildSearch error:', err);
+        const tbody = document.getElementById('outOfAreaTbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="13" class="no-data" style="color:#dc3545;">เกิดข้อผิดพลาด: ' + esc(err.message) + '</td></tr>';
+        }
+    }
+}
+
+function exportOutOfAreaToExcel() {
+    if (!OUT_OF_AREA_DATA || OUT_OF_AREA_DATA.length === 0) {
+        Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก Excel', 'info');
+        return;
+    }
+
+    try {
+        showLoading('กำลังสร้างไฟล์ Excel...');
+        const wb = XLSX.utils.book_new();
+        const today = new Date();
+        const thaiDateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear() + 543}`;
+
+        const rows = [
+            ['รายงานรายชื่อเด็กนอกเขตรับผิดชอบ (Type 4)'],
+            ['เครือข่ายสุขภาพอำเภอเทพา จังหวัดสงขลา'],
+            [`วันที่ออกรายงาน: ${thaiDateStr} | จำนวนเด็กนอกเขตทั้งหมด: ${OUT_OF_AREA_DATA.length} คน`],
+            [],
+            ['#', 'รหัสสถานพยาบาล', 'สถานพยาบาล', 'เลขบัตรประชาชน (CID)', 'HN', 'ชื่อ-สกุล', 'ว/ด/ปเกิด', 'อายุ', 'ประเภท', 'บ้านเลขที่', 'หมู่ที่', 'ตำบล', 'เบอร์โทรศัพท์', 'สถานะวัคซีน', 'วัคซีนที่ขาด']
+        ];
+
+        OUT_OF_AREA_DATA.forEach((c, idx) => {
+            const facName = getFacilityDisplayName(c.hcode, c.hname);
+            rows.push([
+                idx + 1,
+                c.hcode || '',
+                facName,
+                String(c.cid || c.id || ''),
+                c.hn || '',
+                c.fullname || '',
+                c.birthDate || '',
+                c.age || '',
+                'Type 4 (นอกเขต)',
+                c.houseNumber || '',
+                c.village || '',
+                c.subdistrict || '',
+                c.phone || '',
+                c.status || '',
+                c.missingVaccines || ''
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 14 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 14 } }
+        ];
+        ws['!cols'] = [
+            { wch: 6 },   // #
+            { wch: 14 },  // รหัสสถานพยาบาล
+            { wch: 28 },  // สถานพยาบาล
+            { wch: 20 },  // CID
+            { wch: 14 },  // HN
+            { wch: 26 },  // ชื่อ-สกุล
+            { wch: 14 },  // วันเกิด
+            { wch: 12 },  // อายุ
+            { wch: 18 },  // ประเภท
+            { wch: 12 },  // บ้านเลขที่
+            { wch: 10 },  // หมู่
+            { wch: 16 },  // ตำบล
+            { wch: 16 },  // โทรศัพท์
+            { wch: 16 },  // สถานะวัคซีน
+            { wch: 28 }   // วัคซีนที่ขาด
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'เด็กนอกเขต_Type4');
+        const fileName = 'รายงานรายชื่อเด็กนอกเขต_Type4_' + today.toISOString().slice(0, 10) + '.xlsx';
+        XLSX.writeFile(wb, fileName);
+
+        hideLoading();
+        Swal.fire({
+            icon: 'success',
+            title: 'ส่งออกไฟล์สำเร็จ!',
+            html: `<div style="font-family:Kanit; font-size:14px;"><p>ไฟล์: <strong>${esc(fileName)}</strong></p><p style="color:#64748b; font-size:13px; margin-top:8px;">จำนวนเด็กนอกเขตทั้งหมด ${OUT_OF_AREA_DATA.length} คน</p></div>`,
+            timer: 3000,
+            showConfirmButton: false
+        });
+    } catch (err) {
+        console.error('exportOutOfAreaToExcel error:', err);
         hideLoading();
         Swal.fire('ผิดพลาด', 'ไม่สามารถส่งออกไฟล์ Excel ได้: ' + err.message, 'error');
     }
