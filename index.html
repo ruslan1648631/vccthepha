@@ -5441,6 +5441,15 @@
     async function handleSupabaseAction(fnName, args) {
         if (!supabaseClient) return null;
 
+        // ✅ Helper: ตรวจสอบว่าเป็นเด็กในเขตรับผิดชอบ (Type 1 หรือ 3) สำหรับการออกรายงานและสถิติทั้งหมด
+        const isInAreaChild = (row) => {
+            if (!row) return false;
+            const t = Number(row.type !== undefined && row.type !== null ? row.type :
+                            (row.typearea !== undefined && row.typearea !== null ? row.typearea :
+                            (row['ประเภท'] !== undefined && row['ประเภท'] !== null ? row['ประเภท'] : null)));
+            return t === 1 || t === 3;
+        };
+
         // 1. ดึงรายชื่อผู้ใช้ทั้งหมด (Get Users)
         if (fnName === 'getUsers') {
             const { data, error } = await supabaseClient.from('users').select('*').order('created_at', { ascending: false });
@@ -5720,11 +5729,12 @@
         }
 
 
-        // 16. ดึงรายชื่อเด็ก (Children)
+        // 16. ดึงรายชื่อเด็ก (Children) — เฉพาะเด็กในเขต Type 1, 3
         if (fnName === 'getChildren') {
             const filters = args[0] || {};
             const filterBuilder = (q) => {
-                if (filters.hcode && filters.hcode !== '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14') {
+                q = q.in('type', [1, 3]); // ✅ ดึงเฉพาะเด็กในเขต type = 1, 3
+                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
                     const unp = String(filters.hcode).replace(/^0+/, '');
                     const pad = String(filters.hcode).padStart(5, '0');
                     q = q.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
@@ -5751,7 +5761,7 @@
                 }
             } catch (tErr) {}
 
-            let children = (data || []).map(row => {
+            let children = (data || []).filter(isInAreaChild).map(row => {
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
                 const rowId = row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || '-';
                 const rowHn = row.HN || row.hn || row['รหัส'] || '-';
@@ -5822,10 +5832,10 @@
 
     // Health facility tracking
         if (fnName === 'getDuplicateChildren' || fnName === 'getDuplicateChildrenReport') {
-            const { data, error } = await supabaseClient.from('data').select('*');
+            const { data, error } = await supabaseClient.from('data').select('*').in('type', [1, 3]);
             if (error) throw error;
             const cidMap = {};
-            (data || []).forEach(row => {
+            (data || []).filter(isInAreaChild).forEach(row => {
                 const cid = String(row.CID || row.cid || row.id || '').replace(/\D/g, '');
                 if (!cid || cid.length < 5) return;
                 if (!cidMap[cid]) cidMap[cid] = [];
@@ -6114,10 +6124,10 @@
         }
 
 
-        // 21. ดึงข้อมูลพิกัดเด็กสำหรับแผนที่ (Get All Children For Map)
+        // 21. ดึงข้อมูลพิกัดเด็กสำหรับแผนที่ (Get All Children For Map) — เฉพาะเด็กในเขต Type 1, 3
         if (fnName === 'getAllChildrenForMap') {
             const filters = args[0] || {};
-            let query = supabaseClient.from('data').select('*');
+            let query = supabaseClient.from('data').select('*').in('type', [1, 3]);
             if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
                 const unp = String(filters.hcode).replace(/^0+/, '');
                 const pad = String(filters.hcode).padStart(5, '0');
@@ -6152,7 +6162,7 @@
                 }
             } catch (tErr) {}
 
-            const children = (data || []).map(row => {
+            const children = (data || []).filter(isInAreaChild).map(row => {
                 let lat = null, lng = null, gpsRaw = '', hasValidGps = false;
 
                 for (let k of Object.keys(row)) {
@@ -6299,7 +6309,9 @@
 
     // Health facility tracking
         if (fnName === 'getPublicDashboard') {
-            const allChildren = await fetchAllFromTable('data');
+            // ✅ ดึงเฉพาะเด็กในเขต type = 1, 3 สำหรับสถิติแดชบอร์ดสาธารณะ
+            const allChildren = await fetchAllFromTable('data', '*', q => q.in('type', [1, 3]));
+            const inAreaChildren = allChildren.filter(isInAreaChild);
             const refusedSet = new Set();
             try {
                 const { data: tData } = await supabaseClient
@@ -6331,7 +6343,7 @@
                 facilityMapStats[code] = { code, name, total: 0, onTime: 0, complete: 0, missed: 0, rate: 0 };
             });
 
-            allChildren.forEach(row => {
+            inAreaChildren.forEach(row => {
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
                 total++;
                 const st = evalRes.status;
@@ -6509,6 +6521,7 @@
                 : (isAdminAmpur ? '' : userHcode);
 
             const filterFn = (q) => {
+                q = q.in('type', [1, 3]); // ✅ สถิติแดชบอร์ดเฉพาะเด็กในเขต type = 1, 3
                 if (targetHcode && !isAll(targetHcode)) {
                     const unp = String(targetHcode).replace(/^0+/, '');
                     const pad = String(targetHcode).padStart(5, '0');
@@ -6518,6 +6531,7 @@
             };
 
             const data = await fetchAllFromTable('data', '*', filterFn);
+            const inAreaChildren = (data || []).filter(isInAreaChild);
 
             const refusedSet = new Set();
             try {
@@ -6542,7 +6556,7 @@
                 facilityMap[code] = { code, name, total: 0, onTime: 0, missed: 0, rate: 0 };
             });
 
-            data.forEach(row => {
+            inAreaChildren.forEach(row => {
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
                 const st = evalRes.status;
                 stats.total++;
@@ -6779,17 +6793,18 @@
             };
         }
 
-    // Health facility tracking
+        // ค้นหาเด็ก (Search Child) — ค้นหาจากเด็กทั้งหมดทุก Type เพื่อให้ค้นพบหากเด็กอยู่ในพื้นที่จริง
         if (fnName === 'searchChild') {
             const queryText = String(args[0] || '').trim();
             if (!queryText) return { success: true, children: [] };
 
+            // ✅ ค้นหาจากข้อมูลเด็กทั้งหมด (ทุก Type) ตามความต้องการของผู้ใช้
             const allChildren = await fetchAllFromTable('data');
             const qLower = queryText.toLowerCase();
             const cleanDigits = queryText.replace(/\D/g, '');
 
             const matched = allChildren.filter(row => {
-                const rName = String(row.fullname || row['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || row.childname || row['\u0e0a\u0e37\u0e48\u0e2d'] || '').toLowerCase();
+                const rName = String(row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '').toLowerCase();
                 const rHn = String(row.HN || row.hn || '').toLowerCase();
                 const rCid = String(row.CID || row.cid || row.id || '').replace(/\D/g, '');
 
@@ -6805,10 +6820,11 @@
                     id: row.CID || row.cid || row.id || '-',
                     hn: row.HN || row.hn || '-',
                     cid: row.CID || row.cid || row.id || '-',
-                    fullname: row.fullname || row['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || row.childname || row['\u0e0a\u0e37\u0e48\u0e2d'] || '-',
-                    birthDate: row.DOB || row.dob || row.birthdate || row['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'] || '-',
+                    fullname: row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-',
+                    birthDate: row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || '-',
+                    type: row.type || row['ประเภท'] || '-',
                     age: (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(row.DOB || row.dob || row['ว/ด/ปเกิด'])),
-                    houseNumber: row.house || row.house_no || row['\u0e1a\u0e49\u0e32\u0e19\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48'] || '-',
+                    houseNumber: row.house || row.house_no || row['บ้านเลขที่'] || '-',
                     village: row.moo || row.village_no || row.village || '-',
                     villageName: row.villname || row.village_name || row.villageName || '-',
                     subdistrict: row.subdistname || row.subdistrict || '-',
@@ -6828,10 +6844,12 @@
             const userHcode = rawFilter.hcode || rawFilter.userHcode || args[1] || '';
             const selectedQ = rawFilter.quarter ? parseInt(rawFilter.quarter, 10) : (args[2] || 0);
 
-            const allChildren = await fetchAllFromTable('data');
+            // ✅ รายงานความครอบคลุมวัคซีนเกณฑ์กระทรวง นับเฉพาะเด็กในเขต Type = 1, 3
+            const allChildren = await fetchAllFromTable('data', '*', q => q.in('type', [1, 3]));
+            const inAreaChildren = allChildren.filter(isInAreaChild);
             const targetChildren = (userHcode && userHcode !== 'ทั้งหมด') ?
-                allChildren.filter(c => String(c.hcode || '').replace(/^0+/, '') === String(userHcode).replace(/^0+/, '')) :
-                allChildren;
+                inAreaChildren.filter(c => String(c.hcode || '').replace(/^0+/, '') === String(userHcode).replace(/^0+/, '')) :
+                inAreaChildren;
 
             const curYearBE = (rawFilter.year ? parseInt(rawFilter.year, 10) : (new Date().getFullYear() + 543));
             const quartersMeta = [
@@ -7093,13 +7111,14 @@
             return { success: true, message: 'ลบนัดหมายสำเร็จ' };
         }
 
-        // 31. ประมวลผลเด็กขาดนัดวัคซีน (updateMissingVaccineStatus)
+        // 31. ประมวลผลเด็กขาดนัดวัคซีน (updateMissingVaccineStatus) — เฉพาะเด็กในเขต Type 1, 3
         if (fnName === 'updateMissingVaccineStatus') {
             const userRole  = args[0] || (APP.currentUser ? APP.currentUser.role  : '');
             const userHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
 
-            // ✅ ดึงข้อมูลเด็กทั้งหมดจาก Supabase
-            let allChildren = await fetchAllFromTable('data');
+            // ✅ ดึงและประมวลผลเฉพาะเด็กในเขต type = 1, 3 เท่านั้น
+            let allChildren = await fetchAllFromTable('data', '*', q => q.in('type', [1, 3]));
+            allChildren = allChildren.filter(isInAreaChild);
             if (userRole === 'Admin_HOS' && userHcode) {
                 const unp = String(userHcode).replace(/^0+/, '');
                 const pad = String(userHcode).padStart(5, '0');
