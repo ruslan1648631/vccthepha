@@ -5930,38 +5930,87 @@
             ]);
             const NUMERIC_COLS = new Set(['CID', 'HN', 'moo', 'type']);
 
+            // Helper: แปลง Date หรือ Date String ที่เกิดจาก Excel serial กลับเป็นตัวเลข
+            const excelDateToSerial = (val) => {
+                if (val instanceof Date) {
+                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                    const utcVal = new Date(Date.UTC(val.getFullYear(), val.getMonth(), val.getDate()));
+                    return Math.round((utcVal.getTime() - excelEpoch.getTime()) / 86400000);
+                }
+                if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+                    const p = val.trim().split('-');
+                    const y = parseInt(p[0], 10), m = parseInt(p[1], 10) - 1, d = parseInt(p[2], 10);
+                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                    const utcVal = new Date(Date.UTC(y, m, d));
+                    return Math.round((utcVal.getTime() - excelEpoch.getTime()) / 86400000);
+                }
+                return null;
+            };
+
             // สร้าง map จาก column index ในไฟล์ -> ชื่อคอลัมน์จริงใน Supabase
             const colIndexToDbField = {};
             rawHeaders.forEach((h, idx) => {
                 const norm = String(h || '').toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
+                if (!norm) return;
+
+                // 1. ตรวจสอบ exact match ก่อน
+                for (const [dbField, synonyms] of Object.entries(DATA_FIELD_SYNONYMS)) {
+                    const exact = synonyms.some(syn => {
+                        const sNorm = syn.toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
+                        return norm === sNorm;
+                    });
+                    if (exact) {
+                        colIndexToDbField[idx] = dbField;
+                        return;
+                    }
+                }
+
+                // 2. ถ้าไม่ตรงแบบเป๊ะ ให้ match คำค้นที่มีความยาวมากกว่า 3 ตัวอักษร (ป้องกันคำสั้นชน)
                 for (const [dbField, synonyms] of Object.entries(DATA_FIELD_SYNONYMS)) {
                     const match = synonyms.some(syn => {
                         const sNorm = syn.toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
-                        return norm === sNorm || (norm.length > 2 && norm.includes(sNorm));
+                        if (sNorm.length <= 3) return false;
+                        return norm.includes(sNorm);
                     });
                     if (match) {
                         colIndexToDbField[idx] = dbField;
-                        break;
+                        return;
                     }
                 }
             });
 
             const sanitizeCellForField = (val, fieldName) => {
                 if (val === null || val === undefined || val === '') return null;
+
+                // 1. คอลัมน์ hcode: ป้องกันการแปลงเป็นวันที่ และเติมเลข 0 นำหน้าให้ครบ 5 หลักเสมอ
+                if (fieldName === 'hcode') {
+                    // จัดการกรณีที่ถูกอ่านเป็นวันที่โดย Excel/SheetJS (เช่น 11915 กลายเป็น 1932-08-13)
+                    const serial = excelDateToSerial(val);
+                    if (serial !== null) {
+                        val = (serial === 11914 || serial === 11915) ? 11915 : serial;
+                    }
+                    const digits = String(val).replace(/\D/g, '').trim();
+                    if (!digits) return null;
+                    return digits.padStart(5, '0');
+                }
+
+                // 2. คอลัมน์วันที่: คืนค่าเป็น ISO string YYYY-MM-DD หรือ null (ห้ามคืนค่า "" เด็ดขาด)
                 if (DATE_COLS.has(fieldName)) {
                     const iso = parseThaiDateToISO(val);
-                    return iso || null;
+                    return (iso && typeof iso === 'string' && iso.trim() !== '') ? iso.trim() : null;
                 }
+
+                // 3. คอลัมน์ตัวเลข (CID, HN, moo, type): ป้องกันการแปลงเป็นวันที่และคืนค่าเป็น number
                 if (NUMERIC_COLS.has(fieldName)) {
+                    const serial = excelDateToSerial(val);
+                    if (serial !== null) return serial;
                     if (typeof val === 'number') return isNaN(val) ? null : val;
                     const digits = String(val).replace(/\D/g, '');
                     return digits ? Number(digits) : null;
                 }
+
                 const s = String(val).trim();
                 if (s === '' || s === '-') return null;
-                if (fieldName === 'hcode' && /^\d+$/.test(s) && s.length < 5) {
-                    return s.padStart(5, '0');
-                }
                 return s;
             };
 
@@ -6041,37 +6090,85 @@
             const APPT_DATE_COLS = new Set(['DOB', 'appointdate']);
             const APPT_NUMERIC_COLS = new Set(['CID', 'HN', 'moo']);
 
+            // Helper: แปลง Date หรือ Date String ที่เกิดจาก Excel serial กลับเป็นตัวเลข
+            const excelDateToSerialAppt = (val) => {
+                if (val instanceof Date) {
+                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                    const utcVal = new Date(Date.UTC(val.getFullYear(), val.getMonth(), val.getDate()));
+                    return Math.round((utcVal.getTime() - excelEpoch.getTime()) / 86400000);
+                }
+                if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+                    const p = val.trim().split('-');
+                    const y = parseInt(p[0], 10), m = parseInt(p[1], 10) - 1, d = parseInt(p[2], 10);
+                    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                    const utcVal = new Date(Date.UTC(y, m, d));
+                    return Math.round((utcVal.getTime() - excelEpoch.getTime()) / 86400000);
+                }
+                return null;
+            };
+
             const colIndexToApptField = {};
             rawHeaders.forEach((h, idx) => {
                 const norm = String(h || '').toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
+                if (!norm) return;
+
+                // 1. ตรวจสอบ exact match ก่อน
+                for (const [dbField, synonyms] of Object.entries(APPT_FIELD_SYNONYMS)) {
+                    const exact = synonyms.some(syn => {
+                        const sNorm = syn.toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
+                        return norm === sNorm;
+                    });
+                    if (exact) {
+                        colIndexToApptField[idx] = dbField;
+                        return;
+                    }
+                }
+
+                // 2. ถ้าไม่ตรงแบบเป๊ะ ให้ match คำค้นที่มีความยาวมากกว่า 3 ตัวอักษร
                 for (const [dbField, synonyms] of Object.entries(APPT_FIELD_SYNONYMS)) {
                     const match = synonyms.some(syn => {
                         const sNorm = syn.toLowerCase().replace(/[\s_\-\.\+\(\)]/g, '');
-                        return norm === sNorm || (norm.length > 2 && norm.includes(sNorm));
+                        if (sNorm.length <= 3) return false;
+                        return norm.includes(sNorm);
                     });
                     if (match) {
                         colIndexToApptField[idx] = dbField;
-                        break;
+                        return;
                     }
                 }
             });
 
             const sanitizeCellForAppt = (val, fieldName) => {
                 if (val === null || val === undefined || val === '') return null;
+
+                // 1. คอลัมน์ hcode
+                if (fieldName === 'hcode') {
+                    const serial = excelDateToSerialAppt(val);
+                    if (serial !== null) {
+                        val = (serial === 11914 || serial === 11915) ? 11915 : serial;
+                    }
+                    const digits = String(val).replace(/\D/g, '').trim();
+                    if (!digits) return null;
+                    return digits.padStart(5, '0');
+                }
+
+                // 2. คอลัมน์วันที่: คืนค่าเป็น ISO string หรือ null (ห้ามเป็น "")
                 if (APPT_DATE_COLS.has(fieldName)) {
                     const iso = parseThaiDateToISO(val);
-                    return iso || null;
+                    return (iso && typeof iso === 'string' && iso.trim() !== '') ? iso.trim() : null;
                 }
+
+                // 3. คอลัมน์ตัวเลข (CID, HN, moo)
                 if (APPT_NUMERIC_COLS.has(fieldName)) {
+                    const serial = excelDateToSerialAppt(val);
+                    if (serial !== null) return serial;
                     if (typeof val === 'number') return isNaN(val) ? null : val;
                     const digits = String(val).replace(/\D/g, '');
                     return digits ? Number(digits) : null;
                 }
+
                 const s = String(val).trim();
                 if (s === '' || s === '-') return null;
-                if (fieldName === 'hcode' && /^\d+$/.test(s) && s.length < 5) {
-                    return s.padStart(5, '0');
-                }
                 return s;
             };
 
