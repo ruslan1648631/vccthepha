@@ -6685,11 +6685,37 @@
                     }
                 }
 
-                const vRealName = (row.villname && row.villname !== '-' && row.villname !== '')
-                    ? row.villname
-                    : (row.moo && row.moo !== '-' ? '\u0e2b\u0e21\u0e39\u0e48 ' + row.moo : '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e2b\u0e21\u0e39\u0e48\u0e1a\u0e49\u0e32\u0e19');
+                const vMooStr = (row.moo !== undefined && row.moo !== null && String(row.moo).trim() !== '' && String(row.moo).trim() !== '0' && String(row.moo).trim() !== '-')
+                    ? 'หมู่ ' + String(row.moo).trim()
+                    : '';
+                const vVillnameStr = (row.villname && String(row.villname).trim() !== '-' && String(row.villname).trim() !== '')
+                    ? String(row.villname).trim()
+                    : '';
+                
+                let vRealName = '';
+                if (vMooStr && vVillnameStr) {
+                    vRealName = vMooStr + ' ' + vVillnameStr;
+                } else if (vVillnameStr) {
+                    vRealName = vVillnameStr;
+                } else if (vMooStr) {
+                    vRealName = vMooStr;
+                } else {
+                    vRealName = 'ไม่ระบุหมู่บ้าน';
+                }
+
                 if (!villageMap[vRealName]) {
-                    villageMap[vRealName] = { name: vRealName, villageNo: row.moo || '-', hcode: fCode, total: 0, onTime: 0, missed: 0, rate: 0 };
+                    villageMap[vRealName] = {
+                        village: vRealName,
+                        name: vRealName,
+                        villageName: vRealName,
+                        villname: vVillnameStr,
+                        villageNo: row.moo || '-',
+                        hcode: fCode,
+                        total: 0,
+                        onTime: 0,
+                        missed: 0,
+                        rate: 0
+                    };
                 }
                 villageMap[vRealName].total++;
                 if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
@@ -9878,20 +9904,20 @@ function updateBottomNavActive(page) {
         container.innerHTML = sortedData.map(function(d) {
             const rate = d.rate || 0;
             
-            
             // ✅ ตั้งค่าเงื่อนไขสี: 80% ขึ้นไปเป็นสีฟ้า (#0ea5e9) ต่ำกว่า 80% เป็นสีแดง (#ea5455)
             const barColor = rate >= 80 ? '#0ea5e9' : '#ea5455'; 
             
             const barHeight = Math.max(rate, 5);
             const total = d.total || 0;
             const vaccinatedCount = d.vaccinatedCount || d.onTime || 0;
+            const villageName = d.village || d.name || d.villageName || d.villname || (d.villageNo && d.villageNo !== '-' ? 'หมู่ ' + d.villageNo : 'ไม่ระบุหมู่บ้าน');
 
-            return '<div class="bar-wrapper">' +
+            return '<div class="bar-wrapper" title="' + esc(villageName) + ' (' + vaccinatedCount + '/' + total + ' คน - ' + rate + '%)">' +
                 '<div class="bar-bg-vertical" style="height:200px">' +
                 '<div class="bar-fill-vertical" style="height:' + barHeight + '%; background:' + barColor + '"></div>' +
                 '</div>' +
-                '<div class="bar-label">' + esc(d.village) + '</div>' +
-                '<div class="bar-value">' + vaccinatedCount + '/' + total + ' <span class="bar-percent">(' + rate + '%)</span></div>' +
+                '<div class="bar-label" style="font-size:12px; font-weight:600; color:#1e293b; margin-top:8px; text-align:center; line-height:1.3; word-break:break-word; max-width:90px;" title="' + esc(villageName) + '">' + esc(villageName) + '</div>' +
+                '<div class="bar-value" style="margin-top:4px; font-size:11px; white-space:nowrap;">' + vaccinatedCount + '/' + total + ' <span class="bar-percent" style="font-weight:700; color:' + (rate >= 80 ? '#059669' : '#dc2626') + ';">(' + rate + '%)</span></div>' +
                 '</div>';
         }).join('');
     }
