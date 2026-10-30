@@ -4442,7 +4442,7 @@
         border: 1.5px dashed #000 !important;
     }
 
-    /* A4 Mode: 4 per page in a 2x2 grid */
+    /* A4 Mode: 6 per page in a 2x3 grid */
     .mini-slip-a4-container {
         width: 100%;
         margin: 0;
@@ -4452,13 +4452,16 @@
     .mini-slip-a4-page {
         display: grid !important;
         grid-template-columns: repeat(2, 1fr) !important;
-        gap: 6mm !important;
-        padding: 6mm !important;
+        grid-template-rows: repeat(3, 1fr) !important;
+        gap: 3mm 4mm !important;
+        padding: 4mm 5mm !important;
         width: 100% !important;
-        min-height: 275mm !important;
+        height: 287mm !important;
+        max-height: 289mm !important;
         box-sizing: border-box !important;
         page-break-inside: avoid !important;
         page-break-after: always !important;
+        overflow: hidden !important;
     }
 
     .mini-slip-a4-page.last-page {
@@ -4469,10 +4472,142 @@
         width: 100% !important;
         max-width: 100% !important;
         margin: 0 !important;
+        padding: 4px 6px !important;
         page-break-inside: avoid !important;
         box-shadow: none !important;
-        border: 1.5px dashed #334155 !important;
+        border: 1px dashed #475569 !important;
         background: #ffffff !important;
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        overflow: hidden !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-cut-line {
+        font-size: 8px !important;
+        margin-bottom: 2px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-header {
+        gap: 4px !important;
+        padding-bottom: 2px !important;
+        margin-bottom: 2px !important;
+        border-bottom-width: 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-logo {
+        width: 18px !important;
+        height: 18px !important;
+        font-size: 9px !important;
+        border-radius: 4px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-hospital {
+        font-size: 10.5px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-title {
+        font-size: 8.5px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-child-box {
+        padding: 3px 5px !important;
+        margin-bottom: 2px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-child-name {
+        font-size: 11px !important;
+        margin-bottom: 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-meta-grid {
+        font-size: 8.5px !important;
+        gap: 1px 4px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-appt-box {
+        padding: 2px 4px !important;
+        margin-bottom: 2px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-appt-badge {
+        font-size: 7.5px !important;
+        padding: 0 4px !important;
+        margin-bottom: 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-appt-date {
+        font-size: 11.5px !important;
+        margin-bottom: 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-appt-sub {
+        font-size: 8px !important;
+        gap: 4px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-vac-section {
+        margin-bottom: 2px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-section-title {
+        font-size: 8.5px !important;
+        margin-bottom: 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-vac-item {
+        padding: 1px 3px !important;
+        gap: 3px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-vac-code {
+        font-size: 8.5px !important;
+        padding: 0 3px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-vac-name {
+        font-size: 8px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-reminders {
+        padding: 2px 4px !important;
+        margin-bottom: 2px !important;
+        font-size: 8px !important;
+        line-height: 1.15 !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-reminder-item {
+        gap: 2px !important;
+        margin-bottom: 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-footer {
+        padding-top: 2px !important;
+        font-size: 8px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-contact {
+        font-size: 8px !important;
+        margin-bottom: 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-issued {
+        font-size: 7.5px !important;
+        margin-bottom: 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-barcode-lines {
+        height: 10px !important;
+        width: 90px !important;
+        margin: 0 auto 1px !important;
+    }
+
+    .mini-slip-a4-page .mini-slip-barcode-text {
+        font-size: 7.5px !important;
+        letter-spacing: 1px !important;
     }
 }
 
@@ -5475,7 +5610,7 @@
                     error = null;
                 }
             }
-            if (error) throw error;
+
 
             // กรองสถานพยาบาลฝั่ง client ถ้าเป็น Admin_HOS เพื่อความแม่นยำ 100%
             if (requestorRole === 'Admin_HOS' && requestorHcode) {
@@ -6019,14 +6154,16 @@
         // 15. ดึงรายชื่อนัดหมาย (Appointments)
         if (fnName === 'getAppointments') {
             const filters = args[0] || {};
-            let query = supabaseClient.from('appoint').select('*').limit(3000);
-            if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                const unp = String(filters.userHcode).replace(/^0+/, '');
-                const pad = String(filters.userHcode).padStart(5, '0');
-                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
-            }
-            const { data, error } = await query;
-            if (error) throw error;
+            const apptFilterBuilder = (q) => {
+                if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                    const unp = String(filters.userHcode).replace(/^0+/, '');
+                    const pad = String(filters.userHcode).padStart(5, '0');
+                    q = q.or('hcode.eq.' + filters.userHcode + ',hcode.eq.' + unp + ',hcode.eq.' + pad);
+                }
+                return q;
+            };
+            const data = await fetchAllFromTable('appoint', '*', apptFilterBuilder);
+
             if (!data || data.length === 0) {
                 return { success: true, headers: [], appointments: [] };
             }
@@ -7351,29 +7488,84 @@
 
             let appointmentsThisMonth = 0;
             let appointmentsToday = 0;
+            let apptMonthLabel = 'นัดหมายเดือนนี้';
             try {
-                const aData = await fetchAllFromTable('appoint', 'appointdate,date,thaiDate');
+                // ดึงข้อมูลนัดหมายทั้งหมดจากตาราง appoint
+                const aData = await fetchAllFromTable('appoint', '*');
                 const now = new Date();
                 const curM = String(now.getMonth() + 1).padStart(2, '0');
                 const curYCE = String(now.getFullYear());
                 const curYBE = String(now.getFullYear() + 543);
                 const curD = String(now.getDate()).padStart(2, '0');
-                if (aData) {
+
+                const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                const nextM = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+                const nextYCE = String(nextMonthDate.getFullYear());
+                const nextYBE = String(nextMonthDate.getFullYear() + 543);
+
+                const thaiMonthNames = [
+                    'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+                ];
+                const nextMonthThai = thaiMonthNames[nextMonthDate.getMonth()] + ' ' + String(nextMonthDate.getFullYear() + 543).slice(-2);
+
+                let curCount = 0;
+                let nextCount = 0;
+                let futureCount = 0;
+
+                if (aData && aData.length > 0) {
                     aData.forEach(a => {
-                        const rawD = String(a.appointdate || a.date || a.thaiDate || '').trim();
-                        const isThisMonth = rawD.startsWith(curYCE + '-' + curM) ||
-                                            rawD.includes('/' + curM + '/' + curYCE) ||
-                                            rawD.includes('/' + curM + '/' + curYBE);
-                        if (isThisMonth) {
-                            appointmentsThisMonth++;
-                            const isToday = rawD.startsWith(curYCE + '-' + curM + '-' + curD) ||
+                        const rawD = String(a.appointdate || a.date || a.thaiDate || a['วันที่นัด'] || a['วันนัด'] || '').trim();
+                        if (!rawD) return;
+
+                        const iso = parseThaiDateToISO(rawD);
+
+                        const isCurrent = (iso && iso.startsWith(curYCE + '-' + curM)) ||
+                                          rawD.startsWith(curYCE + '-' + curM) ||
+                                          rawD.startsWith(curYBE + '-' + curM) ||
+                                          rawD.includes('/' + curM + '/' + curYCE) ||
+                                          rawD.includes('/' + curM + '/' + curYBE) ||
+                                          rawD.includes('-' + curM + '-' + curYCE) ||
+                                          rawD.includes('-' + curM + '-' + curYBE);
+
+                        const isNext = (iso && iso.startsWith(nextYCE + '-' + nextM)) ||
+                                       rawD.startsWith(nextYCE + '-' + nextM) ||
+                                       rawD.startsWith(nextYBE + '-' + nextM) ||
+                                       rawD.includes('/' + nextM + '/' + nextYCE) ||
+                                       rawD.includes('/' + nextM + '/' + nextYBE) ||
+                                       rawD.includes('-' + nextM + '-' + nextYCE) ||
+                                       rawD.includes('-' + nextM + '-' + nextYBE);
+
+                        if (isCurrent) {
+                            curCount++;
+                            const isToday = (iso && iso === `${curYCE}-${curM}-${curD}`) ||
+                                            rawD.startsWith(curYCE + '-' + curM + '-' + curD) ||
+                                            rawD.startsWith(curYBE + '-' + curM + '-' + curD) ||
                                             rawD.startsWith(curD + '/' + curM) ||
                                             rawD.startsWith(now.getDate() + '/' + curM);
                             if (isToday) appointmentsToday++;
                         }
+                        if (isNext) nextCount++;
+                        if (iso && iso >= `${curYCE}-${curM}-${curD}`) futureCount++;
                     });
+
+                    if (curCount > 0) {
+                        appointmentsThisMonth = curCount;
+                        apptMonthLabel = 'นัดหมายเดือนนี้';
+                    } else if (nextCount > 0) {
+                        appointmentsThisMonth = nextCount;
+                        apptMonthLabel = `นัดหมาย (${nextMonthThai})`;
+                    } else if (futureCount > 0) {
+                        appointmentsThisMonth = futureCount;
+                        apptMonthLabel = 'นัดหมายที่จะถึง';
+                    } else {
+                        appointmentsThisMonth = aData.length;
+                        apptMonthLabel = 'นัดหมายทั้งหมด';
+                    }
                 }
-            } catch (aErr) {}
+            } catch (aErr) {
+                console.warn('Error calculating appointments in getPublicDashboard:', aErr);
+            }
 
             const currentYearBE = new Date().getFullYear() + 543;
             const trend = [
@@ -7398,6 +7590,7 @@
                     overallRate: overallRate,
                     apptThisMonth: appointmentsThisMonth,
                     appointmentsThisMonth: appointmentsThisMonth,
+                    apptMonthLabel: apptMonthLabel,
                     apptToday: appointmentsToday,
                     appointmentsToday: appointmentsToday
                 },
@@ -7548,6 +7741,7 @@
             let currentMonthAppts = [];
             let appointmentsThisMonth = 0;
             let appointmentsToday = 0;
+            let apptMonthLabel = 'นัดหมายเดือนนี้';
             try {
                 const apptFilterFn = (q) => {
                     if (targetHcode && !isAll(targetHcode)) {
@@ -7564,21 +7758,55 @@
                 const curYBE = String(now.getFullYear() + 543);
                 const curD = String(now.getDate()).padStart(2, '0');
 
+                const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                const nextM = String(nextMonthDate.getMonth() + 1).padStart(2, '0');
+                const nextYCE = String(nextMonthDate.getFullYear());
+                const nextYBE = String(nextMonthDate.getFullYear() + 543);
+
+                const thaiMonthNames = [
+                    'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                    'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+                ];
+                const nextMonthThai = thaiMonthNames[nextMonthDate.getMonth()] + ' ' + String(nextMonthDate.getFullYear() + 543).slice(-2);
+
+                let curCount = 0;
+                let nextCount = 0;
+                let futureCount = 0;
+
                 if (aData) {
                     aData.forEach(a => {
-                        const rawD = String(a.appointdate || a.date || a.thaiDate || a['วันที่นัด'] || '').trim();
-                        const isThisMonth = rawD.startsWith(curYCE + '-' + curM) ||
-                                            rawD.includes('/' + curM + '/' + curYCE) ||
-                                            rawD.includes('/' + curM + '/' + curYBE);
-                        if (isThisMonth) {
-                            appointmentsThisMonth++;
-                            const isToday = rawD.startsWith(curYCE + '-' + curM + '-' + curD) ||
+                        const rawD = String(a.appointdate || a.date || a.thaiDate || a['วันที่นัด'] || a['วันนัด'] || '').trim();
+                        if (!rawD) return;
+                        const iso = parseThaiDateToISO(rawD);
+
+                        const isCurrent = (iso && iso.startsWith(curYCE + '-' + curM)) ||
+                                          rawD.startsWith(curYCE + '-' + curM) ||
+                                          rawD.startsWith(curYBE + '-' + curM) ||
+                                          rawD.includes('/' + curM + '/' + curYCE) ||
+                                          rawD.includes('/' + curM + '/' + curYBE) ||
+                                          rawD.includes('-' + curM + '-' + curYCE) ||
+                                          rawD.includes('-' + curM + '-' + curYBE);
+
+                        const isNext = (iso && iso.startsWith(nextYCE + '-' + nextM)) ||
+                                       rawD.startsWith(nextYCE + '-' + nextM) ||
+                                       rawD.startsWith(nextYBE + '-' + nextM) ||
+                                       rawD.includes('/' + nextM + '/' + nextYCE) ||
+                                       rawD.includes('/' + nextM + '/' + nextYBE) ||
+                                       rawD.includes('-' + nextM + '-' + nextYCE) ||
+                                       rawD.includes('-' + nextM + '-' + nextYBE);
+
+                        if (isCurrent) {
+                            curCount++;
+                            const isToday = (iso && iso === `${curYCE}-${curM}-${curD}`) ||
+                                            rawD.startsWith(curYCE + '-' + curM + '-' + curD) ||
+                                            rawD.startsWith(curYBE + '-' + curM + '-' + curD) ||
                                             rawD.startsWith(curD + '/' + curM) ||
                                             rawD.startsWith(now.getDate() + '/' + curM);
-                            if (isToday) {
-                                appointmentsToday++;
-                            }
+                            if (isToday) appointmentsToday++;
                         }
+                        if (isNext) nextCount++;
+                        if (iso && iso >= `${curYCE}-${curM}-${curD}`) futureCount++;
+
                         const displayDate = rawD ? formatThaiDate(rawD) : '-';
                         currentMonthAppts.push({
                             hn: a.hn || a.HN || '-',
@@ -7589,8 +7817,24 @@
                             hcode: a.hcode || '-'
                         });
                     });
+
+                    if (curCount > 0) {
+                        appointmentsThisMonth = curCount;
+                        apptMonthLabel = 'นัดหมายเดือนนี้';
+                    } else if (nextCount > 0) {
+                        appointmentsThisMonth = nextCount;
+                        apptMonthLabel = `นัดหมาย (${nextMonthThai})`;
+                    } else if (futureCount > 0) {
+                        appointmentsThisMonth = futureCount;
+                        apptMonthLabel = 'นัดหมายที่จะถึง';
+                    } else {
+                        appointmentsThisMonth = aData.length;
+                        apptMonthLabel = 'นัดหมายทั้งหมด';
+                    }
                 }
-            } catch (aErr) {}
+            } catch (aErr) {
+                console.warn('Error calculating appointments in getDashboardStats:', aErr);
+            }
 
             const statusData = {
                 onTime: stats.onTime + stats.complete,
@@ -7609,6 +7853,7 @@
                     missed: stats.missed,
                     refused: stats.refused,
                     appointmentsThisMonth: appointmentsThisMonth,
+                    apptMonthLabel: apptMonthLabel,
                     appointmentsToday: appointmentsToday
                 },
                 statusData,
@@ -8925,7 +9170,7 @@ function renderPublicStats(summary, ageGroups) {
             icon: 'fa-calendar-alt',
             accent: '#f59e0b',
             accentSoft: '#fef3c7',
-            label: '\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e14\u0e37\u0e2d\u0e19\u0e19\u0e35\u0e49',
+            label: summary.apptMonthLabel || '\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e14\u0e37\u0e2d\u0e19\u0e19\u0e35\u0e49',
             value: apptCount,
             unit: '\u0e19\u0e31\u0e14'
         },
@@ -10475,7 +10720,7 @@ function updateBottomNavActive(page) {
             <div class="stats-grid">
                 ${statCard('blue', 'fas fa-child', 'เด็ก 0-5 ปีทั้งหมด', s.totalChildren || 0, 'คน')}
                 ${statCard('green', 'fas fa-check-circle', 'มาตามนัดปกติ/ครบเกณฑ์', (s.onTime || 0) + (s.complete || 0), 'คน')}
-                ${statCard('orange', 'fas fa-calendar-alt', 'นัดหมายเดือนนี้', appointmentsThisMonth, 'นัด')}
+                ${statCard('orange', 'fas fa-calendar-alt', (s && s.apptMonthLabel) || 'นัดหมายเดือนนี้', appointmentsThisMonth, 'นัด')}
                 ${statCard('red', 'fas fa-exclamation-triangle', 'ขาดนัดปัจจุบัน', s.missed || 0, 'คน')}
             </div>
 
@@ -12331,31 +12576,53 @@ window.switchLogTab = function(tab) {
         let headers = result.success && result.headers ? result.headers : [];
         let appts = result.success ? result.appointments : [];
 
-        const hcodeIdx = findColumnIndex(headers, ['hcode', 'รหัสสถานพยาบาล', 'สถานพยาบาล'], 0);
-        const dateColIdx = findColumnIndex(headers, ['วันที่นัด', 'วันนัด', 'วันที่', 'นัดครั้งต่อไป'], 3);
-        const hnIdx = findColumnIndex(headers, ['HN', 'รหัส', 'hn']);
-        const nameIdx = findColumnIndex(headers, ['ชื่อ-สกุล', 'ชื่อ', 'ChildName', 'fullname']);
-        const vacColIdx = findColumnIndex(headers, ['รหัสวัคซีน', 'วัคซีน', 'vaccine']);
+        const hcodeIdx = findColumnIndex(headers, ['hcode', '\u0e23\u0e2b\u0e31\u0e2a\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25', '\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25'], 0);
+        const dateColIdx = findColumnIndex(headers, ['\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14', '\u0e27\u0e31\u0e19\u0e19\u0e31\u0e14', '\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48', '\u0e19\u0e31\u0e14\u0e04\u0e23\u0e31\u0e49\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e1b'], 9);
+        const hnIdx = findColumnIndex(headers, ['HN', '\u0e23\u0e2b\u0e31\u0e2a', 'hn']);
+        const nameIdx = findColumnIndex(headers, ['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25', '\u0e0a\u0e37\u0e48\u0e2d', 'ChildName', 'fullname']);
+        const vacColIdx = findColumnIndex(headers, ['\u0e23\u0e2b\u0e31\u0e2a\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19', '\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19', 'vaccine']);
+        const isoDateIdx = findColumnIndex(headers, ['appointdate', 'appoint_date'], 12);
 
         const isHiddenCol = (idx, hName) => {
             const hStr = hName ? hName.toString().trim().toUpperCase() : '';
-            return hStr === 'ID' || hStr === 'CID' || hStr === 'ชื่อวัคซีน';
+            return hStr === 'ID' || hStr === 'CID' || hStr === '\u0e0a\u0e37\u0e48\u0e2d\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19' || hStr === 'APPOINTDATE';
         };
 
-        const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && 
+        const isSpecialOfficer = (APP.currentUser.role === '\u0e40\u0e08\u0e49\u0e32\u0e2b\u0e19\u0e49\u0e32\u0e17\u0e35\u0e48' && 
                                   (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
         
         if (APP.currentUser.role !== 'Admin_Ampur' && !isSpecialOfficer && hcodeIdx >= 0) {
-            appts = appts.filter(function(a) { return a[hcodeIdx] === APP.currentUser.hcode; });
-        }
-
-        if (facilityFilter !== 'ทั้งหมด' && hcodeIdx >= 0) {
-            appts = appts.filter(function(a) { return a[hcodeIdx] === facilityFilter; });
-        }
-
-        if (thaiFilterDate && dateColIdx >= 0) {
+            const userHc = String(APP.currentUser.hcode || '').replace(/^0+/, '');
             appts = appts.filter(function(a) { 
-                return a[dateColIdx] && a[dateColIdx].toString().trim().includes(thaiFilterDate); 
+                const rowHc = String(a[hcodeIdx] || '').replace(/^0+/, '');
+                return rowHc === userHc; 
+            });
+        }
+
+        if (facilityFilter && facilityFilter !== '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14' && hcodeIdx >= 0) {
+            const filterHc = String(facilityFilter).replace(/^0+/, '');
+            appts = appts.filter(function(a) { 
+                const rowHc = String(a[hcodeIdx] || '').replace(/^0+/, '');
+                return rowHc === filterHc; 
+            });
+        }
+
+        if (filterDate) {
+            const cleanFilterDate = String(filterDate).trim();
+            appts = appts.filter(function(a) { 
+                if (isoDateIdx >= 0 && a[isoDateIdx] && String(a[isoDateIdx]).trim().startsWith(cleanFilterDate)) {
+                    return true;
+                }
+                if (dateColIdx >= 0 && a[dateColIdx]) {
+                    const rowDateStr = String(a[dateColIdx]).trim();
+                    if (thaiFilterDate && rowDateStr.includes(thaiFilterDate)) return true;
+                    if (rowDateStr.includes(cleanFilterDate)) return true;
+                    if (typeof parseThaiDateToISO === 'function') {
+                        const rowIso = parseThaiDateToISO(rowDateStr);
+                        if (rowIso && rowIso === cleanFilterDate) return true;
+                    }
+                }
+                return false;
             });
         }
 
@@ -12422,7 +12689,7 @@ window.switchLogTab = function(tab) {
         // ฟังก์ชันตรวจสอบว่าควรซ่อนคอลัมน์นี้หรือไม่ (ใช้ตรวจสอบร่วมกับตอนแสดงผล)
         const isHiddenCol = (idx, hName) => {
             const hStr = hName ? hName.toString().trim().toUpperCase() : '';
-            return hStr === 'ID' || hStr === 'CID' || hStr === 'ชื่อวัคซีน';
+            return hStr === 'ID' || hStr === 'CID' || hStr === '\u0e0a\u0e37\u0e48\u0e2d\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19' || hStr === 'APPOINTDATE';
         };
 
         const rows = [];
@@ -12738,7 +13005,7 @@ window.switchLogTab = function(tab) {
                                         <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 11.5px; cursor: pointer; background: #fff; padding: 7px 9px; border-radius: 6px; border: 1px solid #cbd5e1;">
                                             <input type="radio" name="slipLayoutChoice" value="a4" checked onchange="onSlipSettingChange()" style="margin-top: 2px; accent-color: #0284c7;">
                                             <div>
-                                                <strong>กระดาษ A4 (พร้อมเส้นตัด ✂)</strong>
+                                                <strong>กระดาษ A4 (6 คน/หน้า พร้อมเส้นตัด ✂)</strong>
                                                 <div style="font-size: 10.5px; color: #64748b;">พิมพ์ลงกระดาษ A4 พับ/ตัดแนบในสมุดสีชมพู</div>
                                             </div>
                                         </label>
@@ -12965,7 +13232,7 @@ window.switchLogTab = function(tab) {
                                 <div>
                                     <label style="font-size: 11.5px; font-weight: 600; color: #475569;">รูปแบบกระดาษ</label>
                                     <select id="batchSlipLayout" onchange="updateBatchSummary()" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;">
-                                        <option value="a4" selected>กระดาษ A4 (4 ใบ/หน้า พร้อมเส้นตัด ✂)</option>
+                                        <option value="a4" selected>\u0e01\u0e23\u0e30\u0e14\u0e32\u0e29 A4 (6 \u0e04\u0e19/\u0e2b\u0e19\u0e49\u0e32 \u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e2a\u0e49\u0e19\u0e15\u0e31\u0e14 \u2702)</option>
                                         <option value="thermal">สลิปความร้อน 80mm ต่อเนื่อง (Thermal Roll)</option>
                                     </select>
                                 </div>
@@ -13097,8 +13364,8 @@ window.switchLogTab = function(tab) {
         const estBadge = document.getElementById('batchPaperEstBadge');
         if (estBadge) {
             if (layout === 'a4') {
-                const sheets = Math.ceil(selectedCount / 4);
-                estBadge.innerHTML = `<i class="far fa-file-alt"></i> ใช้กระดาษ A4 ประมาณ <strong>${sheets}</strong> แผ่น (4 ใบ/แผ่น)`;
+                const sheets = Math.ceil(selectedCount / 6);
+                estBadge.innerHTML = `<i class="far fa-file-alt"></i> ใช้กระดาษ A4 ประมาณ <strong>${sheets}</strong> แผ่น (6 คน/หน้า)`;
             } else {
                 estBadge.innerHTML = `<i class="fas fa-receipt"></i> ความยาวสลิปความร้อนประมาณ <strong>${selectedCount * 12}</strong> ซม.`;
             }
@@ -13165,11 +13432,11 @@ window.switchLogTab = function(tab) {
         if (layoutMode === 'thermal') {
             finalHtml = '<div class="mini-slip-thermal-container">' + slipsHtmlArray.join('') + '</div>';
         } else {
-            // A4 Multi-slip mode: 4 per page
+            // A4 Multi-slip mode: 6 per page (2 columns x 3 rows)
             const pages = [];
-            for (let i = 0; i < slipsHtmlArray.length; i += 4) {
-                const pageSlips = slipsHtmlArray.slice(i, i + 4);
-                const isLast = (i + 4 >= slipsHtmlArray.length);
+            for (let i = 0; i < slipsHtmlArray.length; i += 6) {
+                const pageSlips = slipsHtmlArray.slice(i, i + 6);
+                const isLast = (i + 6 >= slipsHtmlArray.length);
                 pages.push('<div class="mini-slip-a4-page ' + (isLast ? 'last-page' : '') + '">' + pageSlips.join('') + '</div>');
             }
             finalHtml = '<div class="mini-slip-a4-container">' + pages.join('') + '</div>';
@@ -13718,7 +13985,11 @@ window.switchLogTab = function(tab) {
             html += '<div class="filter-bar">';
             if (facilityFilterHtml) html += facilityFilterHtml;
             if (canManage) {
-                html += '<div class="filter-actions" style="margin-left: auto;"><button class="btn-add" onclick="openAddApptModal()"><i class="fas fa-plus"></i> เพิ่มนัดหมายใหม่</button></div>';
+                let tgBtnHtml = '';
+                if (isAdminAmpurUser()) {
+                    tgBtnHtml = '<button class="btn-telegram-notify" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color:#fff; border:none; padding:8px 16px; border-radius:8px; font-weight:500; font-family:\'Kanit\',sans-serif; cursor:pointer; display:inline-flex; align-items:center; gap:8px; margin-right:8px; box-shadow:0 2px 4px rgba(2,132,199,0.25);" onclick="sendTomorrowApptsToTelegram()"><i class="fab fa-telegram-plane" style="font-size:16px;"></i> ส่ง Telegram นัดหมายพรุ่งนี้</button>';
+                }
+                html += '<div class="filter-actions" style="margin-left: auto;">' + tgBtnHtml + '<button class="btn-add" onclick="openAddApptModal()"><i class="fas fa-plus"></i> เพิ่มนัดหมายใหม่</button></div>';
             }
             html += '</div>';
             
@@ -13989,6 +14260,175 @@ window.switchLogTab = function(tab) {
             width: 540
         });
     }
+    // ============================================================
+    // ส่งแจ้งเตือนนัดหมายวันพรุ่งนี้เข้า Telegram (Admin_Ampur เท่านั้น)
+    // ============================================================
+    async function sendTomorrowApptsToTelegram() {
+        if (!isAdminAmpurUser()) {
+            return Swal.fire('ไม่มีสิทธิ์', 'ฟังก์ชันนี้อนุญาตเฉพาะผู้ดูแลระบบอำเภอ (Admin_Ampur)', 'warning');
+        }
+
+        const now = new Date();
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const y = tomorrow.getFullYear();
+        const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const d = String(tomorrow.getDate()).padStart(2, '0');
+        const defaultDateIso = `${y}-${m}-${d}`;
+
+        const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+        showLoading('กำลังโหลดข้อมูลนัดหมาย...');
+        let rawList = [];
+        try {
+            if (typeof fetchAllFromTable === 'function' && supabaseClient) {
+                rawList = await fetchAllFromTable('appoint', '*');
+            } else {
+                const res = await callGAS('getAppointments', [{}]);
+                rawList = (res && res.appointments) ? res.appointments : [];
+            }
+        } catch (e) {
+            console.warn('Fallback to calendarRawAppts:', e);
+            rawList = APP.calendarRawAppts || [];
+        }
+        hideLoading();
+
+        const generateSummary = (isoDate) => {
+            const parts = isoDate.split('-');
+            const dt = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+            const thaiDate = `${dt.getDate()} ${thaiMonths[dt.getMonth()]} ${dt.getFullYear() + 543}`;
+
+            const facilityGroups = {};
+            let totalCount = 0;
+
+            rawList.forEach(a => {
+                let rowHcode = '';
+                let rowIso = '';
+                let childKey = '';
+
+                if (Array.isArray(a)) {
+                    rowHcode = String(a[0] || '').trim();
+                    const dStr = a[9] ? String(a[9]).trim() : '';
+                    const isoCol = a[12] ? String(a[12]).trim().slice(0, 10) : '';
+                    rowIso = isoCol || (typeof parseThaiDateToISO === 'function' ? parseThaiDateToISO(dStr) : '');
+                    childKey = String(a[2] || a[1] || a[3] || Math.random()).trim();
+                } else if (typeof a === 'object' && a !== null) {
+                    rowHcode = String(a.hcode || '').trim();
+                    const rawD = String(a.appointdate || a.date || a['วันนัด'] || '').trim();
+                    rowIso = rawD.slice(0, 10);
+                    if (!/^\d{4}-\d{2}-\d{2}/.test(rowIso) && typeof parseThaiDateToISO === 'function') {
+                        rowIso = parseThaiDateToISO(rawD);
+                    }
+                    childKey = String(a.HN || a.hn || a.CID || a.cid || a.fullname || Math.random()).trim();
+                }
+
+                if (rowIso === isoDate && rowHcode) {
+                    const normHc = rowHcode.replace(/^0+/, '');
+                    if (!facilityGroups[normHc]) facilityGroups[normHc] = new Set();
+                    facilityGroups[normHc].add(childKey);
+                }
+            });
+
+            const sortedHcodes = Object.keys(facilityGroups).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+            let msg = '';
+            if (sortedHcodes.length === 0) {
+                msg = `🔔 <b>แจ้งเตือนนัดหมายวัคซีน</b>\n📅 วันพรุ่งนี้: <b>${thaiDate}</b>\n✅ <b>ไม่มีคิวนัดหมายรับวัคซีนในระบบ</b>\n🔗 https://ruslan1648631.github.io/vccthepha/`;
+            } else {
+                msg = `🔔 <b>แจ้งเตือนเตรียมความพร้อมรับวัคซีน</b>\n📅 สำหรับ: <b>${thaiDate}</b>\n\n<b>📌 ยอดผู้รับบริการแบ่งตาม รพ.สต.</b>\n`;
+                sortedHcodes.forEach(hc => {
+                    const count = facilityGroups[hc].size;
+                    totalCount += count;
+                    const facName = getFacilityDisplayName(hc);
+                    msg += `🏥 ${facName}: <b>${count}</b> ราย\n`;
+                });
+                msg += `\n📊 <b>รวมทั้งสิ้น: ${totalCount} ราย</b>\n🔗 https://ruslan1648631.github.io/vccthepha/`;
+            }
+
+            return { thaiDate, totalCount, msg, hasData: sortedHcodes.length > 0 };
+        };
+
+        const initialSummary = generateSummary(defaultDateIso);
+
+        const result = await Swal.fire({
+            title: '<i class="fab fa-telegram" style="color:#0284c7;"></i> ส่ง Telegram นัดหมาย',
+            html: `
+                <div style="text-align:left; font-family:'Kanit',sans-serif; font-size:14px;">
+                    <div style="margin-bottom:12px;">
+                        <label style="font-weight:600; display:block; margin-bottom:4px; color:#334155;">เลือกวันที่ต้องการส่งแจ้งเตือน:</label>
+                        <input type="date" id="tgApptDate" value="${defaultDateIso}" 
+                               style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-family:'Kanit',sans-serif; font-size:14px; box-sizing:border-box;">
+                    </div>
+                    <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px; margin-bottom:12px;">
+                        <div style="font-weight:600; color:#0369a1; margin-bottom:6px;"><i class="fas fa-eye"></i> ตัวอย่างข้อความที่จะส่ง:</div>
+                        <pre id="tgMsgPreview" style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:10px; font-family:'Kanit',sans-serif; font-size:12px; white-space:pre-wrap; max-height:180px; overflow-y:auto; margin:0; color:#1e293b;"></pre>
+                    </div>
+                    <div style="font-size:12px; color:#64748b; text-align:center;">
+                        * ข้อความจะถูกส่งไปยังกลุ่ม Telegram เครือข่ายสุขภาพอำเภอเทพาโดยตรง
+                    </div>
+                </div>
+            `,
+            didOpen: () => {
+                const dateInput = document.getElementById('tgApptDate');
+                const previewEl = document.getElementById('tgMsgPreview');
+                const updatePreview = () => {
+                    const s = generateSummary(dateInput.value || defaultDateIso);
+                    previewEl.innerHTML = s.msg;
+                };
+                dateInput.addEventListener('change', updatePreview);
+                updatePreview();
+            },
+            showCancelButton: true,
+            confirmButtonText: '<i class="fab fa-telegram-plane"></i> ยืนยันส่ง Telegram',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#0284c7',
+            preConfirm: () => {
+                const dateVal = document.getElementById('tgApptDate').value || defaultDateIso;
+                return generateSummary(dateVal);
+            }
+        });
+
+        if (!result.isConfirmed || !result.value) return;
+
+        showLoading('กำลังส่งข้อความเข้า Telegram...');
+        try {
+            const botToken = '8758808567:AAFoP_pRaWcZkWILgPTlHFYXwpwZP2OW1B4';
+            const chatId = '-5333140982';
+            const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: result.value.msg,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true
+                })
+            });
+
+            const resJson = await res.json();
+            hideLoading();
+
+            if (resJson && resJson.ok) {
+                if (typeof logActivity === 'function') {
+                    logActivity('TELEGRAM', 'notify', `ส่งแจ้งเตือนนัดหมาย (${result.value.thaiDate}) เข้า Telegram ยอดรวม ${result.value.totalCount} ราย`);
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ส่ง Telegram สำเร็จ!',
+                    text: `ส่งข้อความแจ้งเตือนนัดหมาย (${result.value.thaiDate}) เรียบร้อยแล้ว`,
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+            } else {
+                console.error('Telegram API error:', resJson);
+                Swal.fire('เกิดข้อผิดพลาด', (resJson && resJson.description) || 'ไม่สามารถส่งข้อความได้', 'error');
+            }
+        } catch (err) {
+            hideLoading();
+            console.error('Send Telegram error:', err);
+            Swal.fire('ส่งไม่สำเร็จ', 'ไม่สามารถเชื่อมต่อกับ Telegram API ได้: ' + err.message, 'error');
+        }
+    }
+    window.sendTomorrowApptsToTelegram = sendTomorrowApptsToTelegram;
+
     function parseThaiDateToISO(thaiDateStr) {
         if (!thaiDateStr) return null;
         if (thaiDateStr instanceof Date) {
