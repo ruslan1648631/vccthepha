@@ -5453,38 +5453,59 @@
         };
 
 
-// 1. ดึงรายชื่อผู้ใช้ทั้งหมด (Get Users)
+        // 1. ดึงรายชื่อผู้ใช้ทั้งหมด (Get Users)
         if (fnName === 'getUsers') {
             const requestorRole = args[0] || (APP.currentUser ? APP.currentUser.role : '');
             const requestorHcode = args[1] || (APP.currentUser ? APP.currentUser.hcode : '');
 
-            let query = supabaseClient.from('users').select('*').order('created_at', { ascending: false });
+            // ไม่ใช้ .order('created_at') เนื่องจากตาราง users ใน Supabase ไม่มีคอลัมน์ created_at
+            let query = supabaseClient.from('users').select('*');
             if (requestorRole === 'Admin_HOS' && requestorHcode) {
                 const unp = String(requestorHcode).replace(/^0+/, '');
                 const pad = String(requestorHcode).padStart(5, '0');
                 query = query.or(`hcode.eq.${requestorHcode},hcode.eq.${unp},hcode.eq.${pad}`);
             }
 
-            const { data, error } = await query;
+            let { data, error } = await query;
+            if (error) {
+                console.warn('getUsers query error, fallback to select * without filters:', error);
+                const fb = await supabaseClient.from('users').select('*');
+                if (!fb.error && fb.data) {
+                    data = fb.data;
+                    error = null;
+                }
+            }
             if (error) throw error;
+
+            // กรองสถานพยาบาลฝั่ง client ถ้าเป็น Admin_HOS เพื่อความแม่นยำ 100%
+            if (requestorRole === 'Admin_HOS' && requestorHcode) {
+                const unp = String(requestorHcode).replace(/^0+/, '');
+                const pad = String(requestorHcode).padStart(5, '0');
+                data = (data || []).filter(u => {
+                    const uh = String(u.hcode || u.Hcode || '').trim();
+                    const uhUnp = uh.replace(/^0+/, '');
+                    return uh === String(requestorHcode) || uh === unp || uh === pad || uhUnp === unp;
+                });
+            }
 
             const users = (data || []).map(u => {
                 const uHcode = u.hcode || u.Hcode || '-';
                 return {
                     id: (u.id !== undefined && u.id !== null ? u.id : (u.Id !== undefined ? u.Id : (u.ID !== undefined ? u.ID : ''))),
-                    username: u.username || u.Username || '',
-                    fullname: u.fullname || u.Fullname || '',
-                    role: u.role || u.Role || 'เจ้าหน้าที่',
+                    username: u.Username || u.username || u.user || u.name || '',
+                    fullname: u.Fullname || u.fullname || u.name || u.Name || '',
+                    role: u.Role || u.role || 'เจ้าหน้าที่',
                     hcode: uHcode,
                     hosname: getFacilityDisplayName(uHcode),
-                    village: u.village || u.Village || '-',
-                    subdistrict: u.subdistrict || u.Subdistrict || '-',
-                    status: u.status || u.Status || 'active',
-                    created_at: formatDateTime(u.created_at || u.CreatedAt)
+                    village: u.Village || u.village || '-',
+                    subdistrict: u.Subdistrict || u.subdistrict || '-',
+                    status: u.Status || u.status || 'active',
+                    created_at: formatDateTime(u.created_at || u.CreatedAt || '')
                 };
             });
             return { success: true, users };
         }
+
 
         // 2. เพิ่มผู้ใช้งาน (Add User)
         if (fnName === 'addUser') {
@@ -11412,6 +11433,27 @@ function updateBottomNavActive(page) {
             hideLoading();
             if (result.success) {
                 closeUserModal();
+                if (APP.currentUser && (APP.currentUser.username === orig || APP.currentUser.username === data.username)) {
+                    APP.currentUser.fullname = data.fullname;
+                    const elName = document.getElementById('userName');
+                    if (elName) elName.textContent = data.fullname || APP.currentUser.username;
+                    const elSub = document.getElementById('sidebarSubtitle');
+                    if (elSub) elSub.textContent = data.fullname || '';
+                    const elAvatar = document.getElementById('userAvatar');
+                    if (elAvatar) elAvatar.textContent = (data.fullname || APP.currentUser.username || 'U')[0].toUpperCase();
+                }
+                if (APP.usersList) {
+                    const existingIdx = APP.usersList.findIndex(x => x.username === orig || (data.id && x.id == data.id));
+                    if (existingIdx !== -1) {
+                        APP.usersList[existingIdx].fullname = data.fullname;
+                        APP.usersList[existingIdx].role = data.role;
+                        APP.usersList[existingIdx].hcode = data.hcode;
+                        APP.usersList[existingIdx].hosname = getFacilityDisplayName(data.hcode);
+                        APP.usersList[existingIdx].village = data.village;
+                        APP.usersList[existingIdx].subdistrict = data.subdistrict;
+                        APP.usersList[existingIdx].status = data.status;
+                    }
+                }
                 if (APP.currentUser) {
                     Swal.fire({ icon: 'success', title: 'สำเร็จ', text: result.message, timer: 1500, showConfirmButton: false });
                     setTimeout(loadUsersPage, 500);
@@ -15210,7 +15252,7 @@ window.switchLogTab = function(tab) {
             '</h5>' +
             '<p style="font-size: 11.5px; color: #475569; margin: 0; line-height: 1.4;">' +
             'ระบบจะทำการ <strong style="color:#059669;">Upsert</strong> อัตโนมัติ (อัปเดตคนเดิม + เพิ่มคนใหม่)<br>' +
-            '<a href="https://drive.google.com/file/d/1vNL-y5avdnDBwnOqIY5gfJQ9LfI1towR/view?usp=sharing" target="_blank" style="color: #059669; text-decoration: none; font-weight: 500; font-size: 12px; display:inline-flex; align-items:center; gap:4px; margin-top:4px;">' +
+            '<a href="https://docs.google.com/document/d/1gWYZw1rVWaOwGtUJBiltIBZyt1N8ZzpSXP4WOtm7PhM/edit?usp=sharing" target="_blank" style="color: #059669; text-decoration: none; font-weight: 500; font-size: 12px; display:inline-flex; align-items:center; gap:4px; margin-top:4px;">' +
             '<i class="fas fa-book-open"></i> ดูคำสั่งดึงข้อมูล Data' +
             '</a>' +
             '</p>' +
@@ -15228,7 +15270,7 @@ window.switchLogTab = function(tab) {
             '</h5>' +
             '<p style="font-size: 11.5px; color: #475569; margin: 0; line-height: 1.4;">' +
             'เพิ่มนัดหมายใหม่และข้ามข้อมูลนัดซ้ำโดยอัตโนมัติ<br>' +
-            '<a href="https://drive.google.com/file/d/1A3tno6Ry-aLWcCiA_uAAXxKELZMFEEZK/view?usp=sharing" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 500; font-size: 12px; display:inline-flex; align-items:center; gap:4px; margin-top:4px;">' +
+            '<a href="https://docs.google.com/document/d/1kkVu_RV0gTyK59cOIGYN7OhW6BN0FJLZ2RvImFOsTUU/edit?usp=sharing" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 500; font-size: 12px; display:inline-flex; align-items:center; gap:4px; margin-top:4px;">' +
             '<i class="fas fa-book-open"></i> ดูคำสั่งดึงข้อมูล Appointment' +
             '</a>' +
             '</p>' +
