@@ -10567,7 +10567,7 @@ const PAGE_TITLES = {
     coverage: 'ความครอบคลุมวัคซีน',
     duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำ)',
     outOfAreaChildren: 'ค้นหารายชื่อเด็กนอกเขต (Type 4)',
-    pcvTarget: 'รายงานกลุ่มเป้าหมายวัคซีน PCV (เด็กเกิดตั้งแต่ 1 ต.ค. 2568)'
+    pcvTarget: 'รายงานกลุ่มเป้าหมายวัคซีน PCV (เด็กเกิดตั้งแต่ 1 ต.ค. 2568)',
     vaccineStock: 'คลังวัคชีนและเวชภัณฑ์ (Stock)',
 };
 function navigateTo(page) {
@@ -14378,8 +14378,8 @@ window.switchLogTab = function(tab) {
             eventDidMount: function(info) {
                 let children = info.event.extendedProps.childrenList;
                 
-                let tooltipText = "รายชื่อนัดหมาย:
-";
+                let tooltipText = "รายชื่อนัดหมาย:\n";
+
                 children.forEach(c => {
                     const vList = (c.vaccines || []).filter(v => v && v !== 'ไม่ระบุวัคซีน' && v !== 'ไม่ระบุ' && v !== '-');
                     let vac = vList.length > 0 ? vList.join(', ') : '';
