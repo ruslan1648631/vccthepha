@@ -4991,6 +4991,7 @@
                 <div id="duplicateReportPage" class="page"></div>
                 <div id="outOfAreaChildrenPage" class="page"></div>
                 <div id="pcvTargetPage" class="page"></div>
+                <div id="vaccineStockPage" class="page"></div>
             </div>
         </div>
     </div>
@@ -5041,17 +5042,17 @@
 
     // Health facility tracking
     const HEALTH_FACILITIES = {
-        '09491': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e39\u0e2b\u0e22\u0e07',
-        '09492': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e32\u0e41\u0e1b\u0e14',
-        '09493': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e40\u0e01\u0e32\u0e30\u0e2a\u0e30\u0e1a\u0e49\u0e32',
-        '09494': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e25\u0e33\u0e44\u0e1e\u0e25',
-        '09495': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e44\u0e17\u0e23',
-        '09496': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e21\u0e48\u0e27\u0e07',
-        '09497': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e1e\u0e23\u0e38\u0e0a\u0e34\u0e07',
-        '09498': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e27\u0e31\u0e07\u0e43\u0e2b\u0e0d\u0e48',
-        '09499': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e2a\u0e30\u0e01\u0e2d\u0e21',
-        '09500': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e41\u0e21\u0e07\u0e25\u0e31\u0e01',
-        '11915': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e38\u0e48\u0e07\u0e42\u0e14\u0e19',
+        '09491': 'รพ.สต.ตูหยง',
+        '09492': 'รพ.สต.ตาแปด',
+        '09493': 'รพ.สต.เกาะสะบ้า',
+        '09494': 'รพ.สต.ลำไพล',
+        '09495': 'รพ.สต.ท่าไทร',
+        '09496': 'รพ.สต.ท่าม่วง',
+        '09497': 'รพ.สต.พรุชิง',
+        '09498': 'รพ.สต.วังใหญ่',
+        '09499': 'รพ.สต.สะกอม',
+        '09500': 'รพ.สต.ท่าแมงลัก',
+        '11915': 'รพ.สต.ทุ่งโดน',
         '15107': 'PCU2',
         '15109': 'PCU1'
     };
@@ -5060,7 +5061,7 @@
     function isSSOFacility(code, name) {
         const c = String(code || '').trim().replace(/^0+/, '');
         const n = String(name || '').trim();
-        return c === '860' || n.includes('\u0e2a\u0e2a\u0e2d') || n.includes('\u0e2a\u0e32\u0e18\u0e32\u0e23\u0e13\u0e2a\u0e38\u0e02');
+        return c === '860' || n.includes('สสอ') || n.includes('สาธารณสุข');
     }
     window.isSSOFacility = isSSOFacility;
 
@@ -5068,7 +5069,7 @@
         if (!dateVal) return '-';
         const d = (dateVal instanceof Date) ? dateVal : new Date(dateVal);
         if (isNaN(d.getTime())) return dateVal.toString();
-        const thaiMonths = ['\u0e21.\u0e04.', '\u0e01.\u0e1e.', '\u0e21\u0e35.\u0e04.', '\u0e40\u0e21.\u0e22.', '\u0e1e.\u0e04.', '\u0e21\u0e34.\u0e22.', '\u0e01.\u0e04.', '\u0e2a.\u0e04.', '\u0e01.\u0e22.', '\u0e15.\u0e04.', '\u0e1e.\u0e22.', '\u0e18.\u0e04.'];
+        const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
         const day = d.getDate();
         const month = thaiMonths[d.getMonth()];
         let y = d.getFullYear();
@@ -5077,7 +5078,7 @@
         if (includeTime) {
             const hh = String(d.getHours()).padStart(2, '0');
             const mm = String(d.getMinutes()).padStart(2, '0');
-            str += ` ${hh}:${mm} \u0e19.`;
+            str += ` ${hh}:${mm} น.`;
         }
         return str;
     }
@@ -5085,18 +5086,18 @@
 
     // [Note: Health facilities & tracking logic]
     const OFFICIAL_HOSPITALS = Object.assign({
-        '860': '\u0e2a\u0e2a\u0e2d.\u0e40\u0e17\u0e1e\u0e32',
-        '00860': '\u0e2a\u0e2a\u0e2d.\u0e40\u0e17\u0e1e\u0e32',
-        '9491': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e39\u0e2b\u0e22\u0e07',
-        '9492': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e32\u0e41\u0e1b\u0e14',
-        '9493': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e40\u0e01\u0e32\u0e30\u0e2a\u0e30\u0e1a\u0e49\u0e32',
-        '9494': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e25\u0e33\u0e44\u0e1e\u0e25',
-        '9495': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e44\u0e17\u0e23',
-        '9496': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e21\u0e48\u0e27\u0e07',
-        '9497': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e1e\u0e23\u0e38\u0e0a\u0e34\u0e07',
-        '9498': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e27\u0e31\u0e07\u0e43\u0e2b\u0e0d\u0e48',
-        '9499': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e2a\u0e30\u0e01\u0e2d\u0e21',
-        '9500': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e41\u0e21\u0e07\u0e25\u0e31\u0e01'
+        '860': 'สสอ.เทพา',
+        '00860': 'สสอ.เทพา',
+        '9491': 'รพ.สต.ตูหยง',
+        '9492': 'รพ.สต.ตาแปด',
+        '9493': 'รพ.สต.เกาะสะบ้า',
+        '9494': 'รพ.สต.ลำไพล',
+        '9495': 'รพ.สต.ท่าไทร',
+        '9496': 'รพ.สต.ท่าม่วง',
+        '9497': 'รพ.สต.พรุชิง',
+        '9498': 'รพ.สต.วังใหญ่',
+        '9499': 'รพ.สต.สะกอม',
+        '9500': 'รพ.สต.ท่าแมงลัก'
     }, HEALTH_FACILITIES);
     APP.facilityMap = Object.assign({}, OFFICIAL_HOSPITALS);
 
@@ -5237,9 +5238,9 @@
     }
 
     function evaluateChildVaccineStatus(row, refusedSet) {
-        const rowId = String(row.CID || row.cid || row.ID || row.id || row['\u0e40\u0e25\u0e02\u0e1a\u0e31\u0e15\u0e23'] || row['\u0e40\u0e25\u0e02\u0e1b\u0e23\u0e30\u0e08\u0e33\u0e15\u0e31\u0e27\u0e1b\u0e23\u0e30\u0e0a\u0e32\u0e0a\u0e19'] || '').trim();
-        const rowHn = String(row.HN || row.hn || row['\u0e23\u0e2b\u0e31\u0e2a'] || '').trim();
-        const rowName = String(row.fullname || row['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || row.childname || row['\u0e0a\u0e37\u0e48\u0e2d'] || '').trim();
+        const rowId = String(row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '').trim();
+        const rowHn = String(row.HN || row.hn || row['รหัส'] || '').trim();
+        const rowName = String(row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '').trim();
 
     // [Note: Health facilities & tracking logic]
         if (refusedSet && (
@@ -5247,16 +5248,16 @@
             (rowHn && refusedSet.has(rowHn)) ||
             (rowName && refusedSet.has(rowName))
         )) {
-            return { status: '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19', missingVaccines: '' };
+            return { status: 'ปฏิเสธวัคซีน', missingVaccines: '' };
         }
-        const existingStatus = String(row.status || row['\u0e2a\u0e16\u0e32\u0e19\u0e30'] || '').trim();
-        if (existingStatus === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19' || existingStatus === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18') {
-            return { status: '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19', missingVaccines: '' };
+        const existingStatus = String(row.status || row['สถานะ'] || '').trim();
+        if (existingStatus === 'ปฏิเสธวัคซีน' || existingStatus === 'ปฏิเสธ') {
+            return { status: 'ปฏิเสธวัคซีน', missingVaccines: '' };
         }
 
     // [Note: Health facilities & tracking logic]
-        const rawBirth = row.DOB || row.dob || row.birthdate || row['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'] || row['\u0e27\u0e31\u0e19\u0e40\u0e01\u0e34\u0e14'] || '';
-        const rawAgeStr = row['\u0e2d\u0e32\u0e22\u0e38'] || row.age || '';
+        const rawBirth = row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด'] || '';
+        const rawAgeStr = row['อายุ'] || row.age || '';
         let ageMonths = -1;
         if (rawBirth && String(rawBirth).trim() !== '-' && String(rawBirth).trim() !== '') {
             let bdStr = String(rawBirth).trim();
@@ -5694,104 +5695,45 @@
             const origUsername = (typeof args[0] === 'string' ? args[0] : (args[1] || (args[0] && args[0].username) || '')).trim();
             const user = (typeof args[0] === 'object' && args[0] !== null) ? args[0] : (args[1] || {});
             const targetUsername = origUsername || String(user.username || '').trim();
-            const passedId = args[2] || user.id || null;
 
-            if (!targetUsername && !passedId) return { success: false, message: 'ไม่พบชื่อผู้ใช้ที่ต้องการแก้ไข' };
+            if (!targetUsername) return { success: false, message: 'ไม่พบชื่อผู้ใช้ที่ต้องการแก้็ไข' };
 
             try {
-                // 1) ดึงข้อมูล schema และ userRow จาก users
-                let userRow = null;
-                const { data: allUsers } = await supabaseClient.from('users').select('*').limit(200);
-                if (allUsers && allUsers.length > 0) {
-                    userRow = allUsers.find(u => {
-                        if (passedId && (u.id == passedId || u.Id == passedId || u.ID == passedId)) return true;
-                        const un = String(u.Username || u.username || u.user || u.name || '').trim();
-                        return un.toLowerCase() === targetUsername.toLowerCase();
-                    });
-                }
+                // อัปเดตเฉพาะคอลัมน์ที่มีอยู่จริงในตาราง users: Fullname, Role, hcode, Password
+                const updatePayload = {
+                    Fullname: String(user.fullname || '').trim(),
+                    Role: user.role || 'เจ้าหน้าที่',
+                    hcode: user.hcode ? String(user.hcode).trim() : '-'
+                };
 
-                const sampleRow = userRow || (allUsers && allUsers[0]) || {};
-                const keys = Object.keys(sampleRow);
-                const findCol = (name, def) => keys.find(k => k.toLowerCase() === name.toLowerCase()) || def;
-                const hasCol = (name) => keys.some(k => k.toLowerCase() === name.toLowerCase());
-
-                const idCol = findCol('id', 'id');
-                const usernameCol = findCol('username', 'Username');
-
-                // สร้าง updateData โดยตรงตามชื่อคอลัมน์ใน Supabase
-                const updateData = {};
-
-                // Fullname / Name
-                const fnCol = findCol('fullname', findCol('name', 'Fullname'));
-                if (hasCol('fullname') || hasCol('name') || !keys.length) {
-                    updateData[fnCol] = String(user.fullname || '').trim();
-                }
-
-                // Role
-                if (hasCol('role') || !keys.length) {
-                    updateData[findCol('role', 'Role')] = user.role || 'เจ้าหน้าที่';
-                }
-
-                // hcode
-                if (hasCol('hcode') || !keys.length) {
-                    updateData[findCol('hcode', 'hcode')] = user.hcode ? String(user.hcode).trim() : '-';
-                }
-
-                // Village
-                if (hasCol('village') || !keys.length) {
-                    updateData[findCol('village', 'Village')] = user.village ? String(user.village).trim() : '-';
-                }
-
-                // Subdistrict
-                if (hasCol('subdistrict') || !keys.length) {
-                    updateData[findCol('subdistrict', 'Subdistrict')] = user.subdistrict ? String(user.subdistrict).trim() : '-';
-                }
-
-                // Status
-                if (hasCol('status') || !keys.length) {
-                    updateData[findCol('status', 'Status')] = user.status || 'active';
-                }
-
-                // อัปเดตรหัสผ่านเฉพาะเมื่อมีการกรอกรหัสผ่านใหม่
                 if (user.password && String(user.password).trim() !== '') {
                     let pwd = String(user.password).trim();
                     if (!/^[a-f0-9]{64}$/i.test(pwd)) {
                         pwd = await sha256Hex(pwd);
                     }
-                    if (hasCol('password') || !keys.length) {
-                        updateData[findCol('password', 'Password')] = pwd;
-                    }
+                    updatePayload.Password = pwd;
                 }
 
-                // ถ้ามีการเปลี่ยน username
-                if (user.username && String(user.username).trim() !== '' && String(user.username).trim() !== targetUsername) {
-                    if (hasCol('username') || !keys.length) {
-                        updateData[usernameCol] = String(user.username).trim();
-                    }
-                }
-
-                let updateRes = null;
-
-                // อัปเดตผ่าน id ถ้ามี
-                const targetId = (userRow && userRow[idCol] !== undefined && userRow[idCol] !== null) ? userRow[idCol] : passedId;
-                if (targetId !== null && targetId !== undefined && targetId !== '') {
-                    updateRes = await supabaseClient.from('users').update(updateData).eq(idCol, targetId);
-                }
-
-                // ถ้ายังไม่สำเร็จ ให้อัปเดตตาม usernameCol
-                if (!updateRes || updateRes.error) {
-                    updateRes = await supabaseClient.from('users').update(updateData).ilike(usernameCol, targetUsername);
-                }
-
-                // Fallback: ลองทั้ง Username และ username
+                // 1) อัปเดตด้วย Username (ชื่อคอลัมน์หลักใน Supabase)
+                let updateRes = await supabaseClient.from('users').update(updatePayload).eq('Username', targetUsername);
                 if (updateRes && updateRes.error) {
-                    const candidateCols = ['Username', 'username'];
-                    for (const uCol of candidateCols) {
-                        const fb = await supabaseClient.from('users').update(updateData).ilike(uCol, targetUsername);
-                        if (!fb.error) {
-                            updateRes = fb;
-                            break;
-                        }
+                    updateRes = await supabaseClient.from('users').update(updatePayload).ilike('Username', targetUsername);
+                }
+                // 2) ลองด้วย username (lowercase)
+                if (updateRes && updateRes.error) {
+                    updateRes = await supabaseClient.from('users').update(updatePayload).ilike('username', targetUsername);
+                }
+                // 3) Fallback สลับชื่อคอลัมน์เป็น lowercase หาก schema ใช้ lowercase
+                if (updateRes && updateRes.error && updateRes.error.message && updateRes.error.message.includes('column')) {
+                    const fallbackData = {
+                        fullname: updatePayload.Fullname,
+                        role: updatePayload.Role,
+                        hcode: updatePayload.hcode
+                    };
+                    if (updatePayload.Password) fallbackData.password = updatePayload.Password;
+                    updateRes = await supabaseClient.from('users').update(fallbackData).ilike('Username', targetUsername);
+                    if (updateRes && updateRes.error) {
+                        updateRes = await supabaseClient.from('users').update(fallbackData).ilike('username', targetUsername);
                     }
                 }
 
@@ -5802,11 +5744,10 @@
                 return { success: true, message: 'บันทึกข้อมูลผู้ใช้สำเร็จ' };
             } catch (err) {
                 console.error('updateUser exception:', err);
-                return { success: false, message: err.message || 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลผู้ใช้' };
+                return { success: false, message: err.message || 'เกิดข้อผิดพลาดในการแก้็ไขข้อมูลผู้ใช้' };
             }
         }
 
-        // 4. ลบผู้ใช้ (Delete User)
         if (fnName === 'deleteUser') {
             const username = String(args[0] || '').trim();
             const passedId = args[1] || null;
@@ -7159,15 +7100,15 @@
 
                 for (let k of Object.keys(row)) {
                     const kl = k.toLowerCase().trim();
-                    if (kl === 'lat' || kl === 'latitude' || kl === '\u0e25\u0e30\u0e15\u0e34\u0e08\u0e39\u0e14') {
+                    if (kl === 'lat' || kl === 'latitude' || kl === 'ละติจูด') {
                         const v = parseFloat(row[k]);
                         if (!isNaN(v)) lat = v;
                     }
-                    if (kl === 'lng' || kl === 'lon' || kl === 'longitude' || kl === '\u0e25\u0e2d\u0e07\u0e08\u0e34\u0e08\u0e39\u0e14') {
+                    if (kl === 'lng' || kl === 'lon' || kl === 'longitude' || kl === 'ลองจิจูด') {
                         const v = parseFloat(row[k]);
                         if (!isNaN(v)) lng = v;
                     }
-                    if (kl === 'gps' || kl === '\u0e1e\u0e34\u0e01\u0e31\u0e14' || kl === 'lat_lng' || kl === 'latlng') {
+                    if (kl === 'gps' || kl === 'พิกัด' || kl === 'lat_lng' || kl === 'latlng') {
                         if (row[k]) gpsRaw = String(row[k]).trim();
                     }
                 }
@@ -7201,13 +7142,13 @@
                     }
                 }
 
-                const rowId = row.CID || row.cid || row.ID || row.id || row['\u0e40\u0e25\u0e02\u0e1a\u0e31\u0e15\u0e23'] || row['\u0e40\u0e25\u0e02\u0e1b\u0e23\u0e30\u0e08\u0e33\u0e15\u0e31\u0e27\u0e1b\u0e23\u0e30\u0e0a\u0e32\u0e0a\u0e19'] || '-';
-                const rowHn = row.HN || row.hn || row['\u0e23\u0e2b\u0e31\u0e2a'] || '-';
-                const rowName = row.fullname || row['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || row.childname || row['\u0e0a\u0e37\u0e48\u0e2d'] || '-';
-                const rowVillage = row.moo || row.village_no || row.village || row['\u0e2b\u0e21\u0e39\u0e48\u0e17\u0e35\u0e48'] || row['\u0e2b\u0e21\u0e39\u0e48'] || '-';
-                const rowVilName = row.villname || row.village_name || row.villageName || row['\u0e0a\u0e37\u0e48\u0e2d\u0e2b\u0e21\u0e39\u0e48\u0e1a\u0e49\u0e32\u0e19'] || '-';
+                const rowId = row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '-';
+                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
+                const rowName = row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-';
+                const rowVillage = row.moo || row.village_no || row.village || row['หมู่ที่'] || row['หมู่'] || '-';
+                const rowVilName = row.villname || row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-';
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
-                const rowSub = row.subdistname || row.subdistrict || row.Subdistrict || row['\u0e15\u0e33\u0e1a\u0e25'] || '-';
+                const rowSub = row.subdistname || row.subdistrict || row.Subdistrict || row['ตำบล'] || '-';
 
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
 
@@ -7226,12 +7167,12 @@
                     lng: hasValidGps ? lng : null,
                     hasGps: hasValidGps,
                     age: (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(row.DOB || row.dob || row['ว/ด/ปเกิด'])),
-                    houseNumber: row.house || row.house_no || row.houseNumber || row['\u0e1a\u0e49\u0e32\u0e19\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48'] || '-',
-                    phone: row.phone || row['\u0e42\u0e17\u0e23\u0e28\u0e31\u0e1e\u0e17\u0e4c'] || '-',
-                    fatherName: row.father || row.fatherName || row['\u0e0a\u0e37\u0e48\u0e2d\u0e1a\u0e34\u0e14\u0e32'] || '-',
-                    motherName: row.mother || row.motherName || row['\u0e0a\u0e37\u0e48\u0e2d\u0e21\u0e32\u0e23\u0e14\u0e32'] || '-',
-                    asm: row.VHV || row.vhv || row.asm || row['\u0e2d\u0e2a\u0e21.'] || row['\u0e2d\u0e2a\u0e21'] || '-',
-                    birthDate: row.DOB || row.dob || row.birthdate || row['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'] || row['\u0e27\u0e31\u0e19\u0e40\u0e01\u0e34\u0e14'] || '-',
+                    houseNumber: row.house || row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
+                    phone: row.phone || row['โทรศัพท์'] || '-',
+                    fatherName: row.father || row.fatherName || row['ชื่อบิดา'] || '-',
+                    motherName: row.mother || row.motherName || row['ชื่อมารดา'] || '-',
+                    asm: row.VHV || row.vhv || row.asm || row['อสม.'] || row['อสม'] || '-',
+                    birthDate: row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด'] || '-',
                     status: evalRes.status,
                     missingVaccines: evalRes.missingVaccines
                 };
@@ -7322,12 +7263,12 @@
             const facilityMapStats = {};
             const subdistrictStats = {};
             const villagesBySub = {};
-            const ageDistribution = { '0-1 \u0e1b\u0e35': 0, '1-2 \u0e1b\u0e35': 0, '2-3 \u0e1b\u0e35': 0, '3-4 \u0e1b\u0e35': 0, '4-5 \u0e1b\u0e35': 0, '5 \u0e1b\u0e35\u0e02\u0e36\u0e49\u0e19\u0e44\u0e1b': 0 };
+            const ageDistribution = { '0-1 ปี': 0, '1-2 ปี': 0, '2-3 ปี': 0, '3-4 ปี': 0, '4-5 ปี': 0, '5 ปีขึ้นไป': 0 };
             const ageGroupTargets = {
-                '1 \u0e1b\u0e35': { target: 0, complete: 0, rate: 0 },
-                '2 \u0e1b\u0e35': { target: 0, complete: 0, rate: 0 },
-                '3 \u0e1b\u0e35': { target: 0, complete: 0, rate: 0 },
-                '5 \u0e1b\u0e35': { target: 0, complete: 0, rate: 0 }
+                '1 ปี': { target: 0, complete: 0, rate: 0 },
+                '2 ปี': { target: 0, complete: 0, rate: 0 },
+                '3 ปี': { target: 0, complete: 0, rate: 0 },
+                '5 ปี': { target: 0, complete: 0, rate: 0 }
             };
 
             Object.keys(HEALTH_FACILITIES).forEach(code => {
@@ -7339,10 +7280,10 @@
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
                 total++;
                 const st = evalRes.status;
-                if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') onTime++;
-                else if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') complete++;
-                else if (st === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') missed++;
-                else if (st === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') refused++;
+                if (st === 'ตามนัดปกติ') onTime++;
+                else if (st === 'ครบตามเกณฑ์') complete++;
+                else if (st === 'ขาดนัด') missed++;
+                else if (st === 'ปฏิเสธวัคซีน') refused++;
 
                 let rawCode = String(row.hcode || '').trim();
                 let fCode = rawCode;
@@ -7357,23 +7298,23 @@
                         facilityMapStats[fCode] = { code: fCode, name: fName, total: 0, onTime: 0, complete: 0, missed: 0, rate: 0 };
                     }
                     facilityMapStats[fCode].total++;
-                    if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c' || st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') {
+                    if (st === 'ครบตามเกณฑ์' || st === 'ตามนัดปกติ') {
                         facilityMapStats[fCode].complete++;
                         facilityMapStats[fCode].onTime++;
-                    } else if (st === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') {
+                    } else if (st === 'ขาดนัด') {
                         facilityMapStats[fCode].missed++;
                     }
                 }
 
-                const sub = String(row.subdistname || row['\u0e15\u0e33\u0e1a\u0e25'] || row.subdistrict || '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38').trim();
-                const vNo = String(row.moo || row['\u0e2b\u0e21\u0e39\u0e48\u0e17\u0e35\u0e48'] || row.village_no || row.village || '-').trim();
-                const vName = String(row.villname || row['\u0e0a\u0e37\u0e48\u0e2d\u0e2b\u0e21\u0e39\u0e48\u0e1a\u0e49\u0e32\u0e19'] || row.village_name || row.villageName || (vNo !== '-' ? '\u0e2b\u0e21\u0e39\u0e48 ' + vNo : '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38')).trim();
+                const sub = String(row.subdistname || row['ตำบล'] || row.subdistrict || 'ไม่ระบุ').trim();
+                const vNo = String(row.moo || row['หมู่ที่'] || row.village_no || row.village || '-').trim();
+                const vName = String(row.villname || row['ชื่อหมู่บ้าน'] || row.village_name || row.villageName || (vNo !== '-' ? 'หมู่ ' + vNo : 'ไม่ระบุ')).trim();
 
                 if (!subdistrictStats[sub]) {
                     subdistrictStats[sub] = { name: sub, total: 0, complete: 0, rate: 0 };
                 }
                 subdistrictStats[sub].total++;
-                if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c' || st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') subdistrictStats[sub].complete++;
+                if (st === 'ครบตามเกณฑ์' || st === 'ตามนัดปกติ') subdistrictStats[sub].complete++;
 
                 if (!villagesBySub[sub]) villagesBySub[sub] = {};
                 const vKey = vNo + '_' + vName;
@@ -7381,7 +7322,7 @@
                     villagesBySub[sub][vKey] = { villageNo: vNo, villageName: vName, hname: (facilityMapStats[fCode] ? facilityMapStats[fCode].name : fCode), total: 0, complete: 0, rate: 0 };
                 }
                 villagesBySub[sub][vKey].total++;
-                if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c' || st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') villagesBySub[sub][vKey].complete++;
+                if (st === 'ครบตามเกณฑ์' || st === 'ตามนัดปกติ') villagesBySub[sub][vKey].complete++;
 
                 let m = -1;
                 const rawBirth = row.DOB || row['ว/ด/ปเกิด'] || row['วันเกิด'] || row.birthdate || row.dob;
@@ -7407,32 +7348,32 @@
                         }
                     }
                 }
-                if (m < 0 && (row['\u0e2d\u0e32\u0e22\u0e38'] || row.age)) {
-                    m = parseAgeStrToMonths(row['\u0e2d\u0e32\u0e22\u0e38'] || row.age);
+                if (m < 0 && (row['อายุ'] || row.age)) {
+                    m = parseAgeStrToMonths(row['อายุ'] || row.age);
                 }
                 if (m >= 0) {
-                    if (m < 12) ageDistribution['0-1 \u0e1b\u0e35']++;
-                    else if (m < 24) ageDistribution['1-2 \u0e1b\u0e35']++;
-                    else if (m < 36) ageDistribution['2-3 \u0e1b\u0e35']++;
-                    else if (m < 48) ageDistribution['3-4 \u0e1b\u0e35']++;
-                    else if (m < 60) ageDistribution['4-5 \u0e1b\u0e35']++;
-                    else ageDistribution['5 \u0e1b\u0e35\u0e02\u0e36\u0e49\u0e19\u0e44\u0e1b']++;
+                    if (m < 12) ageDistribution['0-1 ปี']++;
+                    else if (m < 24) ageDistribution['1-2 ปี']++;
+                    else if (m < 36) ageDistribution['2-3 ปี']++;
+                    else if (m < 48) ageDistribution['3-4 ปี']++;
+                    else if (m < 60) ageDistribution['4-5 ปี']++;
+                    else ageDistribution['5 ปีขึ้นไป']++;
 
                     if (m >= 9 && m <= 15) {
-                        ageGroupTargets['1 \u0e1b\u0e35'].target++;
-                        if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c' || st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') ageGroupTargets['1 \u0e1b\u0e35'].complete++;
+                        ageGroupTargets['1 ปี'].target++;
+                        if (st === 'ครบตามเกณฑ์' || st === 'ตามนัดปกติ') ageGroupTargets['1 ปี'].complete++;
                     }
                     if (m >= 21 && m <= 27) {
-                        ageGroupTargets['2 \u0e1b\u0e35'].target++;
-                        if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c' || st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') ageGroupTargets['2 \u0e1b\u0e35'].complete++;
+                        ageGroupTargets['2 ปี'].target++;
+                        if (st === 'ครบตามเกณฑ์' || st === 'ตามนัดปกติ') ageGroupTargets['2 ปี'].complete++;
                     }
                     if (m >= 33 && m <= 39) {
-                        ageGroupTargets['3 \u0e1b\u0e35'].target++;
-                        if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c' || st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') ageGroupTargets['3 \u0e1b\u0e35'].complete++;
+                        ageGroupTargets['3 ปี'].target++;
+                        if (st === 'ครบตามเกณฑ์' || st === 'ตามนัดปกติ') ageGroupTargets['3 ปี'].complete++;
                     }
                     if (m >= 57 && m <= 63) {
-                        ageGroupTargets['5 \u0e1b\u0e35'].target++;
-                        if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c' || st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') ageGroupTargets['5 \u0e1b\u0e35'].complete++;
+                        ageGroupTargets['5 ปี'].target++;
+                        if (st === 'ครบตามเกณฑ์' || st === 'ตามนัดปกติ') ageGroupTargets['5 ปี'].complete++;
                     }
                 }
             });
@@ -7468,10 +7409,10 @@
             });
 
             const ageKeyMap = {
-                '1 \u0e1b\u0e35': { key: 'y1', label: '\u0e2d\u0e32\u0e22\u0e38 1 \u0e1b\u0e35', defaultTarget: 90 },
-                '2 \u0e1b\u0e35': { key: 'y2', label: '\u0e2d\u0e32\u0e22\u0e38 2 \u0e1b\u0e35', defaultTarget: 90 },
-                '3 \u0e1b\u0e35': { key: 'y3', label: '\u0e2d\u0e32\u0e22\u0e38 3 \u0e1b\u0e35', defaultTarget: 95 },
-                '5 \u0e1b\u0e35': { key: 'y5', label: '\u0e2d\u0e32\u0e22\u0e38 5 \u0e1b\u0e35', defaultTarget: 90 }
+                '1 ปี': { key: 'y1', label: 'อายุ 1 ปี', defaultTarget: 90 },
+                '2 ปี': { key: 'y2', label: 'อายุ 2 ปี', defaultTarget: 90 },
+                '3 ปี': { key: 'y3', label: 'อายุ 3 ปี', defaultTarget: 95 },
+                '5 ปี': { key: 'y5', label: 'อายุ 5 ปี', defaultTarget: 90 }
             };
             const ageGroupsList = Object.keys(ageGroupTargets).map(k => {
                 const g = ageGroupTargets[k];
@@ -7616,7 +7557,7 @@
             const roleNorm = String(role || '').toLowerCase().trim();
             const isAdminAmpur = (roleNorm === 'admin_ampur' || roleNorm === 'admin' || roleNorm.includes('ampur'));
 
-            const isAll = (v) => !v || v === '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14' || v === 'all';
+            const isAll = (v) => !v || v === 'ทั้งหมด' || v === 'all';
             const targetHcode = (!isAll(selectedHcode))
                 ? selectedHcode
                 : (isAdminAmpur ? '' : userHcode);
@@ -7661,10 +7602,10 @@
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
                 const st = evalRes.status;
                 stats.total++;
-                if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34') stats.onTime++;
-                else if (st === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') stats.missed++;
-                else if (st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') stats.complete++;
-                else if (st === '\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e27\u0e31\u0e04\u0e0b\u0e35\u0e19') stats.refused++;
+                if (st === 'ตามนัดปกติ') stats.onTime++;
+                else if (st === 'ขาดนัด') stats.missed++;
+                else if (st === 'ครบตามเกณฑ์') stats.complete++;
+                else if (st === 'ปฏิเสธวัคซีน') stats.refused++;
 
                 let rawCode = String(row.hcode || '').trim();
                 let fCode = rawCode;
@@ -7678,9 +7619,9 @@
                         facilityMap[fCode] = { code: fCode, name: fName, total: 0, onTime: 0, missed: 0, rate: 0 };
                     }
                     facilityMap[fCode].total++;
-                    if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
+                    if (st === 'ตามนัดปกติ' || st === 'ครบตามเกณฑ์') {
                         facilityMap[fCode].onTime++;
-                    } else if (st === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') {
+                    } else if (st === 'ขาดนัด') {
                         facilityMap[fCode].missed++;
                     }
                 }
@@ -7718,9 +7659,9 @@
                     };
                 }
                 villageMap[vRealName].total++;
-                if (st === '\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34' || st === '\u0e04\u0e23\u0e1a\u0e15\u0e32\u0e21\u0e40\u0e01\u0e13\u0e11\u0e4c') {
+                if (st === 'ตามนัดปกติ' || st === 'ครบตามเกณฑ์') {
                     villageMap[vRealName].onTime++;
-                } else if (st === '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14') {
+                } else if (st === 'ขาดนัด') {
                     villageMap[vRealName].missed++;
                 }
             });
@@ -7878,7 +7819,7 @@
             if (error || !data || data.length === 0) {
                 const all = await fetchAllFromTable('data');
                 const matched = all.find(r => {
-                    const rId = String(r.CID || r.cid || r.id || r['\u0e40\u0e25\u0e02\u0e1a\u0e31\u0e15\u0e23'] || '').trim();
+                    const rId = String(r.CID || r.cid || r.id || r['เลขบัตร'] || '').trim();
                     const rHn = String(r.HN || r.hn || '').trim();
                     return rId === childId || rHn === childId;
                 });
@@ -7920,24 +7861,24 @@
 
             const rowHcode = String(raw.hcode || '-').trim();
             const childObj = {
-                id: raw.CID || raw.cid || raw.id || raw['\u0e40\u0e25\u0e02\u0e1a\u0e31\u0e15\u0e23'] || '-',
-                cid: raw.CID || raw.cid || raw.id || raw['\u0e40\u0e25\u0e02\u0e1a\u0e31\u0e15\u0e23'] || '-',
-                hn: raw.HN || raw.hn || raw['\u0e23\u0e2b\u0e31\u0e2a'] || '-',
-                fullname: raw.fullname || raw.childname || raw['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25'] || raw['\u0e0a\u0e37\u0e48\u0e2d'] || '-',
-                birthDate: raw.DOB || raw.dob || raw.birthdate || raw['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'] || raw['\u0e27\u0e31\u0e19\u0e40\u0e01\u0e34\u0e14'] || '-',
-                type: raw.type || raw['\u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17'] || '-',
-                age: (raw.age && raw.age !== '-') ? raw.age : ((raw['\u0e2d\u0e32\u0e22\u0e38'] && raw['\u0e2d\u0e32\u0e22\u0e38'] !== '-') ? raw['\u0e2d\u0e32\u0e22\u0e38'] : calculateAgeString(raw.DOB || raw.dob || raw['\u0e27/\u0e14/\u0e1b\u0e40\u0e01\u0e34\u0e14'])),
-                houseNumber: raw.house || raw.house_no || raw.houseNumber || raw['\u0e1a\u0e49\u0e32\u0e19\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48'] || '-',
-                village: raw.moo || raw.village_no || raw.village || raw['\u0e2b\u0e21\u0e39\u0e48\u0e17\u0e35\u0e48'] || raw['\u0e2b\u0e21\u0e39\u0e48'] || '-',
-                villageName: raw.villname || raw.village_name || raw.villageName || raw['\u0e0a\u0e37\u0e48\u0e2d\u0e2b\u0e21\u0e39\u0e48\u0e1a\u0e49\u0e32\u0e19'] || '-',
-                subdistrict: raw.subdistname || raw.subdistrict || raw['\u0e15\u0e33\u0e1a\u0e25'] || '-',
+                id: raw.CID || raw.cid || raw.id || raw['เลขบัตร'] || '-',
+                cid: raw.CID || raw.cid || raw.id || raw['เลขบัตร'] || '-',
+                hn: raw.HN || raw.hn || raw['รหัส'] || '-',
+                fullname: raw.fullname || raw.childname || raw['ชื่อ-สกุล'] || raw['ชื่อ'] || '-',
+                birthDate: raw.DOB || raw.dob || raw.birthdate || raw['ว/ด/ปเกิด'] || raw['วันเกิด'] || '-',
+                type: raw.type || raw['ประเภท'] || '-',
+                age: (raw.age && raw.age !== '-') ? raw.age : ((raw['อายุ'] && raw['อายุ'] !== '-') ? raw['อายุ'] : calculateAgeString(raw.DOB || raw.dob || raw['ว/ด/ปเกิด'])),
+                houseNumber: raw.house || raw.house_no || raw.houseNumber || raw['บ้านเลขที่'] || '-',
+                village: raw.moo || raw.village_no || raw.village || raw['หมู่ที่'] || raw['หมู่'] || '-',
+                villageName: raw.villname || raw.village_name || raw.villageName || raw['ชื่อหมู่บ้าน'] || '-',
+                subdistrict: raw.subdistname || raw.subdistrict || raw['ตำบล'] || '-',
                 hcode: rowHcode,
                 hname: raw.hname || getFacilityDisplayName(rowHcode, raw.hospital),
-                asm: raw.VHV || raw.vhv || raw.asm || row['\u0e2d\u0e2a\u0e21.'] || row['\u0e2d\u0e2a\u0e21'] || '-',
-                phone: raw.phone || row['\u0e42\u0e17\u0e23\u0e28\u0e31\u0e1e\u0e17\u0e4c'] || '-',
-                gps: raw.GPS || raw.gps || raw['\u0e1e\u0e34\u0e01\u0e31\u0e14'] || '-',
-                fatherName: raw.father || raw.fatherName || raw['\u0e0a\u0e37\u0e48\u0e2d\u0e1a\u0e34\u0e14\u0e32'] || '-',
-                motherName: raw.mother || raw.motherName || raw['\u0e0a\u0e37\u0e48\u0e2d\u0e21\u0e32\u0e23\u0e14\u0e32'] || '-',
+                asm: raw.VHV || raw.vhv || raw.asm || row['อสม.'] || row['อสม'] || '-',
+                phone: raw.phone || row['โทรศัพท์'] || '-',
+                gps: raw.GPS || raw.gps || raw['พิกัด'] || '-',
+                fatherName: raw.father || raw.fatherName || raw['ชื่อบิดา'] || '-',
+                motherName: raw.mother || raw.motherName || raw['ชื่อมารดา'] || '-',
                 status: evalRes.status,
                 missingVaccines: evalRes.missingVaccines,
                 vaccines: vaccines
@@ -8947,7 +8888,151 @@
             return { success: true, message: 'ส่งข้อความรายงานความครอบคลุมวัคซีนเข้า Telegram เรียบร้อยแล้ว' };
         }
 
+        // ============================================================
+        // คลังวัคซีน & เวชภัณฑ์ (Vaccine Stock)
+        // ============================================================
+        if (fnName === 'getVaccineStock') {
+            const filters = args[0] || {};
+            try {
+                let q = supabaseClient.from('vaccine_stock').select('*').order('transaction_date', { ascending: false });
+                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                    q = q.eq('hcode', String(filters.hcode).padStart(5, '0'));
+                } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
+                    q = q.eq('hcode', String(filters.userHcode).padStart(5, '0'));
+                }
+                const { data, error } = await q;
+                if (error) {
+                    console.warn('getVaccineStock table not ready or error:', error.message);
+                    return { success: true, transactions: [], balances: [], summary: { totalVials: 0, receivedThisMonth: 0, issuedThisMonth: 0, expiringSoonCount: 0, expiredCount: 0 } };
+                }
 
+                const rows = data || [];
+                // คำนวณยอดคงเหลือตาม Lot
+                const balanceMap = {};
+                const now = new Date();
+                const curYm = now.toISOString().slice(0, 7);
+                let totalVials = 0, receivedThisMonth = 0, issuedThisMonth = 0, expiringSoonCount = 0, expiredCount = 0;
+
+                rows.forEach(r => {
+                    const key = `${r.hcode}_${r.vaccine_code}_${r.lot_no}`;
+                    const qty = Number(r.quantity_vials || 0);
+                    const dosesPerVial = Number(r.doses_per_vial || 1);
+                    const txType = String(r.transaction_type || '').toUpperCase();
+                    const txDate = String(r.transaction_date || '').slice(0, 7);
+
+                    if (!balanceMap[key]) {
+                        balanceMap[key] = {
+                            hcode: r.hcode,
+                            hospital_name: getFacilityDisplayName(r.hcode),
+                            vaccine_code: r.vaccine_code,
+                            vaccine_name: r.vaccine_name || r.vaccine_code,
+                            lot_no: r.lot_no,
+                            exp_date: r.exp_date,
+                            doses_per_vial: dosesPerVial,
+                            remaining_vials: 0,
+                            remaining_doses: 0,
+                            vvm_status: r.vvm_status || 'Stage 1',
+                            status: 'ปกติ'
+                        };
+                    }
+
+                    if (txType === 'RECEIVE' || txType === 'OPENING_BALANCE' || txType === 'รับเข้า' || txType === 'ยอดยกมา') {
+                        balanceMap[key].remaining_vials += qty;
+                        if (txDate === curYm) receivedThisMonth += qty;
+                    } else if (txType === 'ISSUE' || txType === 'TRANSFER' || txType === 'ADJUST_LOSS' || txType === 'จ่ายออก' || txType === 'ปรับลด') {
+                        balanceMap[key].remaining_vials -= qty;
+                        if (txDate === curYm) issuedThisMonth += qty;
+                    }
+                });
+
+                const balances = Object.values(balanceMap).filter(b => b.remaining_vials > 0).map(b => {
+                    b.remaining_doses = b.remaining_vials * b.doses_per_vial;
+                    totalVials += b.remaining_vials;
+                    if (b.exp_date) {
+                        const expD = new Date(b.exp_date);
+                        const diffDays = Math.ceil((expD - now) / (1000 * 60 * 60 * 24));
+                        b.days_to_expire = diffDays;
+                        if (diffDays < 0) {
+                            b.status = 'หมดอายุแล้ว';
+                            expiredCount++;
+                        } else if (diffDays <= 90) {
+                            b.status = 'ใกล้หมดอายุ';
+                            expiringSoonCount++;
+                        } else {
+                            b.status = 'ปกติ';
+                        }
+                    }
+                    return b;
+                });
+
+                return {
+                    success: true,
+                    transactions: rows,
+                    balances: balances,
+                    summary: {
+                        totalVials: totalVials,
+                        receivedThisMonth: receivedThisMonth,
+                        issuedThisMonth: issuedThisMonth,
+                        expiringSoonCount: expiringSoonCount,
+                        expiredCount: expiredCount
+                    }
+                };
+            } catch (err) {
+                console.error('getVaccineStock error:', err);
+                return { success: false, message: err.message };
+            }
+        }
+
+        if (fnName === 'addVaccineStock') {
+            const item = args[0] || {};
+            try {
+                const record = {
+                    transaction_date: item.transaction_date || new Date().toISOString().slice(0, 10),
+                    hcode: String(item.hcode || '00860').padStart(5, '0'),
+                    vaccine_code: String(item.vaccine_code || '').trim(),
+                    vaccine_name: String(item.vaccine_name || item.vaccine_code || '').trim(),
+                    transaction_type: item.transaction_type || 'RECEIVE',
+                    lot_no: String(item.lot_no || '-').trim(),
+                    exp_date: item.exp_date ? String(item.exp_date).slice(0, 10) : null,
+                    quantity_vials: Number(item.quantity_vials || 0),
+                    doses_per_vial: Number(item.doses_per_vial || 1),
+                    total_doses: Number(item.quantity_vials || 0) * Number(item.doses_per_vial || 1),
+                    source_destination: item.source_destination || null,
+                    vvm_status: item.vvm_status || 'Stage 1',
+                    temperature_c: item.temperature_c !== undefined && item.temperature_c !== '' ? Number(item.temperature_c) : null,
+                    recorded_by: item.recorded_by || (APP.currentUser ? (APP.currentUser.fullname || APP.currentUser.username) : 'เจ้าหน้าที่'),
+                    notes: item.notes || null
+                };
+
+                const { data, error } = await supabaseClient.from('vaccine_stock').insert([record]).select();
+                if (error) {
+                    console.error('addVaccineStock error:', error);
+                    return { success: false, message: error.message };
+                }
+
+                try {
+                    logActivity('STOCK', item.transaction_type || 'RECEIVE', `บันทึกสต๊อก ${record.vaccine_code} Lot:${record.lot_no} จำนวน ${record.quantity_vials} ขวด`);
+                } catch(e) {}
+
+                return { success: true, message: 'บันทึกข้อมูลสต๊อกวัคซีนเรียบร้อยแล้ว', item: data ? data[0] : record };
+            } catch (err) {
+                console.error('addVaccineStock exception:', err);
+                return { success: false, message: err.message };
+            }
+        }
+
+        if (fnName === 'deleteVaccineStock') {
+            const stockId = args[0];
+            if (!stockId) return { success: false, message: 'ไม่พบ ID รายการ' };
+            try {
+                const { error } = await supabaseClient.from('vaccine_stock').delete().eq('id', stockId);
+                if (error) return { success: false, message: error.message };
+                try { logActivity('STOCK', 'DELETE', `ลบรายการสต๊อก ID: ${stockId}`); } catch(e) {}
+                return { success: true, message: 'ลบรายการเรียบร้อยแล้ว' };
+            } catch (err) {
+                return { success: false, message: err.message };
+            }
+        }
         // สำหรับ Action อื่นๆ ส่ง null เพื่อให้ Fallback ไปยัง GAS
         return null;
     }
@@ -9154,33 +9239,33 @@ function renderPublicStats(summary, ageGroups) {
             icon: 'fa-child',
             accent: '#667eea',
             accentSoft: '#eef2ff',
-            label: '\u0e40\u0e14\u0e47\u0e01 0-5 \u0e1b\u0e35\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14',
+            label: 'เด็ก 0-5 ปีทั้งหมด',
             value: totalChild,
-            unit: '\u0e04\u0e19'
+            unit: 'คน'
         },
         {
             icon: 'fa-check-circle',
             accent: '#10b981',
             accentSoft: '#d1fae5',
-            label: '\u0e21\u0e32\u0e15\u0e32\u0e21\u0e19\u0e31\u0e14\u0e1b\u0e01\u0e15\u0e34/\u0e04\u0e23\u0e1a\u0e40\u0e01\u0e13\u0e11\u0e4c',
+            label: 'มาตามนัดปกติ/ครบเกณฑ์',
             value: goodChild,
-            unit: '\u0e04\u0e19'
+            unit: 'คน'
         },
         {
             icon: 'fa-calendar-alt',
             accent: '#f59e0b',
             accentSoft: '#fef3c7',
-            label: summary.apptMonthLabel || '\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e14\u0e37\u0e2d\u0e19\u0e19\u0e35\u0e49',
+            label: summary.apptMonthLabel || 'นัดหมายเดือนนี้',
             value: apptCount,
-            unit: '\u0e19\u0e31\u0e14'
+            unit: 'นัด'
         },
         {
             icon: 'fa-exclamation-triangle',
             accent: '#ef4444',
             accentSoft: '#fee2e2',
-            label: '\u0e02\u0e32\u0e14\u0e19\u0e31\u0e14\u0e1b\u0e31\u0e08\u0e08\u0e38\u0e1a\u0e31\u0e19',
+            label: 'ขาดนัดปัจจุบัน',
             value: missCount,
-            unit: '\u0e04\u0e19'
+            unit: 'คน'
         }
     ];
 
@@ -9338,17 +9423,17 @@ function renderPublicFacilitiesTable(facilities) {
 
     // Health facility tracking
     const officialFacilities = {
-        '09491': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e39\u0e2b\u0e22\u0e07',
-        '09492': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e32\u0e41\u0e1b\u0e14',
-        '09493': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e40\u0e01\u0e32\u0e30\u0e2a\u0e30\u0e1a\u0e49\u0e32',
-        '09494': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e25\u0e33\u0e44\u0e1e\u0e25',
-        '09495': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e44\u0e17\u0e23',
-        '09496': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e21\u0e48\u0e27\u0e07',
-        '09497': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e1e\u0e23\u0e38\u0e0a\u0e34\u0e07',
-        '09498': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e27\u0e31\u0e07\u0e43\u0e2b\u0e0d\u0e48',
-        '09499': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e2a\u0e30\u0e01\u0e2d\u0e21',
-        '09500': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e41\u0e21\u0e07\u0e25\u0e31\u0e01',
-        '11915': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e38\u0e48\u0e07\u0e42\u0e14\u0e19',
+        '09491': 'รพ.สต.ตูหยง',
+        '09492': 'รพ.สต.ตาแปด',
+        '09493': 'รพ.สต.เกาะสะบ้า',
+        '09494': 'รพ.สต.ลำไพล',
+        '09495': 'รพ.สต.ท่าไทร',
+        '09496': 'รพ.สต.ท่าม่วง',
+        '09497': 'รพ.สต.พรุชิง',
+        '09498': 'รพ.สต.วังใหญ่',
+        '09499': 'รพ.สต.สะกอม',
+        '09500': 'รพ.สต.ท่าแมงลัก',
+        '11915': 'รพ.สต.ทุ่งโดน',
         '15107': 'PCU2',
         '15109': 'PCU1'
     };
@@ -9373,7 +9458,7 @@ function renderPublicFacilitiesTable(facilities) {
         const codeNoZero = rawCode.replace(/^0+/, '');
 
         // Exclude SSO Thepha
-        if (codeNoZero === '860' || rawName.includes('\u0e2a\u0e2a\u0e2d') || rawName.includes('\u0e2a\u0e32\u0e18\u0e32\u0e23\u0e13\u0e2a\u0e38\u0e02')) {
+        if (codeNoZero === '860' || rawName.includes('สสอ') || rawName.includes('สาธารณสุข')) {
             return;
         }
 
@@ -9399,10 +9484,10 @@ function renderPublicFacilitiesTable(facilities) {
 
     cleanFacilities.sort((a, b) => b.rate - a.rate || b.total - a.total);
 
-    if (countEl) countEl.textContent = cleanFacilities.length + ' \u0e41\u0e2b\u0e48\u0e07';
+    if (countEl) countEl.textContent = cleanFacilities.length + ' แห่ง';
 
     if (cleanFacilities.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:#94a3b8;">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:40px; color:#94a3b8;">ยังไม่มีข้อมูล</td></tr>';
         return;
     }
 
@@ -9411,15 +9496,15 @@ function renderPublicFacilitiesTable(facilities) {
         let statusIcon, statusText, statusClass;
         if (f.rate >= 90) {
             statusIcon = 'fa-check-circle';
-            statusText = '\u0e1c\u0e48\u0e32\u0e19\u0e40\u0e01\u0e13\u0e11\u0e4c';
+            statusText = 'ผ่านเกณฑ์';
             statusClass = 'pass';
         } else if (f.rate >= 80) {
             statusIcon = 'fa-exclamation-circle';
-            statusText = '\u0e15\u0e48\u0e33\u0e01\u0e27\u0e48\u0e32\u0e40\u0e25\u0e47\u0e01\u0e19\u0e49\u0e2d\u0e22';
+            statusText = 'ต่ำกว่าเล็กน้อย';
             statusClass = 'warn';
         } else {
             statusIcon = 'fa-times-circle';
-            statusText = '\u0e15\u0e49\u0e2d\u0e07\u0e40\u0e23\u0e48\u0e07\u0e23\u0e31\u0e14';
+            statusText = 'ต้องเร่งรัด';
             statusClass = 'fail';
         }
 
@@ -10264,6 +10349,7 @@ async function warmUpBackend() {
                 { id: 'missing', icon: 'fas fa-user-times', label: 'เด็กขาดนัด' },
                 { id: 'appointments', icon: 'fas fa-calendar-alt', label: 'รายชื่อนัดวัคซีน' },
                 { id: 'pcvTarget', icon: 'fas fa-syringe', label: 'กลุ่มเป้าหมายวัคซีน PCV' },
+                { id: 'vaccineStock', icon: 'fas fa-boxes', label: 'คลังวัคชีน' },
                 { id: 'outOfAreaChildren', icon: 'fas fa-street-view', label: 'เด็กนอกเขต (Type 4)' },
                 { sep: 'ติดตาม' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
@@ -10279,6 +10365,7 @@ async function warmUpBackend() {
                 { id: 'missing', icon: 'fas fa-user-times', label: 'เด็กขาดนัด' },
                 { id: 'appointments', icon: 'fas fa-calendar-alt', label: 'รายชื่อนัดวัคซีน' },
                 { id: 'pcvTarget', icon: 'fas fa-syringe', label: 'กลุ่มเป้าหมายวัคซีน PCV' },
+                { id: 'vaccineStock', icon: 'fas fa-boxes', label: 'คลังวัคชีน' },
                 { id: 'outOfAreaChildren', icon: 'fas fa-street-view', label: 'เด็กนอกเขต (Type 4)' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' },
                 { id: 'officerTracking', icon: 'fas fa-clipboard-list', label: 'ติดตามวัคซีน' },
@@ -10291,6 +10378,7 @@ async function warmUpBackend() {
                 { id: 'dashboard', icon: 'fas fa-home', label: 'หน้าแรก' },
                 { id: 'missing', icon: 'fas fa-user-times', label: 'เด็กขาดนัด' },
                 { id: 'pcvTarget', icon: 'fas fa-syringe', label: 'กลุ่มเป้าหมายวัคซีน PCV' },
+                { id: 'vaccineStock', icon: 'fas fa-boxes', label: 'คลังวัคชีน' },
                 { id: 'trackingForm', icon: 'fas fa-plus-circle', label: 'รายงานการติดตาม' },
                 { id: 'calendar', icon: 'fas fa-calendar-check', label: 'ปฏิทินนัดวัคซีน' }
             ];
@@ -10449,6 +10537,7 @@ const PAGE_TITLES = {
     duplicateReport: 'ตรวจสอบเด็กคนเดียว อยู่หลายสถานพยาบาล (เลขบัตรประชาชนซ้ำ)',
     outOfAreaChildren: 'ค้นหารายชื่อเด็กนอกเขต (Type 4)',
     pcvTarget: 'รายงานกลุ่มเป้าหมายวัคซีน PCV (เด็กเกิดตั้งแต่ 1 ต.ค. 2568)'
+    vaccineStock: 'คลังวัคชีนและเวชภัณฑ์ (Stock)',
 };
 function navigateTo(page) {
     // ✅ ปิด Bottom Sheet ถ้าเปิดอยู่
@@ -10490,6 +10579,10 @@ function navigateTo(page) {
         case 'duplicateReport':
             document.getElementById('duplicateReportPage').classList.add('active');
             loadDuplicateReportPage();
+            break;
+        case 'vaccineStock':
+            document.getElementById('vaccineStockPage').classList.add('active');
+            loadVaccineStockPage();
             break;
         case 'pcvTarget':
             document.getElementById('pcvTargetPage').classList.add('active');
@@ -10873,10 +10966,10 @@ function updateBottomNavActive(page) {
         }
 
         const officialFacilities = window.HEALTH_FACILITIES || {
-            '09491': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e39\u0e2b\u0e22\u0e07', '09492': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e15\u0e32\u0e41\u0e1b\u0e14', '09493': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e40\u0e01\u0e32\u0e30\u0e2a\u0e30\u0e1a\u0e49\u0e32',
-            '09494': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e25\u0e33\u0e44\u0e1e\u0e25', '09495': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e44\u0e17\u0e23', '09496': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e21\u0e48\u0e27\u0e07',
-            '09497': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e1e\u0e23\u0e38\u0e0a\u0e34\u0e07', '09498': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e27\u0e31\u0e07\u0e43\u0e2b\u0e0d\u0e48', '09499': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e2a\u0e30\u0e01\u0e2d\u0e21',
-            '09500': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e48\u0e32\u0e41\u0e21\u0e07\u0e25\u0e31\u0e01', '11915': '\u0e23\u0e1e.\u0e2a\u0e15.\u0e17\u0e38\u0e48\u0e07\u0e42\u0e14\u0e19', '15107': 'PCU2', '15109': 'PCU1'
+            '09491': 'รพ.สต.ตูหยง', '09492': 'รพ.สต.ตาแปด', '09493': 'รพ.สต.เกาะสะบ้า',
+            '09494': 'รพ.สต.ลำไพล', '09495': 'รพ.สต.ท่าไทร', '09496': 'รพ.สต.ท่าม่วง',
+            '09497': 'รพ.สต.พรุชิง', '09498': 'รพ.สต.วังใหญ่', '09499': 'รพ.สต.สะกอม',
+            '09500': 'รพ.สต.ท่าแมงลัก', '11915': 'รพ.สต.ทุ่งโดน', '15107': 'PCU2', '15109': 'PCU1'
         };
 
         const fMap = {};
@@ -10889,7 +10982,7 @@ function updateBottomNavActive(page) {
             const codeRaw = String(d.code || '').trim();
             const nameRaw = String(d.name || '').trim();
             const cNoZero = codeRaw.replace(/^0+/, '');
-            if (cNoZero === '860' || nameRaw.includes('\u0e2a\u0e2a\u0e2d') || nameRaw.includes('\u0e2a\u0e32\u0e18\u0e32\u0e23\u0e13\u0e2a\u0e38\u0e02')) return;
+            if (cNoZero === '860' || nameRaw.includes('สสอ') || nameRaw.includes('สาธารณสุข')) return;
             let normCode = codeRaw;
             if (/^\d+$/.test(normCode) && normCode.length < 5) normCode = normCode.padStart(5, '0');
             if (fMap[normCode]) {
@@ -10905,7 +10998,7 @@ function updateBottomNavActive(page) {
         cleanCoverage.sort((a, b) => b.rate - a.rate);
 
         if (cleanCoverage.length === 0) {
-            ctx.parentElement.innerHTML = '<div style="text-align:center;color:#aaa;padding:40px">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25</div>';
+            ctx.parentElement.innerHTML = '<div style="text-align:center;color:#aaa;padding:40px">ยังไม่มีข้อมูลสถานพยาบาล</div>';
             return;
         }
 
@@ -11678,7 +11771,7 @@ function updateBottomNavActive(page) {
             hideLoading();
             if (result.success) {
                 closeUserModal();
-                if (APP.currentUser && (APP.currentUser.username === orig || APP.currentUser.username === data.username)) {
+                if (APP.currentUser && (String(APP.currentUser.username||'').toLowerCase() === String(orig||'').toLowerCase() || String(APP.currentUser.username||'').toLowerCase() === String(data.username||'').toLowerCase())) {
                     APP.currentUser.fullname = data.fullname;
                     const elName = document.getElementById('userName');
                     if (elName) elName.textContent = data.fullname || APP.currentUser.username;
@@ -11688,7 +11781,7 @@ function updateBottomNavActive(page) {
                     if (elAvatar) elAvatar.textContent = (data.fullname || APP.currentUser.username || 'U')[0].toUpperCase();
                 }
                 if (APP.usersList) {
-                    const existingIdx = APP.usersList.findIndex(x => x.username === orig || (data.id && x.id == data.id));
+                    const existingIdx = APP.usersList.findIndex(x => String(x.username||'').toLowerCase() === String(orig||'').toLowerCase() || (data.id && x.id == data.id) || String(x.username||'').toLowerCase() === String(data.username||'').toLowerCase());
                     if (existingIdx !== -1) {
                         APP.usersList[existingIdx].fullname = data.fullname;
                         APP.usersList[existingIdx].role = data.role;
@@ -12576,19 +12669,19 @@ window.switchLogTab = function(tab) {
         let headers = result.success && result.headers ? result.headers : [];
         let appts = result.success ? result.appointments : [];
 
-        const hcodeIdx = findColumnIndex(headers, ['hcode', '\u0e23\u0e2b\u0e31\u0e2a\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25', '\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25'], 0);
-        const dateColIdx = findColumnIndex(headers, ['\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14', '\u0e27\u0e31\u0e19\u0e19\u0e31\u0e14', '\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48', '\u0e19\u0e31\u0e14\u0e04\u0e23\u0e31\u0e49\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e1b'], 9);
-        const hnIdx = findColumnIndex(headers, ['HN', '\u0e23\u0e2b\u0e31\u0e2a', 'hn']);
-        const nameIdx = findColumnIndex(headers, ['\u0e0a\u0e37\u0e48\u0e2d-\u0e2a\u0e01\u0e38\u0e25', '\u0e0a\u0e37\u0e48\u0e2d', 'ChildName', 'fullname']);
-        const vacColIdx = findColumnIndex(headers, ['\u0e23\u0e2b\u0e31\u0e2a\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19', '\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19', 'vaccine']);
+        const hcodeIdx = findColumnIndex(headers, ['hcode', 'รหัสสถานพยาบาล', 'สถานพยาบาล'], 0);
+        const dateColIdx = findColumnIndex(headers, ['วันที่นัด', 'วันนัด', 'วันที่', 'นัดครั้งต่อไป'], 9);
+        const hnIdx = findColumnIndex(headers, ['HN', 'รหัส', 'hn']);
+        const nameIdx = findColumnIndex(headers, ['ชื่อ-สกุล', 'ชื่อ', 'ChildName', 'fullname']);
+        const vacColIdx = findColumnIndex(headers, ['รหัสวัคชีน', 'วัคชีน', 'vaccine']);
         const isoDateIdx = findColumnIndex(headers, ['appointdate', 'appoint_date'], 12);
 
         const isHiddenCol = (idx, hName) => {
             const hStr = hName ? hName.toString().trim().toUpperCase() : '';
-            return hStr === 'ID' || hStr === 'CID' || hStr === '\u0e0a\u0e37\u0e48\u0e2d\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19' || hStr === 'APPOINTDATE';
+            return hStr === 'ID' || hStr === 'CID' || hStr.includes('APPOINTDATE') || hStr.includes('APPOINT_DATE') || hStr.includes('วัคชีน') || hStr.includes('วัคชีน');
         };
 
-        const isSpecialOfficer = (APP.currentUser.role === '\u0e40\u0e08\u0e49\u0e32\u0e2b\u0e19\u0e49\u0e32\u0e17\u0e35\u0e48' && 
+        const isSpecialOfficer = (APP.currentUser.role === 'เจ้าหน้าที่' && 
                                   (APP.currentUser.hcode === '00860' || APP.currentUser.hcode === '11390'));
         
         if (APP.currentUser.role !== 'Admin_Ampur' && !isSpecialOfficer && hcodeIdx >= 0) {
@@ -12599,9 +12692,10 @@ window.switchLogTab = function(tab) {
             });
         }
 
-        if (facilityFilter && facilityFilter !== '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14' && hcodeIdx >= 0) {
-            const filterHc = String(facilityFilter).replace(/^0+/, '');
-            appts = appts.filter(function(a) { 
+        if (facilityFilter && facilityFilter !== 'ทั้งหมด' && hcodeIdx >= 0) {
+            const filterMatch = String(facilityFilter).match(/\d+/);
+            const filterHc = filterMatch ? filterMatch[0].replace(/^0+/, '') : String(facilityFilter).replace(/^0+/, '');
+            appts = appts.filter(function(a) {
                 const rowHc = String(a[hcodeIdx] || '').replace(/^0+/, '');
                 return rowHc === filterHc; 
             });
@@ -12609,21 +12703,21 @@ window.switchLogTab = function(tab) {
 
         if (filterDate) {
             const cleanFilterDate = String(filterDate).trim();
-            appts = appts.filter(function(a) { 
-                if (isoDateIdx >= 0 && a[isoDateIdx] && String(a[isoDateIdx]).trim().startsWith(cleanFilterDate)) {
-                    return true;
-                }
-                if (dateColIdx >= 0 && a[dateColIdx]) {
-                    const rowDateStr = String(a[dateColIdx]).trim();
-                    if (thaiFilterDate && rowDateStr.includes(thaiFilterDate)) return true;
-                    if (rowDateStr.includes(cleanFilterDate)) return true;
-                    if (typeof parseThaiDateToISO === 'function') {
-                        const rowIso = parseThaiDateToISO(rowDateStr);
-                        if (rowIso && rowIso === cleanFilterDate) return true;
-                    }
-                }
+            const filterIso = (typeof parseThaiDateToISO === 'function' ? parseThaiDateToISO(cleanFilterDate) : null) || cleanFilterDate;
+            appts = appts.filter(function(a) {
+                const rawIso = (isoDateIdx >= 0 && a[isoDateIdx]) ? String(a[isoDateIdx]).trim().slice(0, 10) : '';
+                const rawDateStr = (dateColIdx >= 0 && a[dateColIdx]) ? String(a[dateColIdx]).trim() : '';
+                const rowIso = rawIso || (typeof parseThaiDateToISO === 'function' ? parseThaiDateToISO(rawDateStr) : '') || '';
+                if (filterIso && rowIso === filterIso) return true;
+                if (cleanFilterDate && (rawIso.startsWith(cleanFilterDate) || rawDateStr.includes(cleanFilterDate))) return true;
+                if (thaiFilterDate && rawDateStr.includes(thaiFilterDate)) return true;
                 return false;
             });
+// [normalized filter]
+// [normalized filter]
+// [normalized filter]
+// [normalized filter]
+// [normalized filter]
         }
 
         APP.apptHeaders = headers;
@@ -12689,7 +12783,7 @@ window.switchLogTab = function(tab) {
         // ฟังก์ชันตรวจสอบว่าควรซ่อนคอลัมน์นี้หรือไม่ (ใช้ตรวจสอบร่วมกับตอนแสดงผล)
         const isHiddenCol = (idx, hName) => {
             const hStr = hName ? hName.toString().trim().toUpperCase() : '';
-            return hStr === 'ID' || hStr === 'CID' || hStr === '\u0e0a\u0e37\u0e48\u0e2d\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19' || hStr === 'APPOINTDATE';
+            return hStr === 'ID' || hStr === 'CID' || hStr === 'ชื่อวัคชีน' || hStr === 'APPOINTDATE';
         };
 
         const rows = [];
@@ -13232,7 +13326,7 @@ window.switchLogTab = function(tab) {
                                 <div>
                                     <label style="font-size: 11.5px; font-weight: 600; color: #475569;">รูปแบบกระดาษ</label>
                                     <select id="batchSlipLayout" onchange="updateBatchSummary()" style="width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-family: 'Kanit'; font-size: 12px;">
-                                        <option value="a4" selected>\u0e01\u0e23\u0e30\u0e14\u0e32\u0e29 A4 (6 \u0e04\u0e19/\u0e2b\u0e19\u0e49\u0e32 \u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e2a\u0e49\u0e19\u0e15\u0e31\u0e14 \u2702)</option>
+                                        <option value="a4" selected>กระดาษ A4 (6 คน/หน้า พร้อมเส้นตัด ✂)</option>
                                         <option value="thermal">สลิปความร้อน 80mm ต่อเนื่อง (Thermal Roll)</option>
                                     </select>
                                 </div>
@@ -14012,17 +14106,17 @@ window.switchLogTab = function(tab) {
         const appts = APP.calendarRawAppts || [];
         const headers = APP.calendarHeaders || [];
         
-        const hcodeIdx = headers.findIndex(h => h && (h.toString().toLowerCase() === 'hcode' || h.toString().includes('\u0e23\u0e2b\u0e31\u0e2a\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25')));
-        const dateIdx = headers.findIndex(h => h && h.toString().includes('\u0e27\u0e31\u0e19'));
-        const nameIdx = headers.findIndex(h => h && h.toString().includes('\u0e0a\u0e37\u0e48\u0e2d'));
-        const hnIdx = headers.findIndex(h => h && (h.toString().toUpperCase().includes('HN') || h.toString().includes('\u0e23\u0e2b\u0e31\u0e2a')));
-        const vacCodeIdx = headers.findIndex(h => h && (h.toString().includes('รหัสวัคซีน') || h.toString().toLowerCase().includes('vaccinecode') || h.toString().toLowerCase().includes('vaccode') || h.toString().includes('\u0e23\u0e2b\u0e31\u0e2a\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19')));
-        const vacNameIdx = headers.findIndex(h => h && h.toString().includes('\u0e0a\u0e37\u0e48\u0e2d\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19'));
-        const anyVacIdx  = headers.findIndex(h => h && h.toString().includes('\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19'));
+        const hcodeIdx = headers.findIndex(h => h && (h.toString().toLowerCase() === 'hcode' || h.toString().includes('รหัสสถานพยาบาล')));
+        const dateIdx = headers.findIndex(h => h && h.toString().includes('วัน'));
+        const nameIdx = headers.findIndex(h => h && h.toString().includes('ชื่อ'));
+        const hnIdx = headers.findIndex(h => h && (h.toString().toUpperCase().includes('HN') || h.toString().includes('รหัส')));
+        const vacCodeIdx = headers.findIndex(h => h && (h.toString().includes('รหัสวัคซีน') || h.toString().toLowerCase().includes('vaccinecode') || h.toString().toLowerCase().includes('vaccode') || h.toString().includes('รหัสวัคชีน')));
+        const vacNameIdx = headers.findIndex(h => h && h.toString().includes('ชื่อวัคชีน'));
+        const anyVacIdx  = headers.findIndex(h => h && h.toString().includes('วัคชีน'));
         const apptDateIdx = headers.findIndex(h => h && (h.toString().toLowerCase() === 'appointdate' || h.toString().toLowerCase() === 'date'));
 
         const facilityFilterEl = document.getElementById('calFacilityFilter');
-        const selectedFacility = facilityFilterEl ? facilityFilterEl.value : '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14';
+        const selectedFacility = facilityFilterEl ? facilityFilterEl.value : 'ทั้งหมด';
 
         let mergedEvents = {};
         let totalMatchedChildren = 0;
@@ -14035,7 +14129,7 @@ window.switchLogTab = function(tab) {
                 if (hcode !== APP.currentUser.hcode) return;
             }
 
-            if (selectedFacility !== '\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14' && hcodeIdx !== -1) {
+            if (selectedFacility !== 'ทั้งหมด' && hcodeIdx !== -1) {
                 const normHcode = String(hcode).replace(/^0+/, '');
                 const normSel = String(selectedFacility).replace(/^0+/, '');
                 if (normHcode !== normSel) return;
@@ -14064,7 +14158,7 @@ window.switchLogTab = function(tab) {
             if (vacCodeIdx !== -1 && a[vacCodeIdx] && String(a[vacCodeIdx]).trim() !== '-' && !String(a[vacCodeIdx]).includes('ไม่ระบุ')) {
                 vac = String(a[vacCodeIdx]).trim();
             }
-            if ((!vac || vac === '-') && vacNameIdx !== -1 && a[vacNameIdx] && String(a[vacNameIdx]).trim() !== '-' && !String(a[vacNameIdx]).includes('\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38')) {
+            if ((!vac || vac === '-') && vacNameIdx !== -1 && a[vacNameIdx] && String(a[vacNameIdx]).trim() !== '-' && !String(a[vacNameIdx]).includes('ไม่ระบุ')) {
                 vac = String(a[vacNameIdx]).trim();
             }
             if ((!vac || vac === '-') && anyVacIdx !== -1 && a[anyVacIdx] && String(a[anyVacIdx]).trim() !== '-' && !String(a[anyVacIdx]).includes('ไม่ระบุ')) {
@@ -14124,14 +14218,14 @@ window.switchLogTab = function(tab) {
         const colors = ['#667eea', '#28c76f', '#ff9f43', '#ea5455', '#17a2b8', '#9c27b0', '#e83e8c', '#fd7e14'];
 
         let events = Object.values(mergedEvents).map(function(item, index) {
-            let facilityName = getFacilityDisplayName(item.hcode, '\u0e44\u0e21\u0e48\u0e23\u0e30\u0e1a\u0e38\u0e2a\u0e16\u0e32\u0e19\u0e1e\u0e22\u0e32\u0e1a\u0e32\u0e25');
+            let facilityName = getFacilityDisplayName(item.hcode, 'ไม่ระบุสถานพยาบาล');
             let count = Object.keys(item.children).length;
             let childrenList = Object.values(item.children);
             let vacList = item.vaccines && item.vaccines.length > 0 ? item.vaccines : [];
             let vacSummary = vacList.length > 0 ? ': ' + vacList.join(', ') : '';
 
             // [Title: Facility (X persons: Vaccines)]
-            let eventTitle = facilityName + ' (' + count + ' \u0e04\u0e19' + vacSummary + ')';
+            let eventTitle = facilityName + ' (' + count + ' คน' + vacSummary + ')';
 
             return {
                 title: eventTitle,
@@ -14178,12 +14272,12 @@ window.switchLogTab = function(tab) {
         }
 
         calendarEl.innerHTML = '';
-        const canManage = (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS' || APP.currentUser.role === '\u0e40\u0e08\u0e49\u0e32\u0e2b\u0e19\u0e49\u0e32\u0e17\u0e35\u0e48');
+        const canManage = (APP.currentUser.role === 'Admin_Ampur' || APP.currentUser.role === 'Admin_HOS' || APP.currentUser.role === 'เจ้าหน้าที่');
         const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             initialDate: initialCalendarDate,
             locale: 'th',
-            buttonText: { today: '\u0e27\u0e31\u0e19\u0e19\u0e35\u0e49', month: '\u0e40\u0e14\u0e37\u0e2d\u0e19', week: '\u0e2a\u0e31\u0e1b\u0e14\u0e32\u0e2b\u0e4c', day: '\u0e27\u0e31\u0e19' },
+            buttonText: { today: 'วันนี้', month: 'เดือน', week: 'สัปดาห์', day: 'วัน' },
             events: events,
             height: 'auto',
             eventClick: function(info) {
@@ -14192,7 +14286,8 @@ window.switchLogTab = function(tab) {
             eventDidMount: function(info) {
                 let children = info.event.extendedProps.childrenList;
                 
-                let tooltipText = "\u0e23\u0e32\u0e22\u0e0a\u0e37\u0e48\u0e2d\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22:\n";
+                let tooltipText = "รายชื่อนัดหมาย:
+";
                 children.forEach(c => {
                     const vList = (c.vaccines || []).filter(v => v && v !== 'ไม่ระบุวัคซีน' && v !== 'ไม่ระบุ' && v !== '-');
                     let vac = vList.length > 0 ? vList.join(', ') : '';
@@ -14225,37 +14320,37 @@ window.switchLogTab = function(tab) {
                     ' <span style="font-weight:normal; font-size:12px; color:#64748b;">(HN: ' + esc(c.hn || '-') + ')</span>' +
                     '</div>' +
                     '<div style="margin-top:5px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;">' +
-                    '<span style="font-size:12px; color:#475569; font-weight:600;">\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14:</span> ' +
+                    '<span style="font-size:12px; color:#475569; font-weight:600;">วัคชีนที่นัด:</span> ' +
                     '<span style="color:#0369a1; background:#e0f2fe; border:1px solid #bae6fd; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">' +
                     '<i class="fas fa-syringe" style="font-size:11px;"></i> ' + esc(vacStr) + '</span>' +
                     '</div>' +
                     '</div>' +
-                    '<button class="action-btn" style="color:#0284c7; background:#e0f2fe; padding:6px 12px; border-radius:6px; font-size:12px; white-space:nowrap; border:none; cursor:pointer;" title="\u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e43\u0e1a\u0e19\u0e31\u0e14\u0e40\u0e14\u0e47\u0e01\u0e04\u0e19\u0e19\u0e35\u0e49" onclick="openSingleSlipFromCalendar(' + props.eventIndex + ', ' + cIdx + ')"><i class="fas fa-print"></i> \u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e43\u0e1a\u0e19\u0e31\u0e14</button>' +
+                    '<button class="action-btn" style="color:#0284c7; background:#e0f2fe; padding:6px 12px; border-radius:6px; font-size:12px; white-space:nowrap; border:none; cursor:pointer;" title="พิมพ์ใบนัดเด็กคนนี้" onclick="openSingleSlipFromCalendar(' + props.eventIndex + ', ' + cIdx + ')"><i class="fas fa-print"></i> พิมพ์ใบนัด</button>' +
                     '</div>';
         }).join('');
 
-        let vacSummaryHtml = props.vaccinesSummary ? '<p style="margin:4px 0 0 0; font-size: 13px; color:#0369a1;"><i class="fas fa-syringe"></i> <strong>\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14\u0e43\u0e19\u0e27\u0e31\u0e19\u0e19\u0e35\u0e49:</strong> ' + esc(props.vaccinesSummary) + '</p>' : '';
+        let vacSummaryHtml = props.vaccinesSummary ? '<p style="margin:4px 0 0 0; font-size: 13px; color:#0369a1;"><i class="fas fa-syringe"></i> <strong>วัคชีนทั้งหมดในวันนี้:</strong> ' + esc(props.vaccinesSummary) + '</p>' : '';
 
         let html = '<div style="text-align:left; font-family: Kanit;">' +
                     '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px; flex-wrap:wrap; gap:8px;">' +
                     '<div>' +
-                    '<p style="margin:0; font-size: 15px; color:#1e293b;"><strong>\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e19\u0e31\u0e14:</strong> ' + esc(props.dateStr) + '</p>' +
+                    '<p style="margin:0; font-size: 15px; color:#1e293b;"><strong>วันที่นัด:</strong> ' + esc(props.dateStr) + '</p>' +
                     vacSummaryHtml +
                     '</div>' +
-                    '<button class="btn-print-batch-slip" style="padding:6px 14px; font-size:12px;" onclick="openBatchPrintFromCalendar(' + props.eventIndex + ')"><i class="fas fa-print"></i> \u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e17\u0e38\u0e01\u0e04\u0e19 (' + props.count + ' \u0e04\u0e19)</button>' +
+                    '<button class="btn-print-batch-slip" style="padding:6px 14px; font-size:12px;" onclick="openBatchPrintFromCalendar(' + props.eventIndex + ')"><i class="fas fa-print"></i> พิมพ์ทุกคน (' + props.count + ' คน)</button>' +
                     '</div>' +
                     '<div style="background: #f8fafc; padding: 12px 16px; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 280px; overflow-y: auto;">' +
                     childRows +
                     '</div>' +
-                    '<p style="font-size: 12px; color: #888; margin-top: 15px;">* \u0e2b\u0e32\u0e01\u0e15\u0e49\u0e2d\u0e07\u0e01\u0e32\u0e23\u0e25\u0e1a\u0e2b\u0e23\u0e37\u0e2d\u0e41\u0e01\u0e49\u0e44\u0e02\u0e19\u0e31\u0e14\u0e2b\u0e21\u0e32\u0e22 \u0e01\u0e23\u0e38\u0e13\u0e32\u0e17\u0e33\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e49\u0e32 "\u0e23\u0e32\u0e22\u0e0a\u0e37\u0e48\u0e2d\u0e19\u0e31\u0e14\u0e27\u0e31\u0e04\u0e0a\u0e35\u0e19"</p>' +
+                    '<p style="font-size: 12px; color: #888; margin-top: 15px;">* หากต้องการลบหรือแก้ไขนัดหมาย กรุณาทำที่หน้า "รายชื่อนัดวัคชีน"</p>' +
                     '</div>';
         
         Swal.fire({
-            title: props.facilityName + ' (\u0e23\u0e27\u0e21 ' + props.count + ' \u0e04\u0e19)',
+            title: props.facilityName + ' (รวม ' + props.count + ' คน)',
             html: html,
             icon: 'info',
             showConfirmButton: true,
-            confirmButtonText: '\u0e1b\u0e34\u0e14',
+            confirmButtonText: 'ปิด',
             confirmButtonColor: '#667eea',
             width: 540
         });
@@ -18819,10 +18914,10 @@ function renderPublicAgeSummaryCards(ageGroups) {
     const container = document.getElementById('publicAgeStatsGrid');
     let list = Array.isArray(ageGroups) ? ageGroups : [];
     if (!Array.isArray(ageGroups) && typeof ageGroups === 'object' && ageGroups !== null) {
-        const keyMap = { '1 \u0e1b\u0e35': 'y1', '2 \u0e1b\u0e35': 'y2', '3 \u0e1b\u0e35': 'y3', '5 \u0e1b\u0e35': 'y5' };
+        const keyMap = { '1 ปี': 'y1', '2 ปี': 'y2', '3 ปี': 'y3', '5 ปี': 'y5' };
         list = Object.keys(ageGroups).map(k => ({
             key: keyMap[k] || 'y1',
-            label: '\u0e2d\u0e32\u0e22\u0e38 ' + k,
+            label: 'อายุ ' + k,
             total: ageGroups[k].target || 0,
             complete: ageGroups[k].complete || 0,
             rate: ageGroups[k].rate || 0,
@@ -18830,7 +18925,7 @@ function renderPublicAgeSummaryCards(ageGroups) {
         }));
     }
     if (list.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25</div>';
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;">ยังไม่มีข้อมูล</div>';
         return;
     }
 
@@ -20368,6 +20463,933 @@ function exportPcvExcel() {
     }
 }
 
+
+    // ============================================================
+    // VACCINE STOCK & INVENTORY CONTROLLER
+    // ============================================================
+    async function loadVaccineStockPage() {
+        const page = document.getElementById('vaccineStockPage');
+        if (!page) return;
+        page.classList.add('active');
+        showLoading('กำลังโหลดข้อมูลคลังวัคซีน...');
+
+        try {
+            const fRes = await callGAS('getFacilityMap', []);
+            APP.facilityMap = updateFacilityMap(fRes.success ? fRes.map : {});
+
+            const isAdminAmpur = isAdminAmpurUser();
+            const isAdminHOS = isAdminHOSUser();
+            const isOfficer = APP.currentUser && APP.currentUser.role === 'เจ้าหน้าที่';
+            const userHcode = APP.currentUser ? APP.currentUser.hcode : '';
+
+            // Dropdown facility filter for Admin_Ampur
+            let facilityFilterHtml = '';
+            if (isAdminAmpur) {
+                const facilityOptions = buildFacilityDropdownOptions('ทั้งหมด', '🏥 ทุกสถานพยาบาล (อำเภอเทพา)');
+                facilityFilterHtml = `<div class="filter-group" style="max-width:280px;"><label>สถานพยาบาล</label><select id="stockFacilityFilter" onchange="doLoadVaccineStock()">${facilityOptions}</select></div>`;
+            } else {
+                facilityFilterHtml = `<div class="filter-group" style="max-width:280px;"><label>สถานพยาบาล</label><input type="text" value="${esc(getFacilityDisplayName(userHcode))}" disabled style="background:#f1f5f9; color:#475569; font-weight:500;"></div>`;
+            }
+
+            page.innerHTML = `
+                <div class="page-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <i class="fas fa-boxes" style="color:#6366f1;"></i> คลังวัคซีนและเวชภัณฑ์ (Vaccine Stock & Inventory)
+                        <div style="font-size:12.5px; color:#64748b; font-weight:normal; margin-top:4px;">ระบบบริหารจัดการสต๊อก การรับ-จ่าย และแจ้งเตือนวันหมดอายุวัคซีน</div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                                ${isAdminAmpur ? `
+                        <button class="btn-telegram-notify" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color:#fff; border:none; padding:9px 15px; border-radius:8px; font-weight:500; font-family:'Kanit'; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(2,132,199,0.25);" onclick="sendExpiringVaccinesToTelegram()">
+                            <i class="fab fa-telegram-plane"></i> ส่ง Telegram วัคซีนใกล้หมดอายุ (&lt; 3 เดือน)
+                        </button>
+                        ` : ''}
+                        <button class="btn-add" style="background:#059669; border:none; padding:9px 15px; border-radius:8px; font-weight:500; font-family:'Kanit'; cursor:pointer; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(5,150,105,0.25);" onclick="openAddStockModal('RECEIVE')">
+                            <i class="fas fa-plus-circle"></i> บันทึกรับวัคซีน
+                        </button>
+                        <button class="btn-add" style="background:#2563eb; border:none; padding:9px 15px; border-radius:8px; font-weight:500; font-family:'Kanit'; cursor:pointer; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(37,99,235,0.25);" onclick="openAddStockModal('ISSUE')">
+                            <i class="fas fa-minus-circle"></i> บันทึกจ่าย/เบิก
+                        </button>
+                        <button class="btn-add" style="background:#d97706; border:none; padding:9px 15px; border-radius:8px; font-weight:500; font-family:'Kanit'; cursor:pointer; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(217,119,6,0.25);" onclick="openAddStockModal('ADJUST_LOSS')">
+                            <i class="fas fa-sliders-h"></i> ปรับยอด/ชำรุด
+                        </button>
+                        <button class="btn-rpt-csv" style="padding:9px 14px; border-radius:8px; font-weight:500; font-family:'Kanit'; cursor:pointer;" onclick="exportVaccineStockExcel()">
+                            <i class="fas fa-file-excel"></i> ส่งออก Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 5 Stat Cards Summary -->
+                <div class="stats-grid" id="stockStatsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:18px;">
+                    <div class="stat-card" style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #6366f1; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                        <div style="font-size:12px; color:#64748b; font-weight:500;"><i class="fas fa-box" style="color:#6366f1;"></i> คงเหลือรวม (ขวด)</div>
+                        <div style="font-size:24px; font-weight:700; color:#1e293b; margin-top:6px;" id="statTotalVials">0 <span style="font-size:13px; font-weight:400; color:#64748b;">ขวด</span></div>
+                        <div style="font-size:11.5px; color:#6366f1; margin-top:4px;" id="statTotalDoses">รวม 0 โดส</div>
+                    </div>
+                    <div class="stat-card" style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #10b981; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                        <div style="font-size:12px; color:#64748b; font-weight:500;"><i class="fas fa-arrow-circle-down" style="color:#10b981;"></i> รับเข้าเดือนนี้</div>
+                        <div style="font-size:24px; font-weight:700; color:#10b981; margin-top:6px;" id="statReceivedMonth">0 <span style="font-size:13px; font-weight:400; color:#64748b;">ขวด</span></div>
+                        <div style="font-size:11.5px; color:#64748b; margin-top:4px;">รับเข้าคลังในเดือนปัจจุบัน</div>
+                    </div>
+                    <div class="stat-card" style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #3b82f6; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                        <div style="font-size:12px; color:#64748b; font-weight:500;"><i class="fas fa-arrow-circle-up" style="color:#3b82f6;"></i> จ่ายออกเดือนนี้</div>
+                        <div style="font-size:24px; font-weight:700; color:#3b82f6; margin-top:6px;" id="statIssuedMonth">0 <span style="font-size:13px; font-weight:400; color:#64748b;">ขวด</span></div>
+                        <div style="font-size:11.5px; color:#64748b; margin-top:4px;">จ่ายให้เด็ก/โอนย้าย</div>
+                    </div>
+                    <div class="stat-card" style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #f59e0b; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                        <div style="font-size:12px; color:#64748b; font-weight:500;"><i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i> ใกล้หมดอายุ (&le; 90 วัน)</div>
+                        <div style="font-size:24px; font-weight:700; color:#f59e0b; margin-top:6px;" id="statExpiringSoon">0 <span style="font-size:13px; font-weight:400; color:#64748b;">Lot</span></div>
+                        <div style="font-size:11.5px; color:#f59e0b; margin-top:4px;">ควรเร่งบริหารการใช้ก่อน</div>
+                    </div>
+                    <div class="stat-card" style="background:#fff; border-radius:12px; padding:16px; border-left:4px solid #ef4444; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+                        <div style="font-size:12px; color:#64748b; font-weight:500;"><i class="fas fa-times-circle" style="color:#ef4444;"></i> หมดอายุแล้ว</div>
+                        <div style="font-size:24px; font-weight:700; color:#ef4444; margin-top:6px;" id="statExpired">0 <span style="font-size:13px; font-weight:400; color:#64748b;">Lot</span></div>
+                        <div style="font-size:11.5px; color:#ef4444; margin-top:4px;">ระงับการใช้และทำลายตามเกณฑ์</div>
+                    </div>
+                </div>
+
+                <!-- Filters & Tab Navigation -->
+                <div class="filter-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+                    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                        ${facilityFilterHtml}
+                        <div class="filter-group" style="max-width:200px;">
+                            <label>สถานะวันหมดอายุ</label>
+                            <select id="stockStatusFilter" onchange="filterStockTables()">
+                                <option value="all">-- สถานะทั้งหมด --</option>
+                                <option value="ปกติ">ปกติ (ยังไม่หมดอายุ)</option>
+                                <option value="ใกล้หมดอายุ">ใกล้หมดอายุ (&le; 90 วัน)</option>
+                                <option value="หมดอายุแล้ว">หมดอายุแล้ว</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Tabs -->
+                    <div style="display:inline-flex; background:#e2e8f0; padding:3px; border-radius:8px;">
+                        <button id="tabStockBalanceBtn" class="stock-tab-btn active" style="border:none; padding:8px 16px; border-radius:6px; font-family:'Kanit'; font-size:13px; font-weight:600; cursor:pointer; background:#fff; color:#1e293b; box-shadow:0 1px 2px rgba(0,0,0,0.05);" onclick="switchStockTab('balance')">
+                            <i class="fas fa-layer-group"></i> สต๊อกคงเหลือปัจจุบัน
+                        </button>
+                        <button id="tabStockLedgerBtn" class="stock-tab-btn" style="border:none; padding:8px 16px; border-radius:6px; font-family:'Kanit'; font-size:13px; font-weight:500; cursor:pointer; background:transparent; color:#64748b;" onclick="switchStockTab('ledger')">
+                            <i class="fas fa-list-alt"></i> ประวัติการรับ-จ่าย (Ledger)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab 1: Current Stock Balances Table -->
+                <div id="stockBalanceTabWrap" class="stock-tab-content">
+                    <div class="data-table" style="width:100%; overflow-x:auto;">
+                        <table id="stockBalanceTable">
+                            <thead>
+                                <tr>
+                                    <th>สถานพยาบาล</th>
+                                    <th>รหัส</th>
+                                    <th>ชื่อวัคซีน</th>
+                                    <th>Lot.No</th>
+                                    <th>วันหมดอายุ (Exp)</th>
+                                    <th>สถานะอายุ</th>
+                                    <th style="text-align:right;">คงเหลือ (ขวด)</th>
+                                    <th style="text-align:right;">โดส/ขวด</th>
+                                    <th style="text-align:right;">คงเหลือ (โดส)</th>
+                                    <th style="text-align:center;">VVM</th>
+                                    <th style="text-align:center;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockBalanceTbody">
+                                <tr><td colspan="11" style="text-align:center; padding:24px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดสต๊อก...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Stock Ledger Table -->
+                <div id="stockLedgerTabWrap" class="stock-tab-content" style="display:none;">
+                    <div class="data-table" style="width:100%; overflow-x:auto;">
+                        <table id="stockLedgerTable">
+                            <thead>
+                                <tr>
+                                    <th>ว/ด/ป</th>
+                                    <th>ประเภท</th>
+                                    <th>สถานพยาบาล</th>
+                                    <th>วัคซีน</th>
+                                    <th>Lot.No</th>
+                                    <th>Exp.Date</th>
+                                    <th style="text-align:right;">จำนวน (ขวด)</th>
+                                    <th style="text-align:right;">รวมโดส</th>
+                                    <th>แหล่งที่มา / ปลายทาง</th>
+                                    <th>อุณหภูมิ (°C)</th>
+                                    <th>ผู้บันทึก</th>
+                                    <th>หมายเหตุ</th>
+                                    <th style="text-align:center;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockLedgerTbody">
+                                <tr><td colspan="13" style="text-align:center; padding:24px; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> กำลังโหลดประวัติ...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            hideLoading();
+            ensureStockModal();
+            doLoadVaccineStock();
+            checkMonthlyVaccineStockAlertAuto();
+        } catch (err) {
+            hideLoading();
+            page.innerHTML = `<div class="error-message">เกิดข้อผิดพลาดในการโหลดคลังวัคซีน: ${esc(err.message)}</div>`;
+        }
+    }
+
+    window.switchStockTab = function(tab) {
+        const balBtn = document.getElementById('tabStockBalanceBtn');
+        const ledBtn = document.getElementById('tabStockLedgerBtn');
+        const balWrap = document.getElementById('stockBalanceTabWrap');
+        const ledWrap = document.getElementById('stockLedgerTabWrap');
+
+        if (tab === 'balance') {
+            balBtn.style.background = '#fff';
+            balBtn.style.color = '#1e293b';
+            balBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+            balBtn.style.fontWeight = '600';
+
+            ledBtn.style.background = 'transparent';
+            ledBtn.style.color = '#64748b';
+            ledBtn.style.boxShadow = 'none';
+            ledBtn.style.fontWeight = '500';
+
+            balWrap.style.display = 'block';
+            ledWrap.style.display = 'none';
+        } else {
+            ledBtn.style.background = '#fff';
+            ledBtn.style.color = '#1e293b';
+            ledBtn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+            ledBtn.style.fontWeight = '600';
+
+            balBtn.style.background = 'transparent';
+            balBtn.style.color = '#64748b';
+            balBtn.style.boxShadow = 'none';
+            balBtn.style.fontWeight = '500';
+
+            ledWrap.style.display = 'block';
+            balWrap.style.display = 'none';
+        }
+    };
+
+    window.doLoadVaccineStock = async function() {
+        showLoading('กำลังโหลดข้อมูลคลังวัคซีน...');
+        const facFilterEl = document.getElementById('stockFacilityFilter');
+        const selectedFacility = facFilterEl ? facFilterEl.value : (APP.currentUser ? APP.currentUser.hcode : 'ทั้งหมด');
+
+        const filters = {
+            hcode: selectedFacility,
+            userRole: APP.currentUser ? APP.currentUser.role : '',
+            userHcode: APP.currentUser ? APP.currentUser.hcode : ''
+        };
+
+        try {
+            const res = await callGAS('getVaccineStock', [filters]);
+            hideLoading();
+
+            APP.stockBalances = (res && res.balances) ? res.balances : [];
+            APP.stockTransactions = (res && res.transactions) ? res.transactions : [];
+            APP.stockSummary = (res && res.summary) ? res.summary : { totalVials: 0, receivedThisMonth: 0, issuedThisMonth: 0, expiringSoonCount: 0, expiredCount: 0 };
+
+            // Update KPI cards
+            const s = APP.stockSummary;
+            const elTotalVials = document.getElementById('statTotalVials');
+            const elTotalDoses = document.getElementById('statTotalDoses');
+            const elRec = document.getElementById('statReceivedMonth');
+            const elIss = document.getElementById('statIssuedMonth');
+            const elSoon = document.getElementById('statExpiringSoon');
+            const elExp = document.getElementById('statExpired');
+
+            let sumDoses = 0;
+            APP.stockBalances.forEach(b => { sumDoses += Number(b.remaining_doses || 0); });
+
+            if (elTotalVials) elTotalVials.innerHTML = `${(s.totalVials || 0).toLocaleString()} <span style="font-size:13px; font-weight:400; color:#64748b;">ขวด</span>`;
+            if (elTotalDoses) elTotalDoses.textContent = `รวม ${sumDoses.toLocaleString()} โดส`;
+            if (elRec) elRec.innerHTML = `${(s.receivedThisMonth || 0).toLocaleString()} <span style="font-size:13px; font-weight:400; color:#64748b;">ขวด</span>`;
+            if (elIss) elIss.innerHTML = `${(s.issuedThisMonth || 0).toLocaleString()} <span style="font-size:13px; font-weight:400; color:#64748b;">ขวด</span>`;
+            if (elSoon) elSoon.innerHTML = `${(s.expiringSoonCount || 0).toLocaleString()} <span style="font-size:13px; font-weight:400; color:#64748b;">Lot</span>`;
+            if (elExp) elExp.innerHTML = `${(s.expiredCount || 0).toLocaleString()} <span style="font-size:13px; font-weight:400; color:#64748b;">Lot</span>`;
+
+            filterStockTables();
+        } catch (e) {
+            hideLoading();
+            console.error('doLoadVaccineStock error:', e);
+            Swal.fire('ผิดพลาด', 'ไม่สามารถโหลดข้อมูลคลังวัคซีนได้: ' + e.message, 'error');
+        }
+    };
+
+    window.filterStockTables = function() {
+        const statusFilter = document.getElementById('stockStatusFilter') ? document.getElementById('stockStatusFilter').value : 'all';
+        let balances = APP.stockBalances || [];
+
+        if (statusFilter !== 'all') {
+            balances = balances.filter(b => b.status === statusFilter);
+        }
+
+        // Render Balance Table
+        const balTbody = document.getElementById('stockBalanceTbody');
+        if (balTbody) {
+            if (balances.length === 0) {
+                balTbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:28px; color:#94a3b8;"><i class="fas fa-boxes" style="font-size:24px; margin-bottom:8px; display:block;"></i>ไม่พบรายการสต๊อกคงเหลือ</td></tr>`;
+            } else {
+                balTbody.innerHTML = balances.map(b => {
+                    let badgeClass = 'status-ontime';
+                    let statusLabel = 'ปกติ';
+                    if (b.status === 'หมดอายุแล้ว') {
+                        badgeClass = 'status-missed';
+                        statusLabel = 'หมดอายุแล้ว';
+                    } else if (b.status === 'ใกล้หมดอายุ') {
+                        badgeClass = 'status-refused';
+                        statusLabel = `ใกล้หมดอายุ (${b.days_to_expire} วัน)`;
+                    }
+
+                    const expThai = b.exp_date ? formatThaiDate(b.exp_date) : '-';
+
+                    return `
+                        <tr>
+                            <td><span style="color:#6366f1; font-weight:500;">${esc(getFacilityDisplayName(b.hcode))}</span></td>
+                            <td><span class="role-badge role-admin-hos" style="background:#f1f5f9; color:#334155;">${esc(b.vaccine_code)}</span></td>
+                            <td style="font-weight:600; color:#0f172a;">${esc(b.vaccine_name)}</td>
+                            <td><code style="background:#f8fafc; padding:2px 6px; border-radius:4px; border:1px solid #e2e8f0; font-weight:600;">${esc(b.lot_no)}</code></td>
+                            <td style="white-space:nowrap;">${expThai}</td>
+                            <td><span class="status-badge ${badgeClass}">${statusLabel}</span></td>
+                            <td style="text-align:right; font-weight:700; color:#059669; font-size:14px;">${Number(b.remaining_vials || 0).toLocaleString()}</td>
+                            <td style="text-align:right; color:#64748b;">${Number(b.doses_per_vial || 1)}</td>
+                            <td style="text-align:right; font-weight:600; color:#2563eb;">${Number(b.remaining_doses || 0).toLocaleString()}</td>
+                            <td style="text-align:center;"><span style="font-size:11px; padding:2px 8px; border-radius:12px; background:#f0fdf4; color:#166534; font-weight:500;">${esc(b.vvm_status || 'Stage 1')}</span></td>
+                            <td style="text-align:center; white-space:nowrap;">
+                                <button class="action-btn" title="เบิก/จ่าย Lot นี้" style="color:#2563eb;" onclick="openQuickIssueModal('${esc(b.hcode)}', '${esc(b.vaccine_code)}', '${esc(b.lot_no)}', '${esc(b.exp_date || '')}', ${b.doses_per_vial || 1}, ${b.remaining_vials || 0})">
+                                    <i class="fas fa-sign-out-alt"></i> จ่าย
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Render Ledger Table
+        const ledTbody = document.getElementById('stockLedgerTbody');
+        const transactions = APP.stockTransactions || [];
+        if (ledTbody) {
+            if (transactions.length === 0) {
+                ledTbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:28px; color:#94a3b8;"><i class="fas fa-history" style="font-size:24px; margin-bottom:8px; display:block;"></i>ยังไม่มีประวัติการรับ-จ่ายวัคซีน</td></tr>`;
+            } else {
+                ledTbody.innerHTML = transactions.map(t => {
+                    let typeBadge = '';
+                    const tt = String(t.transaction_type || '').toUpperCase();
+                    if (tt === 'RECEIVE' || tt === 'รับเข้า' || tt === 'OPENING_BALANCE' || tt === 'ยอดยกมา') {
+                        typeBadge = '<span class="status-badge status-ontime" style="background:#ecfdf5; color:#059669;"><i class="fas fa-arrow-down"></i> รับเข้า</span>';
+                    } else if (tt === 'ISSUE' || tt === 'จ่ายออก' || tt === 'TRANSFER') {
+                        typeBadge = '<span class="status-badge" style="background:#eff6ff; color:#2563eb;"><i class="fas fa-arrow-up"></i> จ่ายออก</span>';
+                    } else {
+                        typeBadge = '<span class="status-badge status-refused" style="background:#fffbeb; color:#d97706;"><i class="fas fa-sliders-h"></i> ปรับยอด</span>';
+                    }
+
+                    const dtThai = t.transaction_date ? formatThaiDate(t.transaction_date) : '-';
+                    const expThai = t.exp_date ? formatThaiDate(t.exp_date) : '-';
+                    const temp = (t.temperature_c !== null && t.temperature_c !== undefined) ? `${t.temperature_c} °C` : '-';
+
+                    return `
+                        <tr>
+                            <td style="white-space:nowrap; font-weight:500;">${dtThai}</td>
+                            <td>${typeBadge}</td>
+                            <td><span style="color:#6366f1;">${esc(getFacilityDisplayName(t.hcode))}</span></td>
+                            <td style="font-weight:600;">${esc(t.vaccine_name || t.vaccine_code)}</td>
+                            <td><code>${esc(t.lot_no || '-')}</code></td>
+                            <td style="white-space:nowrap;">${expThai}</td>
+                            <td style="text-align:right; font-weight:600;">${Number(t.quantity_vials || 0).toLocaleString()}</td>
+                            <td style="text-align:right; color:#64748b;">${Number(t.total_doses || 0).toLocaleString()}</td>
+                            <td>${esc(t.source_destination || '-')}</td>
+                            <td>${temp}</td>
+                            <td>${esc(t.recorded_by || '-')}</td>
+                            <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(t.notes || '')}">${esc(t.notes || '-')}</td>
+                            <td style="text-align:center;">
+                                <button class="action-btn delete" title="ลบรายการ" onclick="deleteStockItem(${t.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+    };
+
+    function ensureStockModal() {
+        if (document.getElementById('stockTransactionModal')) return;
+
+        // Default vaccine options from catalog
+        const defaultVaccines = [
+            { code: 'BCG', name: 'BCG (วัคซีนวัณโรค)', doses: 10 },
+            { code: 'HBV', name: 'HBV (ไวรัสตับอักเสบบี)', doses: 1 },
+            { code: 'DTP-HB-Hib', name: 'DTP-HB-Hib (คอตีบ-บาดทะยัก-ไอกรน-ตับอักเสบบี-ฮิบ)', doses: 1 },
+            { code: 'OPV', name: 'OPV (โปลิโอชนิดหยอด)', doses: 10 },
+            { code: 'IPV', name: 'IPV (โปลิโอชนิดฉีด)', doses: 1 },
+            { code: 'MMR', name: 'MMR (หัด-คางทูม-หัดเยอรมัน)', doses: 1 },
+            { code: 'PCV', name: 'PCV (นิวโมค็อกคัส)', doses: 1 },
+            { code: 'JE', name: 'JE (ไข้สมองอักเสบเจอี)', doses: 1 },
+            { code: 'Rota', name: 'Rota (โรต้าไวรัส)', doses: 1 },
+            { code: 'DTP', name: 'DTP (คอตีบ-บาดทะยัก-ไอกรน)', doses: 1 },
+            { code: 'dT', name: 'dT (คอตีบ-บาดทะยักผู้ใหญ่)', doses: 10 },
+            { code: 'HPV', name: 'HPV (มะเร็งปากมดลูก)', doses: 1 },
+            { code: 'Influenza', name: 'Influenza (ไข้หวัดใหญ่)', doses: 1 }
+        ];
+
+        const vacOptions = defaultVaccines.map(v => `<option value="${v.code}" data-name="${esc(v.name)}" data-doses="${v.doses}">${v.code} - ${esc(v.name)} (${v.doses} โดส/ขวด)</option>`).join('');
+
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="stockTransactionModal" class="modal">
+                <div class="modal-content" style="max-width:580px;">
+                    <div class="modal-header">
+                        <h3 id="stockModalTitle"><i class="fas fa-boxes"></i> บันทึกรายการสต๊อกวัคซีน</h3>
+                        <button class="modal-close" onclick="closeStockModal()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="stockForm" onsubmit="event.preventDefault(); doSaveStockItem();">
+                            <input type="hidden" id="stm_tx_type" value="RECEIVE">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label-req">ว/ด/ป ที่ทำรายการ</label>
+                                    <input type="date" id="stm_tx_date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label-req">สถานพยาบาล (hcode)</label>
+                                    <select id="stm_hcode" required>
+                                        <option value="00860">สสอ.เทพา (00860)</option>
+                                        <option value="09491">รพ.สต.ตูหยง (09491)</option>
+                                        <option value="09492">รพ.สต.ตาแปด (09492)</option>
+                                        <option value="09493">รพ.สต.เกาะสะบ้า (09493)</option>
+                                        <option value="09494">รพ.สต.ลำไพล (09494)</option>
+                                        <option value="09495">รพ.สต.ท่าไทร (09495)</option>
+                                        <option value="09496">รพ.สต.ท่าม่วง (09496)</option>
+                                        <option value="09497">รพ.สต.พรุชิง (09497)</option>
+                                        <option value="09498">รพ.สต.วังใหญ่ (09498)</option>
+                                        <option value="09499">รพ.สต.สะกอม (09499)</option>
+                                        <option value="09500">รพ.สต.ท่าแมงลัก (09500)</option>
+                                        <option value="11915">รพ.สต.ทุ่งโดน (11915)</option>
+                                        <option value="15107">PCU2 (15107)</option>
+                                        <option value="15109">PCU1 (15109)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label-req">ชื่อวัคซีน</label>
+                                <select id="stm_vaccine_code" required onchange="onStockVaccineChange()">
+                                    <option value="">-- เลือกวัคซีน --</option>
+                                    ${vacOptions}
+                                </select>
+                                <input type="hidden" id="stm_vaccine_name">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label-req">Lot.No (หมายเลขรุ่นผลิต)</label>
+                                    <input type="text" id="stm_lot_no" placeholder="เช่น AB1234, VCC2026" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label-req">วันหมดอายุ (Exp.Date)</label>
+                                    <input type="date" id="stm_exp_date" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label-req">จำนวน (ขวด)</label>
+                                    <input type="number" id="stm_quantity_vials" min="1" step="1" placeholder="ระบุจำนวนขวด" required oninput="calcStockTotalDoses()">
+                                </div>
+                                <div class="form-group">
+                                    <label>โดสต่อขวด</label>
+                                    <input type="number" id="stm_doses_per_vial" min="1" step="1" value="1" oninput="calcStockTotalDoses()">
+                                </div>
+                                <div class="form-group">
+                                    <label>รวมทั้งหมด (โดส)</label>
+                                    <input type="number" id="stm_total_doses" readonly style="background:#f1f5f9; font-weight:700; color:#2563eb;">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label id="stm_src_dest_label">รับจาก (แหล่งที่มา)</label>
+                                    <input type="text" id="stm_source_destination" placeholder="เช่น คลังวัคซีน สสจ./รพ.เทพา">
+                                </div>
+                                <div class="form-group">
+                                    <label>สภาพ VVM (Vaccine Vial Monitor)</label>
+                                    <select id="stm_vvm_status">
+                                        <option value="Stage 1">Stage 1 (ปกติ - ใช้ได้)</option>
+                                        <option value="Stage 2">Stage 2 (ปกติ - ควรใช้ก่อน)</option>
+                                        <option value="Stage 3">Stage 3 (ห้ามใช้ - สีเท่ากัน)</option>
+                                        <option value="Stage 4">Stage 4 (ห้ามใช้ - สีเข้มกว่า)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>อุณหภูมิตู้เย็น (°C)</label>
+                                    <input type="number" id="stm_temperature_c" step="0.1" placeholder="เช่น 4.5">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>หมายเหตุ</label>
+                                <textarea id="stm_notes" rows="2" placeholder="ระบุรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+                            </div>
+
+                            <div class="modal-footer" style="padding-top:12px;">
+                                <button type="button" class="btn-cancel" onclick="closeStockModal()">ยกเลิก</button>
+                                <button type="submit" class="btn-save" id="stm_submit_btn">บันทึกรับเข้า</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `);
+    }
+
+    window.onStockVaccineChange = function() {
+        const sel = document.getElementById('stm_vaccine_code');
+        const opt = sel.options[sel.selectedIndex];
+        if (opt && opt.value) {
+            document.getElementById('stm_vaccine_name').value = opt.getAttribute('data-name') || opt.value;
+            const doses = opt.getAttribute('data-doses') || 1;
+            document.getElementById('stm_doses_per_vial').value = doses;
+            calcStockTotalDoses();
+        }
+    };
+
+    window.calcStockTotalDoses = function() {
+        const vials = Number(document.getElementById('stm_quantity_vials').value || 0);
+        const doses = Number(document.getElementById('stm_doses_per_vial').value || 1);
+        document.getElementById('stm_total_doses').value = vials * doses;
+    };
+
+    window.openAddStockModal = function(type) {
+        ensureStockModal();
+        const mode = type || 'RECEIVE';
+        document.getElementById('stm_tx_type').value = mode;
+
+        const title = document.getElementById('stockModalTitle');
+        const submitBtn = document.getElementById('stm_submit_btn');
+        const srcLabel = document.getElementById('stm_src_dest_label');
+        const srcInput = document.getElementById('stm_source_destination');
+
+        if (mode === 'RECEIVE') {
+            title.innerHTML = '<i class="fas fa-plus-circle" style="color:#059669;"></i> บันทึกรับวัคซีนเข้าคลัง';
+            submitBtn.textContent = 'บันทึกรับเข้า';
+            submitBtn.style.background = '#059669';
+            srcLabel.textContent = 'รับจาก (แหล่งที่มา)';
+            srcInput.placeholder = 'เช่น คลังวัคซีน สสจ.สงขลา / รพ.เทพา';
+        } else if (mode === 'ISSUE') {
+            title.innerHTML = '<i class="fas fa-minus-circle" style="color:#2563eb;"></i> บันทึกจ่าย/เบิกวัคซีน';
+            submitBtn.textContent = 'บันทึกจ่ายออก';
+            submitBtn.style.background = '#2563eb';
+            srcLabel.textContent = 'จ่ายให้แก่ (คลินิก/ปลายทาง)';
+            srcInput.placeholder = 'เช่น คลินิกเด็กดี รพ.สต. / ให้บริการเด็กตามนัด';
+        } else {
+            title.innerHTML = '<i class="fas fa-sliders-h" style="color:#d97706;"></i> บันทึกปรับยอด / ชำรุดแตกหัก';
+            submitBtn.textContent = 'บันทึกปรับยอด';
+            submitBtn.style.background = '#d97706';
+            srcLabel.textContent = 'สาเหตุการปรับยอด';
+            srcInput.placeholder = 'เช่น ขวดแตกชำรุด / เสื่อมสภาพจากไฟดับ';
+        }
+
+        // Default fields
+        document.getElementById('stm_tx_date').value = new Date().toISOString().slice(0, 10);
+        if (APP.currentUser && APP.currentUser.hcode && APP.currentUser.hcode !== '-') {
+            document.getElementById('stm_hcode').value = APP.currentUser.hcode;
+            if (!isAdminAmpurUser()) {
+                document.getElementById('stm_hcode').disabled = true;
+            }
+        }
+
+        document.getElementById('stm_vaccine_code').value = '';
+        document.getElementById('stm_lot_no').value = '';
+        document.getElementById('stm_exp_date').value = '';
+        document.getElementById('stm_quantity_vials').value = '';
+        document.getElementById('stm_doses_per_vial').value = '1';
+        document.getElementById('stm_total_doses').value = '';
+        document.getElementById('stm_notes').value = '';
+
+        document.getElementById('stockTransactionModal').classList.add('active');
+    };
+
+    window.openQuickIssueModal = function(hcode, vaccineCode, lotNo, expDate, dosesPerVial, remainingVials) {
+        openAddStockModal('ISSUE');
+        document.getElementById('stm_hcode').value = hcode;
+        document.getElementById('stm_vaccine_code').value = vaccineCode;
+        onStockVaccineChange();
+        document.getElementById('stm_lot_no').value = lotNo;
+        if (expDate) document.getElementById('stm_exp_date').value = expDate.slice(0, 10);
+        document.getElementById('stm_doses_per_vial').value = dosesPerVial;
+        document.getElementById('stm_quantity_vials').placeholder = `คงเหลือ ${remainingVials} ขวด`;
+        document.getElementById('stm_quantity_vials').max = remainingVials;
+    };
+
+    window.closeStockModal = function() {
+        const m = document.getElementById('stockTransactionModal');
+        if (m) m.classList.remove('active');
+    };
+
+    window.doSaveStockItem = async function() {
+        const txDate = document.getElementById('stm_tx_date').value;
+        const hcode = document.getElementById('stm_hcode').value;
+        const vacCode = document.getElementById('stm_vaccine_code').value;
+        const vacName = document.getElementById('stm_vaccine_name').value || vacCode;
+        const lotNo = document.getElementById('stm_lot_no').value.trim();
+        const expDate = document.getElementById('stm_exp_date').value;
+        const qty = Number(document.getElementById('stm_quantity_vials').value || 0);
+        const dosesPerVial = Number(document.getElementById('stm_doses_per_vial').value || 1);
+        const txType = document.getElementById('stm_tx_type').value;
+
+        if (!txDate) return Swal.fire('แจ้งเตือน', 'กรุณาระบุวันที่ทำรายการ', 'warning');
+        if (!vacCode) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกวัคซีน', 'warning');
+        if (!lotNo) return Swal.fire('แจ้งเตือน', 'กรุณาระบุ Lot.No', 'warning');
+        if (!expDate) return Swal.fire('แจ้งเตือน', 'กรุณาระบุวันหมดอายุ', 'warning');
+        if (qty <= 0) return Swal.fire('แจ้งเตือน', 'กรุณาระบุจำนวนขวดมากกว่า 0', 'warning');
+
+        const payload = {
+            transaction_date: txDate,
+            hcode: hcode,
+            vaccine_code: vacCode,
+            vaccine_name: vacName,
+            transaction_type: txType,
+            lot_no: lotNo,
+            exp_date: expDate,
+            quantity_vials: qty,
+            doses_per_vial: dosesPerVial,
+            source_destination: document.getElementById('stm_source_destination').value.trim(),
+            vvm_status: document.getElementById('stm_vvm_status').value,
+            temperature_c: document.getElementById('stm_temperature_c').value,
+            notes: document.getElementById('stm_notes').value.trim(),
+            recorded_by: APP.currentUser ? (APP.currentUser.fullname || APP.currentUser.username) : 'เจ้าหน้าที่'
+        };
+
+        showLoading('กำลังบันทึกข้อมูล...');
+        try {
+            const res = await callGAS('addVaccineStock', [payload]);
+            hideLoading();
+            if (res.success) {
+                closeStockModal();
+                Swal.fire({ icon: 'success', title: 'สำเร็จ', text: res.message, timer: 1500, showConfirmButton: false });
+                doLoadVaccineStock();
+            checkMonthlyVaccineStockAlertAuto();
+            } else {
+                Swal.fire('ผิดพลาด', res.message, 'error');
+            }
+        } catch (e) {
+            hideLoading();
+            Swal.fire('ผิดพลาด', e.message, 'error');
+        }
+    };
+
+    window.deleteStockItem = async function(stockId) {
+        const r = await Swal.fire({
+            title: 'ยืนยันการลบรายการ',
+            text: 'ต้องการลบประวัติรายการสต๊อกนี้ใช่หรือไม่? (ยอดคงเหลือจะถูกคำนวณใหม่)',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'ลบรายการ',
+            cancelButtonText: 'ยกเลิก'
+        });
+        if (!r.isConfirmed) return;
+
+        showLoading('กำลังลบรายการ...');
+        try {
+            const res = await callGAS('deleteVaccineStock', [stockId]);
+            hideLoading();
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: 'ลบแล้ว', timer: 1200, showConfirmButton: false });
+                doLoadVaccineStock();
+            checkMonthlyVaccineStockAlertAuto();
+            } else {
+                Swal.fire('ผิดพลาด', res.message, 'error');
+            }
+        } catch (e) {
+            hideLoading();
+            Swal.fire('ผิดพลาด', e.message, 'error');
+        }
+    };
+
+    window.exportVaccineStockExcel = function() {
+        if (!window.XLSX) return Swal.fire('ผิดพลาด', 'ไลบรารี Excel (XLSX) ไม่พร้อมใช้งาน', 'error');
+        showLoading('กำลังสร้างไฟล์ Excel...');
+
+        try {
+            const wb = XLSX.utils.book_new();
+
+            // Sheet 1: Stock Balance
+            const balRows = [
+                ['รหัสสถานพยาบาล', 'สถานพยาบาล', 'รหัสวัคซีน', 'ชื่อวัคซีน', 'Lot.No', 'วันหมดอายุ (Exp)', 'สถานะวันหมดอายุ', 'คงเหลือ (ขวด)', 'โดสต่อขวด', 'คงเหลือรวม (โดส)', 'VVM']
+            ];
+            (APP.stockBalances || []).forEach(b => {
+                balRows.push([
+                    b.hcode,
+                    getFacilityDisplayName(b.hcode),
+                    b.vaccine_code,
+                    b.vaccine_name,
+                    b.lot_no,
+                    b.exp_date ? b.exp_date.slice(0, 10) : '-',
+                    b.status,
+                    b.remaining_vials,
+                    b.doses_per_vial,
+                    b.remaining_doses,
+                    b.vvm_status
+                ]);
+            });
+            const wsBal = XLSX.utils.aoa_to_sheet(balRows);
+            XLSX.utils.book_append_sheet(wb, wsBal, 'สต๊อกคงเหลือปัจจุบัน');
+
+            // Sheet 2: Ledger Transactions
+            const ledRows = [
+                ['ว/ด/ป', 'ประเภท', 'รหัสสถานพยาบาล', 'สถานพยาบาล', 'รหัสวัคซีน', 'ชื่อวัคซีน', 'Lot.No', 'วันหมดอายุ', 'จำนวน (ขวด)', 'รวมโดส', 'แหล่งที่มา/ปลายทาง', 'VVM', 'อุณหภูมิ (°C)', 'ผู้บันทึก', 'หมายเหตุ']
+            ];
+            (APP.stockTransactions || []).forEach(t => {
+                ledRows.push([
+                    t.transaction_date ? t.transaction_date.slice(0, 10) : '-',
+                    t.transaction_type,
+                    t.hcode,
+                    getFacilityDisplayName(t.hcode),
+                    t.vaccine_code,
+                    t.vaccine_name,
+                    t.lot_no,
+                    t.exp_date ? t.exp_date.slice(0, 10) : '-',
+                    t.quantity_vials,
+                    t.total_doses,
+                    t.source_destination || '-',
+                    t.vvm_status || '-',
+                    t.temperature_c !== null ? t.temperature_c : '-',
+                    t.recorded_by || '-',
+                    t.notes || '-'
+                ]);
+            });
+            const wsLed = XLSX.utils.aoa_to_sheet(ledRows);
+            XLSX.utils.book_append_sheet(wb, wsLed, 'ประวัติรับ-จ่าย');
+
+            const fileName = `รายงานสต๊อกวัคซีน_VCC_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            hideLoading();
+            Swal.fire({ icon: 'success', title: 'ส่งออกสำเร็จ', text: `บันทึกไฟล์: ${fileName}`, timer: 2000, showConfirmButton: false });
+        } catch (e) {
+            hideLoading();
+            Swal.fire('ผิดพลาด', 'ไม่สามารถส่งออก Excel ได้: ' + e.message, 'error');
+        }
+    };
+    
+    // ============================================================
+    // ส่งรายงานแจ้งเตือนวัคซีนใกล้หมดอายุ (< 3 เดือน) เข้า Telegram
+    // ทุกวันที่ 20 ของทุกเดือน หรือส่งด้วยตนเองโดย Admin_Ampur
+    // ============================================================
+    async function sendExpiringVaccinesToTelegram(isAuto = false) {
+        if (!isAdminAmpurUser() && !isAuto) {
+            return Swal.fire('ไม่มีสิทธิ์', 'ฟังก์ชันนี้อนุญาตเฉพาะผู้ดูแลระบบอำเภอ (Admin_Ampur)', 'warning');
+        }
+
+        const now = new Date();
+        const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+        const thaiDate = `${now.getDate()} ${thaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
+
+        if (!isAuto) showLoading('กำลังตรวจสอบสต๊อกวัคซีนใกล้หมดอายุ...');
+
+        let balances = [];
+        try {
+            const res = await callGAS('getVaccineStock', [{ hcode: 'ทั้งหมด' }]);
+            if (res && res.success && res.balances) {
+                balances = res.balances;
+            }
+        } catch (e) {
+            console.warn('sendExpiringVaccinesToTelegram stock fetch error:', e);
+            balances = APP.stockBalances || [];
+        }
+        if (!isAuto) hideLoading();
+
+        // กรองเฉพาะรายการที่ใกล้หมดอายุ <= 90 วัน หรือ หมดอายุแล้ว (< 0 วัน) และมียอดคงเหลือ > 0
+        const alertList = balances.filter(b => {
+            if (!b.exp_date || Number(b.remaining_vials || 0) <= 0) return false;
+            const expD = new Date(b.exp_date);
+            if (isNaN(expD.getTime())) return false;
+            const diffDays = Math.ceil((expD - now) / (1000 * 60 * 60 * 24));
+            return diffDays <= 90;
+        });
+
+        // จัดกลุ่มตามสถานพยาบาล
+        const groupedByHospital = {};
+        let totalAlertLots = 0;
+        let totalAlertVials = 0;
+        let totalAlertDoses = 0;
+        let expiredLots = 0;
+
+        alertList.forEach(b => {
+            const hc = String(b.hcode || '00000').padStart(5, '0');
+            const facName = b.hospital_name || getFacilityDisplayName(hc);
+            if (!groupedByHospital[hc]) {
+                groupedByHospital[hc] = {
+                    name: facName,
+                    items: []
+                };
+            }
+            const expD = new Date(b.exp_date);
+            const diffDays = Math.ceil((expD - now) / (1000 * 60 * 60 * 24));
+            const expThai = `${expD.getDate()} ${thaiMonths[expD.getMonth()]} ${expD.getFullYear() + 543}`;
+
+            totalAlertLots++;
+            totalAlertVials += Number(b.remaining_vials || 0);
+            totalAlertDoses += Number(b.remaining_doses || 0);
+            if (diffDays < 0) expiredLots++;
+
+            groupedByHospital[hc].items.push({
+                vaccine_code: b.vaccine_code,
+                vaccine_name: b.vaccine_name || b.vaccine_code,
+                lot_no: b.lot_no,
+                exp_date_str: expThai,
+                days_left: diffDays,
+                remaining_vials: b.remaining_vials,
+                remaining_doses: b.remaining_doses,
+                vvm: b.vvm_status || 'Stage 1'
+            });
+        });
+
+        let msg = '';
+        if (totalAlertLots === 0) {
+            msg = `✅ <b>รายงานตรวจสอบวัคซีนใกล้หมดอายุ (&lt; 3 เดือน)</b>\n` +
+                  `📅 ประจำวันที่: <b>${thaiDate}</b>\n` +
+                  `🏛️ <b>เครือข่ายบริการสุขภาพอำเภอเทพา</b>\n\n` +
+                  `🎉 <b>ยอดเยี่ยม! ตรวจสอบแล้วไม่มีวัคซีนใกล้หมดอายุ (&lt; 90 วัน) ในทุกสถานพยาบาล</b>\n` +
+                  `วัคซีนคงคลังทุกรายการมีอายุการใช้งานมากกว่า 3 เดือน และอยู่ในเกณฑ์มาตรฐานความปลอดภัย\n\n` +
+                  `🔗 ตรวจสอบคลังวัคซีน: https://ruslan1648631.github.io/vccthepha/`;
+        } else {
+            msg = `⚠️ <b>รายงานแจ้งเตือนวัคซีนใกล้หมดอายุ (&lt; 3 เดือน)</b>\n` +
+                  `📅 ประจำวันที่: <b>${thaiDate}</b>\n` +
+                  `🏛️ <b>เครือข่ายบริการสุขภาพอำเภอเทพา</b>\n` +
+                  `━━━━━━━━━━━━━━━━━━━\n\n`;
+
+            const sortedHcodes = Object.keys(groupedByHospital).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+            sortedHcodes.forEach(hc => {
+                const fac = groupedByHospital[hc];
+                msg += `🏥 <b>${fac.name}</b> (${hc}):\n`;
+                fac.items.forEach(it => {
+                    let statusTag = '';
+                    if (it.days_left < 0) {
+                        statusTag = `🔴 <b>หมดอายุแล้ว (${Math.abs(it.days_left)} วัน)</b>`;
+                    } else if (it.days_left <= 30) {
+                        statusTag = `🟠 <b>เหลือ ${it.days_left} วัน</b>`;
+                    } else {
+                        statusTag = `🟡 เหลือ ${it.days_left} วัน`;
+                    }
+                    msg += `  • <b>${it.vaccine_name}</b> | Lot: <code>${it.lot_no}</code>\n` +
+                           `    - หมดอายุ: ${it.exp_date_str} (${statusTag})\n` +
+                           `    - คงเหลือ: <b>${it.remaining_vials.toLocaleString()}</b> ขวด (${it.remaining_doses.toLocaleString()} โดส) | VVM: ${it.vvm}\n`;
+                });
+                msg += `\n`;
+            });
+
+            msg += `━━━━━━━━━━━━━━━━━━━\n` +
+                   `📊 <b>สรุปภาพรวมทั้งอำเภอ:</b>\n` +
+                   `• วัคซีนใกล้หมดอายุ (&le; 90 วัน): <b>${totalAlertLots}</b> Lot (${totalAlertVials.toLocaleString()} ขวด / ${totalAlertDoses.toLocaleString()} โดส)\n` +
+                   (expiredLots > 0 ? `• 🔴 มีวัคซีนหมดอายุแล้ว: <b>${expiredLots}</b> Lot (โปรดระงับการใช้)\n` : '') +
+                   `• คำแนะนำ: เร่งบริหารจัดการวัคซีนตามหลัก First Expire, First Out (FEFO) หรือกระจายให้หน่วยบริการที่มีอัตราการใช้วัคซีนสูง\n\n` +
+                   `🔗 ตรวจสอบคลังวัคซีน: https://ruslan1648631.github.io/vccthepha/`;
+        }
+
+        if (!isAuto) {
+            const previewResult = await Swal.fire({
+                title: '<i class="fab fa-telegram" style="color:#0284c7;"></i> ส่ง Telegram วัคซีนใกล้หมดอายุ',
+                html: `
+                    <div style="text-align:left; font-family:'Kanit',sans-serif; font-size:14px;">
+                        <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; margin-bottom:12px; color:#92400e; font-size:13px;">
+                            <i class="fas fa-exclamation-triangle"></i> ตรวจพบวัคซีนใกล้หมดอายุ (&lt; 3 เดือน): <b>${totalAlertLots}</b> Lot (${totalAlertVials} ขวด)
+                        </div>
+                        <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px; margin-bottom:12px;">
+                            <div style="font-weight:600; color:#0369a1; margin-bottom:6px;"><i class="fas fa-eye"></i> ตัวอย่างข้อความที่จะส่ง:</div>
+                            <pre style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:10px; font-family:'Kanit',sans-serif; font-size:12px; white-space:pre-wrap; max-height:220px; overflow-y:auto; margin:0; color:#1e293b;">${msg}</pre>
+                        </div>
+                        <div style="font-size:12px; color:#64748b; text-align:center;">
+                            * ข้อความจะถูกส่งตรงเข้ากลุ่ม Telegram เครือข่ายสุขภาพอำเภอเทพา
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fab fa-telegram-plane"></i> ยืนยันส่ง Telegram',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#0284c7',
+                width: 580
+            });
+
+            if (!previewResult.isConfirmed) return;
+        }
+
+        // ส่งข้อความจริงผ่าน Telegram API
+        if (!isAuto) showLoading('กำลังส่งรายงานเข้า Telegram...');
+        try {
+            const botToken = '8758808567:AAFoP_pRaWcZkWILgPTlHFYXwpwZP2OW1B4';
+            const chatId = '-5333140982';
+            const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: msg,
+                    parse_mode: 'HTML',
+                    disable_web_page_preview: true
+                })
+            });
+
+            const resJson = await res.json();
+            if (!isAuto) hideLoading();
+
+            if (resJson && resJson.ok) {
+                if (typeof logActivity === 'function') {
+                    logActivity('TELEGRAM', 'notify', `ส่งรายงานวัคซีนใกล้หมดอายุ (< 3 เดือน) เข้า Telegram รวม ${totalAlertLots} Lot (${totalAlertVials} ขวด)`);
+                }
+                if (!isAuto) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ส่ง Telegram สำเร็จ!',
+                        text: `ส่งรายงานวัคซีนใกล้หมดอายุประจำวันที่ ${thaiDate} เรียบร้อยแล้ว`,
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+                }
+                return { success: true, ok: true, thaiDate, totalAlertLots, totalAlertVials };
+            } else {
+                console.error('Telegram API error:', resJson);
+                if (!isAuto) {
+                    Swal.fire('เกิดข้อผิดพลาด', (resJson && resJson.description) || 'ไม่สามารถส่งข้อความได้', 'error');
+                }
+                return { success: false, ok: false, error: resJson };
+            }
+        } catch (err) {
+            if (!isAuto) {
+                hideLoading();
+                Swal.fire('ส่งไม่สำเร็จ', 'ไม่สามารถเชื่อมต่อกับ Telegram API ได้: ' + err.message, 'error');
+            }
+            return { success: false, ok: false, error: err.message };
+        }
+    }
+    window.sendExpiringVaccinesToTelegram = sendExpiringVaccinesToTelegram;
+
+    // ระบบแจ้งเตือนอัตโนมัติทุกวันที่ 20 ของทุกเดือน
+    function checkMonthlyVaccineStockAlertAuto() {
+        try {
+            const today = new Date();
+            if (today.getDate() !== 20) return;
+            const curYm = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+            const lastSent = localStorage.getItem('vcc_last_stock_tg_sent_month');
+            if (lastSent === curYm) return;
+
+            if (isAdminAmpurUser()) {
+                console.log('🔔 ถึงวันที่ 20 ของเดือน: กำลังส่งรายงานวัคซีนใกล้หมดอายุอัตโนมัติเข้า Telegram...');
+                sendExpiringVaccinesToTelegram(true).then(res => {
+                    if (res && res.ok) {
+                        localStorage.setItem('vcc_last_stock_tg_sent_month', curYm);
+                        console.log('✅ ส่งรายงานวัคซีนใกล้หมดอายุอัตโนมัติประจำวันที่ 20 สำเร็จ');
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Auto stock Telegram check error:', e);
+        }
+    }
 
     console.log('✅ ระบบติดตามวัคซีนเด็ก 0-5 ปี พร้อมทำงาน');
 </script>
