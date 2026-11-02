@@ -12225,6 +12225,15 @@ window.switchLogTab = function(tab) {
                 <div class="filter-bar">
                     ${facilityFilterHtml}
                     <div class="filter-group"><label>ค้นหา (เลขบัตร/ชื่อ-สกุล)</label><input type="text" id="cSearch" placeholder="พิมพ์เพื่อค้นหา..."></div>
+                    <div class="filter-group"><label>ช่วงอายุ</label><select id="cAge">
+                        <option value="all">ทุกช่วงอายุ (0-5 ปี)</option>
+                        <option value="under1">แรกเกิด - ต่ำกว่า 1 ปี (&lt; 12 เดือน)</option>
+                        <option value="1to2">1 - ต่ำกว่า 2 ปี (12 - 23 เดือน)</option>
+                        <option value="2to3">2 - ต่ำกว่า 3 ปี (24 - 35 เดือน)</option>
+                        <option value="3to4">3 - ต่ำกว่า 4 ปี (36 - 47 เดือน)</option>
+                        <option value="4to5">4 - ต่ำกว่า 5 ปี (48 - 59 เดือน)</option>
+                        <option value="5to6">5 - 5 ปี 11 เดือน (60 - 71 เดือน)</option>
+                    </select></div>
                     <div class="filter-group"><label>สถานะ</label><select id="cStatus">
                         <option value="ทั้งหมด">ทั้งหมด</option>
                         <option value="ตามนัดปกติ">ตามนัดปกติ</option>
@@ -12272,9 +12281,13 @@ window.switchLogTab = function(tab) {
                 }
                 document.getElementById('cSearch').value = '';
                 document.getElementById('cStatus').value = 'ทั้งหมด';
+                if (document.getElementById('cAge')) document.getElementById('cAge').value = 'all';
                 document.getElementById('cVillage').value = 'ทั้งหมด';
                 doChildSearch();
             });
+            if (document.getElementById('cAge')) {
+                document.getElementById('cAge').addEventListener('change', doChildSearch);
+            }
             document.getElementById('cSearch').addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') doChildSearch();
             });
@@ -12323,10 +12336,27 @@ window.switchLogTab = function(tab) {
 
             destroyDT('childrenTable');
 
-            if (!result.success || !result.children || result.children.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-inbox" style="font-size: 24px; margin-bottom: 10px;"></i><br>ไม่พบข้อมูลเด็ก</td></tr>';
+                        const ageFilter = document.getElementById('cAge') ? document.getElementById('cAge').value : 'all';
+            let childrenList = (result.success && result.children) ? result.children : [];
+
+            // กรองตามช่วงอายุ และคัดกรองเฉพาะเด็ก 0-5 ปี (< 72 เดือน)
+            childrenList = childrenList.filter(function(c) {
+                const m = parseAgeToMonths(c.age);
+                if (m < 0) return true;
+                if (m >= 72) return false; // อยู่นอกเกณฑ์ 0-5 ปี (อายุ 6 ปีขึ้นไป)
+                if (ageFilter === 'under1') return m < 12;
+                if (ageFilter === '1to2') return m >= 12 && m < 24;
+                if (ageFilter === '2to3') return m >= 24 && m < 36;
+                if (ageFilter === '3to4') return m >= 36 && m < 48;
+                if (ageFilter === '4to5') return m >= 48 && m < 60;
+                if (ageFilter === '5to6') return m >= 60 && m < 72;
+                return true;
+            });
+
+            if (childrenList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-inbox" style="font-size: 24px; margin-bottom: 10px;"></i><br>ไม่พบข้อมูลเด็กตามเงื่อนไขที่เลือก</td></tr>';
             } else {
-                tbody.innerHTML = result.children.map(function(c) {
+                tbody.innerHTML = childrenList.map(function(c) {
                     const statusOpts = ['ตามนัดปกติ', 'ขาดนัด', 'ปฏิเสธวัคซีน', 'ครบตามเกณฑ์'].map(function(s) {
                         return `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s}</option>`;
                     }).join('');
@@ -12364,7 +12394,7 @@ window.switchLogTab = function(tab) {
                 }).join('');
             }
 
-            initDT('childrenTable', { scrollX: true, autoWidth: false, order: [[3, 'desc']], columnDefs: [{ orderable: false, targets: [9] }] });
+            initDT('childrenTable', { scrollX: true, autoWidth: false, order: [[3, 'asc']], columnDefs: [{ orderable: false, targets: [9] }] });
         } catch (err) {
             hideLoading();
             document.getElementById('childrenTbody').innerHTML = '<tr><td colspan="10" class="no-data" style="color:#dc3545">เกิดข้อผิดพลาด: ' + esc(err.message) + '</td></tr>';
@@ -12526,7 +12556,7 @@ window.switchLogTab = function(tab) {
                 }).join('');
             }
 
-            initDT('missingTable', { scrollX: true, autoWidth: false, order: [[3, 'desc']] });
+            initDT('missingTable', { scrollX: true, autoWidth: false, order: [[3, 'asc']] });
         } catch (err) {
             hideLoading();
             document.getElementById('missingTbody').innerHTML = '<tr><td colspan="10" class="no-data" style="color:#dc3545">เกิดข้อผิดพลาด: ' + esc(err.message) + '</td></tr>';
