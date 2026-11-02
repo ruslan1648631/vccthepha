@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>ระบบติดตามวัคซีนเด็ก 0-5 ปี อ.เทพา</title>
     
     <!-- ===== FONTS & ICONS ===== -->
@@ -9168,9 +9171,33 @@ function hideLoginModal() {
     if (errEl) errEl.textContent = '';
 }
 
-async function loadPublicDashboard() {
+async function loadPublicDashboard(forceRefresh = false) {
     const loadingEl = document.getElementById('publicLoading');
     const dataEl = document.getElementById('publicData');
+
+    const CACHE_KEY = 'vcc_pub_dash_cache_v2';
+    const CACHE_TTL = 5 * 60 * 1000;
+    if (!forceRefresh) {
+        try {
+            const cached = sessionStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.data && (Date.now() - parsed.ts < CACHE_TTL)) {
+                    const res = parsed.data;
+                    loadingEl.style.display = 'none';
+                    dataEl.style.display = 'block';
+                    renderPublicStats(res.summary, res.ageGroups);
+                    renderPublicFacilitiesTable(res.facilities || []);
+                    renderPublicSubdistrictsTable(res.subdistricts || []);
+                    renderPublicVillagesGrouped(res);
+                    renderPublicAgeSummaryCards(res.ageGroups);
+                    const updEl = document.getElementById('publicUpdatedAt');
+                    if (updEl && res && res.meta && res.meta.updatedAt) updEl.textContent = res.meta.updatedAt;
+                    return;
+                }
+            }
+        } catch (cErr) {}
+    }
 
     loadingEl.style.display = 'block';
     dataEl.style.display = 'none';
@@ -9185,15 +9212,19 @@ async function loadPublicDashboard() {
             loadingEl.innerHTML = `
                 <i class="fas fa-exclamation-triangle" style="font-size:44px; color:#f59e0b;"></i>
                 <div style="margin-top:16px; color:#64748b; font-size:14px;">
-                    ${esc(res && res.message || 'ไม่สามารถโหลดข้อมูลได้')}
+                    ${esc(res && res.message || 'เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เนเธซเธฅเธ”เธเนเธญเธกเธนเธฅเนเธ”เน')}
                 </div>
-                <button onclick="loadPublicDashboard()" 
+                <button onclick="loadPublicDashboard(true)" 
                         style="margin-top:20px; padding:10px 24px; background:#667eea; color:#fff; 
                                border:none; border-radius:10px; cursor:pointer; font-family:Kanit; font-size:14px;">
-                    <i class="fas fa-redo"></i> ลองใหม่
+                    <i class="fas fa-redo"></i> เธฅเธญเธเนเธซเธกเน
                 </button>`;
             return;
         }
+
+        try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: res, ts: Date.now() }));
+        } catch (sErr) {}
 
         loadingEl.style.display = 'none';
         dataEl.style.display = 'block';
@@ -9201,8 +9232,7 @@ async function loadPublicDashboard() {
         renderPublicStats(res.summary, res.ageGroups);
         renderPublicFacilitiesTable(res.facilities || []);
         
-        
-        // ✅ เพิ่มใหม่
+        // โ… เน€เธเธดเนเธกเนเธซเธกเน
         renderPublicSubdistrictsTable(res.subdistricts || []);
         renderPublicVillagesGrouped(res);
         renderPublicAgeSummaryCards(res.ageGroups);
@@ -9214,12 +9244,12 @@ async function loadPublicDashboard() {
         loadingEl.innerHTML = `
             <i class="fas fa-wifi" style="font-size:44px; color:#ef4444;"></i>
             <div style="margin-top:16px; color:#64748b; font-size:14px;">
-                ${esc(err.message || 'การเชื่อมต่อล้มเหลว')}
+                ${esc(err.message || 'เธเธฒเธฃเน€เธเธทเนเธญเธกเธ•เนเธญเธฅเนเธกเน€เธซเธฅเธง')}
             </div>
-            <button onclick="loadPublicDashboard()" 
+            <button onclick="loadPublicDashboard(true)" 
                     style="margin-top:20px; padding:10px 24px; background:#667eea; color:#fff; 
                            border:none; border-radius:10px; cursor:pointer; font-family:Kanit; font-size:14px;">
-                <i class="fas fa-redo"></i> ลองใหม่
+                <i class="fas fa-redo"></i> เธฅเธญเธเนเธซเธกเน
             </button>`;
     }
 }
@@ -10017,21 +10047,22 @@ function logActivity(action, category, details) {
         destroyDT(id);
         const defaults = {
             language: {
-                search: 'ค้นหา:',
-                lengthMenu: 'แสดง _MENU_ แถว',
-                info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ แถว',
-                paginate: { first: '«', last: '»', next: '›', previous: '‹' },
-                zeroRecords: '<div style="padding:20px 0; color:#aaa;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>ไม่พบข้อมูล</div>',
-                emptyTable: '<div style="padding:20px 0; color:#aaa;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>ไม่มีข้อมูลในตาราง</div>'
+                search: 'เธเนเธเธซเธฒ:',
+                lengthMenu: 'เนเธชเธ”เธ _MENU_ เนเธ–เธง',
+                info: 'เนเธชเธ”เธ _START_ เธ–เธถเธ _END_ เธเธฒเธ _TOTAL_ เนเธ–เธง',
+                paginate: { first: 'ยซ', last: 'ยป', next: 'โ€บ', previous: 'โ€น' },
+                zeroRecords: '<div style="padding:20px 0; color:#aaa;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>เนเธกเนเธเธเธเนเธญเธกเธนเธฅ</div>',
+                emptyTable: '<div style="padding:20px 0; color:#aaa;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>เนเธกเนเธกเธตเธเนเธญเธกเธนเธฅเนเธเธ•เธฒเธฃเธฒเธ</div>'
             },
             pageLength: 10,
             lengthMenu: [
                 [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "ทั้งหมด"]
+                [10, 25, 50, 100, "เธ—เธฑเนเธเธซเธกเธ”"]
             ],
-            responsive: true
+            deferRender: true,
+            processing: true
         };
-        $('#' + id).DataTable(Object.assign(defaults, opts || {}));
+        return $('#' + id).DataTable(Object.assign(defaults, opts || {}));
     }
 
     // ============================================================
@@ -12336,14 +12367,14 @@ window.switchLogTab = function(tab) {
 
             destroyDT('childrenTable');
 
-                        const ageFilter = document.getElementById('cAge') ? document.getElementById('cAge').value : 'all';
+            const ageFilter = document.getElementById('cAge') ? document.getElementById('cAge').value : 'all';
             let childrenList = (result.success && result.children) ? result.children : [];
 
-            // กรองตามช่วงอายุ และคัดกรองเฉพาะเด็ก 0-5 ปี (< 72 เดือน)
+            // เธเธฃเธญเธเธ•เธฒเธกเธเนเธงเธเธญเธฒเธขเธธ เนเธฅเธฐเธเธฑเธ”เธเธฃเธญเธเน€เธเธเธฒเธฐเน€เธ”เนเธ 0-5 เธเธต (< 72 เน€เธ”เธทเธญเธ)
             childrenList = childrenList.filter(function(c) {
                 const m = parseAgeToMonths(c.age);
                 if (m < 0) return true;
-                if (m >= 72) return false; // อยู่นอกเกณฑ์ 0-5 ปี (อายุ 6 ปีขึ้นไป)
+                if (m >= 72) return false; // เธญเธขเธนเนเธเธญเธเน€เธเธ“เธ‘เน 0-5 เธเธต (เธญเธฒเธขเธธ 6 เธเธตเธเธถเนเธเนเธ)
                 if (ageFilter === 'under1') return m < 12;
                 if (ageFilter === '1to2') return m >= 12 && m < 24;
                 if (ageFilter === '2to3') return m >= 24 && m < 36;
@@ -12353,48 +12384,58 @@ window.switchLogTab = function(tab) {
                 return true;
             });
 
-            if (childrenList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-inbox" style="font-size: 24px; margin-bottom: 10px;"></i><br>ไม่พบข้อมูลเด็กตามเงื่อนไขที่เลือก</td></tr>';
-            } else {
-                tbody.innerHTML = childrenList.map(function(c) {
-                    const statusOpts = ['ตามนัดปกติ', 'ขาดนัด', 'ปฏิเสธวัคซีน', 'ครบตามเกณฑ์'].map(function(s) {
-                        return `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s}</option>`;
-                    }).join('');
+            tbody.innerHTML = '';
 
-                    const ageSortVal = parseAgeToMonths(c.age);
-                    let statusDisplay = '<span class="status-badge ' + getStatusClass(c.status) + '">' + esc(c.status) + '</span>';
-                    if (c.status === 'ขาดนัด' && c.missingVaccines) {
-                        statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 200px; white-space: normal;">ขาด: ' + esc(c.missingVaccines) + '</div>';
-                    }
-
-                    const displayName = getFacilityDisplayName(c.hcode, c.hname);
-                    const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
-                    const quickCallBtn = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="action-btn" style="color:#10b981;" title="โทร ' + esc(c.phone) + '"><i class="fas fa-phone-alt"></i></a> ' : '';
-                    const quickNavBtn = (c.gps && c.gps.includes(',')) ? '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="action-btn" style="color:#2563eb;" title="นำทาง Google Maps"><i class="fas fa-directions"></i></a> ' : '';
-
-                    return '<tr>' +
-                        '<td><span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span></td>' +
-                        '<td style="font-family:monospace; font-size:13px;">' + esc(c.hn) + '</td>' +
-                        '<td style="font-weight:500;">' + esc(c.fullname) + '</td>' +
-                        '<td data-sort="' + ageSortVal + '">' + esc(c.age) + '</td>' +
-                        '<td>' + esc(c.houseNumber) + '</td>' +
-                        '<td>' + esc(c.village) + '</td>' +
-                        '<td>' + esc(c.villageName || '-') + '</td>' +
-                        '<td>' + esc(c.subdistrict || '-') + '</td>' +
-                        '<td>' + statusDisplay + '</td>' +
-                        '<td style="white-space:nowrap;">' +
-                        quickCallBtn +
-                        quickNavBtn +
-                        '<button class="action-btn view" title="รายละเอียด" onclick="viewChildFromMap(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
-                         '<select class="status-select" title="เปลี่ยนสถานะ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)" data-childid="' + esc(c.id || c.hn) + '">' +
-                        '<option value="">เปลี่ยนสถานะ</option>' + statusOpts +
-                        '</select>' +
-                        '</td>' +
-                        '</tr>';
+            const tableRows = childrenList.map(function(c) {
+                const statusOpts = ['เธ•เธฒเธกเธเธฑเธ”เธเธเธ•เธด', 'เธเธฒเธ”เธเธฑเธ”', 'เธเธเธดเน€เธชเธเธงเธฑเธเธเธตเธ', 'เธเธฃเธเธ•เธฒเธกเน€เธเธ“เธ‘เน'].map(function(s) {
+                    return `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s}</option>`;
                 }).join('');
-            }
 
-            initDT('childrenTable', { scrollX: true, autoWidth: false, order: [[3, 'asc']], columnDefs: [{ orderable: false, targets: [9] }] });
+                const ageSortVal = parseAgeToMonths(c.age);
+                let statusDisplay = '<span class="status-badge ' + getStatusClass(c.status) + '">' + esc(c.status) + '</span>';
+                if (c.status === 'เธเธฒเธ”เธเธฑเธ”' && c.missingVaccines) {
+                    statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 200px; white-space: normal;">เธเธฒเธ”: ' + esc(c.missingVaccines) + '</div>';
+                }
+
+                const displayName = getFacilityDisplayName(c.hcode, c.hname);
+                const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
+                const quickCallBtn = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="action-btn" style="color:#10b981;" title="เนเธ—เธฃ ' + esc(c.phone) + '"><i class="fas fa-phone-alt"></i></a> ' : '';
+                const quickNavBtn = (c.gps && c.gps.includes(',')) ? '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="action-btn" style="color:#2563eb;" title="เธเธณเธ—เธฒเธ Google Maps"><i class="fas fa-directions"></i></a> ' : '';
+
+                const actionCol = '<div style="white-space:nowrap;">' +
+                    quickCallBtn +
+                    quickNavBtn +
+                    '<button class="action-btn view" title="เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”" onclick="viewChildFromMap(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
+                    '<select class="status-select" title="เน€เธเธฅเธตเนเธขเธเธชเธ–เธฒเธเธฐ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)" data-childid="' + esc(c.id || c.hn) + '">' +
+                    '<option value="">เน€เธเธฅเธตเนเธขเธเธชเธ–เธฒเธเธฐ</option>' + statusOpts +
+                    '</select>' +
+                    '</div>';
+
+                return [
+                    '<span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span>',
+                    '<span style="font-family:monospace; font-size:13px;">' + esc(c.hn) + '</span>',
+                    '<span style="font-weight:500;">' + esc(c.fullname) + '</span>',
+                    '<span data-order="' + ageSortVal + '">' + esc(c.age) + '</span>',
+                    esc(c.houseNumber),
+                    esc(c.village),
+                    esc(c.villageName || '-'),
+                    esc(c.subdistrict || '-'),
+                    statusDisplay,
+                    actionCol
+                ];
+            });
+
+            initDT('childrenTable', {
+                data: tableRows,
+                deferRender: true,
+                scrollX: true,
+                autoWidth: false,
+                order: [[3, 'asc']],
+                columnDefs: [
+                    { orderable: false, targets: [9] },
+                    { type: 'num', targets: [3] }
+                ]
+            });
         } catch (err) {
             hideLoading();
             document.getElementById('childrenTbody').innerHTML = '<tr><td colspan="10" class="no-data" style="color:#dc3545">เกิดข้อผิดพลาด: ' + esc(err.message) + '</td></tr>';
@@ -12509,54 +12550,75 @@ window.switchLogTab = function(tab) {
             if (!tbody) return;
 
             destroyDT('missingTable');
+            tbody.innerHTML = '';
 
             if (!result.success || !result.children || result.children.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="no-data"><i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px; color:#10b981;"></i><br>ยอดเยี่ยม! ไม่มีเด็กขาดนัดในขณะนี้</td></tr>';
                 APP.missingAllRecords = [];
+                initDT('missingTable', {
+                    data: [],
+                    deferRender: true,
+                    scrollX: true,
+                    autoWidth: false,
+                    order: [[3, 'asc']],
+                    columnDefs: [{ orderable: false, targets: [9] }]
+                });
             } else {
                 APP.missingAllRecords = result.children;
-                tbody.innerHTML = result.children.map(function(c) {
-                    const statusOpts = ['ตามนัดปกติ', 'ขาดนัด', 'ปฏิเสธวัคซีน'].map(function(s) {
+                const mTableRows = result.children.map(function(c) {
+                    const statusOpts = ['เธ•เธฒเธกเธเธฑเธ”เธเธเธ•เธด', 'เธเธฒเธ”เธเธฑเธ”', 'เธเธเธดเน€เธชเธเธงเธฑเธเธเธตเธ'].map(function(s) {
                         return '<option value="' + s + '">' + s + '</option>';
                     });
 
                     const ageSortVal = parseAgeToMonths(c.age);
                     let statusDisplay = '<span class="status-badge ' + getStatusClass(c.status) + '">' + esc(c.status) + '</span>';
-                    if (c.status === 'ขาดนัด' && c.missingVaccines) {
-                        statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 150px; white-space: normal;">ขาด: ' + esc(c.missingVaccines) + '</div>';
+                    if (c.status === 'เธเธฒเธ”เธเธฑเธ”' && c.missingVaccines) {
+                        statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 150px; white-space: normal;">เธเธฒเธ”: ' + esc(c.missingVaccines) + '</div>';
                     }
 
                     const displayName = getFacilityDisplayName(c.hcode, c.hname);
 
                     const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
-                    let contactPill = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="btn-call-pill" title="โทรหาผู้ปกครอง (' + esc(c.phone) + ')"><i class="fas fa-phone-alt"></i> ' + esc(c.phone) + '</a>' : '<span style="color:#94a3b8; font-size:12px;">-</span>';
+                    let contactPill = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="btn-call-pill" title="เนเธ—เธฃเธซเธฒเธเธนเนเธเธเธเธฃเธญเธ (' + esc(c.phone) + ')"><i class="fas fa-phone-alt"></i> ' + esc(c.phone) + '</a>' : '<span style="color:#94a3b8; font-size:12px;">-</span>';
                     
                     let navPill = '';
                     if (c.gps && c.gps.includes(',')) {
-                        navPill = '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="btn-nav-pill" title="นำทาง Google Maps ไปยังบ้านเด็ก"><i class="fas fa-directions"></i> นำทาง</a>';
+                        navPill = '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="btn-nav-pill" title="เธเธณเธ—เธฒเธ Google Maps เนเธเธขเธฑเธเธเนเธฒเธเน€เธ”เนเธ"><i class="fas fa-directions"></i> เธเธณเธ—เธฒเธ</a>';
                     }
                     let contactCol = '<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">' + contactPill + (navPill ? navPill : '') + '</div>';
 
-                    return '<tr>' +
-                        '<td><span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span></td>' +
-                        '<td style="font-family:monospace">' + esc(c.hn) + '</td>' +
-                        '<td>' + esc(c.fullname) + '</td>' +
-                        '<td data-sort="' + ageSortVal + '">' + esc(c.age) + '</td>' +
-                        '<td>' + esc(c.village) + '</td>' +
-                        '<td>' + esc(c.villageName || '-') + '</td>' +
-                        '<td class="text-blue-600 font-medium">' + esc(c.asm) + '</td>' +
-                        '<td>' + statusDisplay + '</td>' +
-                        '<td>' + contactCol + '</td>' +
-                        '<td>' +
-                        '<button class="action-btn view" title="รายละเอียด" onclick="viewChild(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
-                        '<select class="status-select" title="เปลี่ยนสถานะ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)">' +
-                        '<option value="">เปลี่ยนสถานะ</option>' + statusOpts +
+                    const actCol = '<div style="white-space:nowrap;">' +
+                        '<button class="action-btn view" title="เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”" onclick="viewChild(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
+                        '<select class="status-select" title="เน€เธเธฅเธตเนเธขเธเธชเธ–เธฒเธเธฐ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)">' +
+                        '<option value="">เน€เธเธฅเธตเนเธขเธเธชเธ–เธฒเธเธฐ</option>' + statusOpts +
                         '</select>' +
-                        '</td></tr>';
-                }).join('');
-            }
+                        '</div>';
 
-            initDT('missingTable', { scrollX: true, autoWidth: false, order: [[3, 'asc']] });
+                    return [
+                        '<span style="color:#667eea; font-weight:500;">' + esc(displayName) + '</span>',
+                        '<span style="font-family:monospace">' + esc(c.hn) + '</span>',
+                        esc(c.fullname),
+                        '<span data-order="' + ageSortVal + '">' + esc(c.age) + '</span>',
+                        esc(c.village),
+                        esc(c.villageName || '-'),
+                        '<span class="text-blue-600 font-medium">' + esc(c.asm) + '</span>',
+                        statusDisplay,
+                        contactCol,
+                        actCol
+                    ];
+                });
+
+                initDT('missingTable', {
+                    data: mTableRows,
+                    deferRender: true,
+                    scrollX: true,
+                    autoWidth: false,
+                    order: [[3, 'asc']],
+                    columnDefs: [
+                        { orderable: false, targets: [9] },
+                        { type: 'num', targets: [3] }
+                    ]
+                });
+            }
         } catch (err) {
             hideLoading();
             document.getElementById('missingTbody').innerHTML = '<tr><td colspan="10" class="no-data" style="color:#dc3545">เกิดข้อผิดพลาด: ' + esc(err.message) + '</td></tr>';
