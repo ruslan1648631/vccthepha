@@ -7961,7 +7961,7 @@
             return { success: true, children };
         }
 
-                // 26. เธฃเธฒเธขเธเธฒเธเธเธงเธฒเธกเธเธฃเธญเธเธเธฅเธธเธกเธงเธฑเธเธเธตเธเธฃเธฒเธขเนเธ•เธฃเธกเธฒเธช (Vaccine Coverage Report)
+                // 26. Vaccine Coverage Report
         if (fnName === 'getVaccineCoverageReport') {
             const rawFilter = (typeof args[0] === 'object' && args[0] !== null) ? args[0] : {};
             const userHcode = rawFilter.hcode || rawFilter.userHcode || args[1] || '';
@@ -9212,12 +9212,12 @@ async function loadPublicDashboard(forceRefresh = false) {
             loadingEl.innerHTML = `
                 <i class="fas fa-exclamation-triangle" style="font-size:44px; color:#f59e0b;"></i>
                 <div style="margin-top:16px; color:#64748b; font-size:14px;">
-                    ${esc(res && res.message || 'เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เนเธซเธฅเธ”เธเนเธญเธกเธนเธฅเนเธ”เน')}
+                    ${esc(res && res.message || "\u0E44\u0E21\u0E48\u0E2A\u0E32\u0E21\u0E32\u0E23\u0E16\u0E42\u0E2B\u0E25\u0E14\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E44\u0E14\u0E49")}
                 </div>
                 <button onclick="loadPublicDashboard(true)" 
                         style="margin-top:20px; padding:10px 24px; background:#667eea; color:#fff; 
                                border:none; border-radius:10px; cursor:pointer; font-family:Kanit; font-size:14px;">
-                    <i class="fas fa-redo"></i> เธฅเธญเธเนเธซเธกเน
+                    <i class="fas fa-redo"></i> \u0E25\u0E2D\u0E07\u0E43\u0E2B\u0E21\u0E48
                 </button>`;
             return;
         }
@@ -9232,7 +9232,7 @@ async function loadPublicDashboard(forceRefresh = false) {
         renderPublicStats(res.summary, res.ageGroups);
         renderPublicFacilitiesTable(res.facilities || []);
         
-        // โ… เน€เธเธดเนเธกเนเธซเธกเน
+        // \u0E40\u0E1E\u0E34\u0E48\u0E21\u0E43\u0E2B\u0E21\u0E48
         renderPublicSubdistrictsTable(res.subdistricts || []);
         renderPublicVillagesGrouped(res);
         renderPublicAgeSummaryCards(res.ageGroups);
@@ -9244,12 +9244,12 @@ async function loadPublicDashboard(forceRefresh = false) {
         loadingEl.innerHTML = `
             <i class="fas fa-wifi" style="font-size:44px; color:#ef4444;"></i>
             <div style="margin-top:16px; color:#64748b; font-size:14px;">
-                ${esc(err.message || 'เธเธฒเธฃเน€เธเธทเนเธญเธกเธ•เนเธญเธฅเนเธกเน€เธซเธฅเธง')}
+                ${esc(err.message || "\u0E01\u0E32\u0E23\u0E40\u0E0A\u0E37\u0E48\u0E2D\u0E21\u0E15\u0E48\u0E2D\u0E25\u0E49\u0E21\u0E40\u0E2B\u0E25\u0E27")}
             </div>
             <button onclick="loadPublicDashboard(true)" 
                     style="margin-top:20px; padding:10px 24px; background:#667eea; color:#fff; 
                            border:none; border-radius:10px; cursor:pointer; font-family:Kanit; font-size:14px;">
-                <i class="fas fa-redo"></i> เธฅเธญเธเนเธซเธกเน
+                    <i class="fas fa-redo"></i> \u0E25\u0E2D\u0E07\u0E43\u0E2B\u0E21\u0E48
             </button>`;
     }
 }
@@ -10047,17 +10047,17 @@ function logActivity(action, category, details) {
         destroyDT(id);
         const defaults = {
             language: {
-                search: 'เธเนเธเธซเธฒ:',
-                lengthMenu: 'เนเธชเธ”เธ _MENU_ เนเธ–เธง',
-                info: 'เนเธชเธ”เธ _START_ เธ–เธถเธ _END_ เธเธฒเธ _TOTAL_ เนเธ–เธง',
-                paginate: { first: 'ยซ', last: 'ยป', next: 'โ€บ', previous: 'โ€น' },
-                zeroRecords: '<div style="padding:20px 0; color:#aaa;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>เนเธกเนเธเธเธเนเธญเธกเธนเธฅ</div>',
-                emptyTable: '<div style="padding:20px 0; color:#aaa;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>เนเธกเนเธกเธตเธเนเธญเธกเธนเธฅเนเธเธ•เธฒเธฃเธฒเธ</div>'
+                search: '\u0E04\u0E49\u0E19\u0E2B\u0E32:',
+                lengthMenu: '\u0E41\u0E2A\u0E14\u0E07 _MENU_ \u0E41\u0E16\u0E27',
+                info: '\u0E41\u0E2A\u0E14\u0E07 _START_ \u0E16\u0E36\u0E07 _END_ \u0E08\u0E32\u0E01 _TOTAL_ \u0E41\u0E16\u0E27',
+                paginate: { first: '\u00AB', last: '\u00BB', next: '\u203A', previous: '\u2039' },
+                zeroRecords: '<div style="padding:20px 0; color:#aaa;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25</div>',
+                emptyTable: '<div style="padding:20px 0; color:#aaa;"><i class="fas fa-inbox fa-2x" style="margin-bottom:8px;"></i><br>\u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E43\u0E19\u0E15\u0E32\u0E23\u0E32\u0E07</div>'
             },
             pageLength: 10,
             lengthMenu: [
                 [10, 25, 50, 100, -1],
-                [10, 25, 50, 100, "เธ—เธฑเนเธเธซเธกเธ”"]
+                [10, 25, 50, 100, "\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14"]
             ],
             deferRender: true,
             processing: true
@@ -10172,7 +10172,7 @@ function logActivity(action, category, details) {
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-redo"></i> ลองใหม่',
+            confirmButtonText: '<i class="fas fa-redo"></i> \u0E25\u0E2D\u0E07\u0E43\u0E2B\u0E21\u0E48',
             cancelButtonText: 'ปิด',
             confirmButtonColor: '#667eea'
         }).then(r => {
@@ -10964,7 +10964,7 @@ function updateBottomNavActive(page) {
                                    font-family:Kanit; font-size:14px; font-weight:600; 
                                    box-shadow:0 4px 12px rgba(102,126,234,.3);
                                    display:inline-flex; align-items:center; gap:8px;">
-                        <i class="fas fa-redo"></i> ลองอีกครั้ง
+                    <i class="fas fa-redo"></i> \u0E25\u0E2D\u0E07\u0E43\u0E2B\u0E21\u0E48
                     </button>
                     <button onclick="location.reload()" 
                             style="padding:12px 24px; background:#f1f5f9; color:#475569; 
@@ -12370,11 +12370,11 @@ window.switchLogTab = function(tab) {
             const ageFilter = document.getElementById('cAge') ? document.getElementById('cAge').value : 'all';
             let childrenList = (result.success && result.children) ? result.children : [];
 
-            // เธเธฃเธญเธเธ•เธฒเธกเธเนเธงเธเธญเธฒเธขเธธ เนเธฅเธฐเธเธฑเธ”เธเธฃเธญเธเน€เธเธเธฒเธฐเน€เธ”เนเธ 0-5 เธเธต (< 72 เน€เธ”เธทเธญเธ)
+            // filter age
             childrenList = childrenList.filter(function(c) {
                 const m = parseAgeToMonths(c.age);
                 if (m < 0) return true;
-                if (m >= 72) return false; // เธญเธขเธนเนเธเธญเธเน€เธเธ“เธ‘เน 0-5 เธเธต (เธญเธฒเธขเธธ 6 เธเธตเธเธถเนเธเนเธ)
+            // filter age
                 if (ageFilter === 'under1') return m < 12;
                 if (ageFilter === '1to2') return m >= 12 && m < 24;
                 if (ageFilter === '2to3') return m >= 24 && m < 36;
@@ -12387,27 +12387,27 @@ window.switchLogTab = function(tab) {
             tbody.innerHTML = '';
 
             const tableRows = childrenList.map(function(c) {
-                const statusOpts = ['เธ•เธฒเธกเธเธฑเธ”เธเธเธ•เธด', 'เธเธฒเธ”เธเธฑเธ”', 'เธเธเธดเน€เธชเธเธงเธฑเธเธเธตเธ', 'เธเธฃเธเธ•เธฒเธกเน€เธเธ“เธ‘เน'].map(function(s) {
+                const statusOpts = ['\u0E15\u0E32\u0E21\u0E19\u0E31\u0E14\u0E1B\u0E01\u0E15\u0E34', '\u0E02\u0E32\u0E14\u0E19\u0E31\u0E14', '\u0E1B\u0E0F\u0E34\u0E40\u0E2A\u0E18\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19', '\u0E04\u0E23\u0E1A\u0E15\u0E32\u0E21\u0E40\u0E01\u0E13\u0E11\u0E4C'].map(function(s) {
                     return `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s}</option>`;
                 }).join('');
 
                 const ageSortVal = parseAgeToMonths(c.age);
                 let statusDisplay = '<span class="status-badge ' + getStatusClass(c.status) + '">' + esc(c.status) + '</span>';
-                if (c.status === 'เธเธฒเธ”เธเธฑเธ”' && c.missingVaccines) {
-                    statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 200px; white-space: normal;">เธเธฒเธ”: ' + esc(c.missingVaccines) + '</div>';
+                if (c.status === '\u0E02\u0E32\u0E14\u0E19\u0E31\u0E14' && c.missingVaccines) {
+                    statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 200px; white-space: normal;">\u0E02\u0E32\u0E14: ' + esc(c.missingVaccines) + '</div>';
                 }
 
                 const displayName = getFacilityDisplayName(c.hcode, c.hname);
                 const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
-                const quickCallBtn = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="action-btn" style="color:#10b981;" title="เนเธ—เธฃ ' + esc(c.phone) + '"><i class="fas fa-phone-alt"></i></a> ' : '';
-                const quickNavBtn = (c.gps && c.gps.includes(',')) ? '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="action-btn" style="color:#2563eb;" title="เธเธณเธ—เธฒเธ Google Maps"><i class="fas fa-directions"></i></a> ' : '';
+                const quickCallBtn = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="action-btn" style="color:#10b981;" title="\u0E42\u0E17\u0E23 ' + esc(c.phone) + '"><i class="fas fa-phone-alt"></i></a> ' : '';
+                const quickNavBtn = (c.gps && c.gps.includes(',')) ? '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="action-btn" style="color:#2563eb;" title="\u0E19\u0E33\u0E17\u0E32\u0E07 Google Maps"><i class="fas fa-directions"></i></a> ' : '';
 
                 const actionCol = '<div style="white-space:nowrap;">' +
                     quickCallBtn +
                     quickNavBtn +
-                    '<button class="action-btn view" title="เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”" onclick="viewChildFromMap(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
-                    '<select class="status-select" title="เน€เธเธฅเธตเนเธขเธเธชเธ–เธฒเธเธฐ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)" data-childid="' + esc(c.id || c.hn) + '">' +
-                    '<option value="">เน€เธเธฅเธตเนเธขเธเธชเธ–เธฒเธเธฐ</option>' + statusOpts +
+                    '<button class="action-btn view" title="\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14" onclick="viewChildFromMap(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
+                    '<select class="status-select" title="\u0E40\u0E1B\u0E25\u0E35\u0E48\u0E22\u0E19\u0E2A\u0E16\u0E32\u0E19\u0E30" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)" data-childid="' + esc(c.id || c.hn) + '">' +
+                    '<option value="">\u0E40\u0E1B\u0E25\u0E35\u0E48\u0E22\u0E19\u0E2A\u0E16\u0E32\u0E19\u0E30</option>' + statusOpts +
                     '</select>' +
                     '</div>';
 
@@ -12565,31 +12565,31 @@ window.switchLogTab = function(tab) {
             } else {
                 APP.missingAllRecords = result.children;
                 const mTableRows = result.children.map(function(c) {
-                    const statusOpts = ['เธ•เธฒเธกเธเธฑเธ”เธเธเธ•เธด', 'เธเธฒเธ”เธเธฑเธ”', 'เธเธเธดเน€เธชเธเธงเธฑเธเธเธตเธ'].map(function(s) {
+                    const statusOpts = ['\u0E15\u0E32\u0E21\u0E19\u0E31\u0E14\u0E1B\u0E01\u0E15\u0E34', '\u0E02\u0E32\u0E14\u0E19\u0E31\u0E14', '\u0E1B\u0E0F\u0E34\u0E40\u0E2A\u0E18\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19'].map(function(s) {
                         return '<option value="' + s + '">' + s + '</option>';
                     });
 
                     const ageSortVal = parseAgeToMonths(c.age);
                     let statusDisplay = '<span class="status-badge ' + getStatusClass(c.status) + '">' + esc(c.status) + '</span>';
-                    if (c.status === 'เธเธฒเธ”เธเธฑเธ”' && c.missingVaccines) {
-                        statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 150px; white-space: normal;">เธเธฒเธ”: ' + esc(c.missingVaccines) + '</div>';
+                    if (c.status === '\u0E02\u0E32\u0E14\u0E19\u0E31\u0E14' && c.missingVaccines) {
+                        statusDisplay += '<div style="font-size: 11px; color: #ef4444; margin-top: 4px; line-height: 1.3; max-width: 150px; white-space: normal;">\u0E02\u0E32\u0E14: ' + esc(c.missingVaccines) + '</div>';
                     }
 
                     const displayName = getFacilityDisplayName(c.hcode, c.hname);
 
                     const cleanPhone = (c.phone && c.phone !== '-') ? c.phone.replace(/[^0-9+]/g, '') : '';
-                    let contactPill = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="btn-call-pill" title="เนเธ—เธฃเธซเธฒเธเธนเนเธเธเธเธฃเธญเธ (' + esc(c.phone) + ')"><i class="fas fa-phone-alt"></i> ' + esc(c.phone) + '</a>' : '<span style="color:#94a3b8; font-size:12px;">-</span>';
+                    let contactPill = cleanPhone ? '<a href="tel:' + cleanPhone + '" class="btn-call-pill" title="\u0E42\u0E17\u0E23\u0E2B\u0E32\u0E1C\u0E39\u0E49\u0E1B\u0E01\u0E04\u0E23\u0E2D\u0E07 (' + esc(c.phone) + ')"><i class="fas fa-phone-alt"></i> ' + esc(c.phone) + '</a>' : '<span style="color:#94a3b8; font-size:12px;">-</span>';
                     
                     let navPill = '';
                     if (c.gps && c.gps.includes(',')) {
-                        navPill = '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="btn-nav-pill" title="เธเธณเธ—เธฒเธ Google Maps เนเธเธขเธฑเธเธเนเธฒเธเน€เธ”เนเธ"><i class="fas fa-directions"></i> เธเธณเธ—เธฒเธ</a>';
+                        navPill = '<a href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(c.gps.trim()) + '" target="_blank" class="btn-nav-pill" title="\u0E19\u0E33\u0E17\u0E32\u0E07 Google Maps \u0E44\u0E1B\u0E22\u0E31\u0E07\u0E1A\u0E49\u0E32\u0E19\u0E40\u0E14\u0E47\u0E01"><i class="fas fa-directions"></i> \u0E19\u0E33\u0E17\u0E32\u0E07</a>';
                     }
                     let contactCol = '<div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">' + contactPill + (navPill ? navPill : '') + '</div>';
 
                     const actCol = '<div style="white-space:nowrap;">' +
-                        '<button class="action-btn view" title="เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”" onclick="viewChild(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
-                        '<select class="status-select" title="เน€เธเธฅเธตเนเธขเธเธชเธ–เธฒเธเธฐ" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)">' +
-                        '<option value="">เน€เธเธฅเธตเนเธขเธเธชเธ–เธฒเธเธฐ</option>' + statusOpts +
+                        '<button class="action-btn view" title="\u0E23\u0E32\u0E22\u0E25\u0E30\u0E40\u0E2D\u0E35\u0E22\u0E14" onclick="viewChild(\'' + esc(c.id || c.hn) + '\')"><i class="fas fa-eye"></i></button> ' +
+                        '<select class="status-select" title="\u0E40\u0E1B\u0E25\u0E35\u0E48\u0E22\u0E19\u0E2A\u0E16\u0E32\u0E19\u0E30" onchange="changeStatus(\'' + esc(c.fullname) + '\',this)">' +
+                        '<option value="">\u0E40\u0E1B\u0E25\u0E35\u0E48\u0E22\u0E19\u0E2A\u0E16\u0E32\u0E19\u0E30</option>' + statusOpts +
                         '</select>' +
                         '</div>';
 
