@@ -5064,7 +5064,7 @@
     function isSSOFacility(code, name) {
         const c = String(code || '').trim().replace(/^0+/, '');
         const n = String(name || '').trim();
-        return c === '860' || n.includes('สสอ') || n.includes('สาธารณสุข');
+        return c === '00860' || n.includes('สสอ') || n.includes('สาธารณสุข');
     }
     window.isSSOFacility = isSSOFacility;
 
@@ -5089,18 +5089,22 @@
 
     // [Note: Health facilities & tracking logic]
     const OFFICIAL_HOSPITALS = Object.assign({
-        '860': 'สสอ.เทพา',
+        '11390': 'รพ.เทพา',
         '00860': 'สสอ.เทพา',
-        '9491': 'รพ.สต.ตูหยง',
-        '9492': 'รพ.สต.ตาแปด',
-        '9493': 'รพ.สต.เกาะสะบ้า',
-        '9494': 'รพ.สต.ลำไพล',
-        '9495': 'รพ.สต.ท่าไทร',
-        '9496': 'รพ.สต.ท่าม่วง',
-        '9497': 'รพ.สต.พรุชิง',
-        '9498': 'รพ.สต.วังใหญ่',
-        '9499': 'รพ.สต.สะกอม',
-        '9500': 'รพ.สต.ท่าแมงลัก'
+        '09491': 'รพ.สต.ตูหยง',
+        '09492': 'รพ.สต.ตาแปด',
+        '09493': 'รพ.สต.เกาะสะบ้า',
+        '09494': 'รพ.สต.ลำไพล',
+        '09495': 'รพ.สต.ท่าไทร',
+        '09496': 'รพ.สต.ท่าม่วง',
+        '09497': 'รพ.สต.พรุชิง',
+        '09498': 'รพ.สต.วังใหญ่',
+        '09499': 'รพ.สต.สะกอม',
+        '09500': 'รพ.สต.ท่าแมงลัก',
+        '11915': 'รพ.สต.ทุ่งโดน',
+        '15107': 'PCU2',
+        '15109': 'PCU1'
+		
     }, HEALTH_FACILITIES);
     APP.facilityMap = Object.assign({}, OFFICIAL_HOSPITALS);
 
@@ -11642,6 +11646,7 @@ function updateBottomNavActive(page) {
             '<option value="09498">รพ.สต.วังใหญ่ (09498)</option><option value="09499">รพ.สต.สะกอม (09499)</option>' +
             '<option value="09500">รพ.สต.ท่าแมงลัก (09500)</option><option value="11915">รพ.สต.ทุ่งโดน (11915)</option>' +
             '<option value="15107">PCU2 (15107)</option><option value="15109">PCU1 (15109)</option>' +
+			'<option value="11390">รพ.เทพา (11390)</option>' +
             '</select></div>' +
             '<div class="form-group"><label>ตำแหน่ง</label><select id="um_role"><option value="เจ้าหน้าที่">เจ้าหน้าที่</option><option value="อสม.">อสม.</option><option value="Admin_HOS">Admin ระดับสถานพยาบาล</option><option value="Admin_Ampur">Admin ระดับอำเภอ</option></select></div>' +
             '</div>' +
@@ -20968,6 +20973,7 @@ function exportPcvExcel() {
                                     <label class="form-label-req">สถานพยาบาล (hcode)</label>
                                     <select id="stm_hcode" required>
                                         <option value="00860">สสอ.เทพา (00860)</option>
+										<option value="11390">รพ.เทพา (11390)</option>
                                         <option value="09491">รพ.สต.ตูหยง (09491)</option>
                                         <option value="09492">รพ.สต.ตาแปด (09492)</option>
                                         <option value="09493">รพ.สต.เกาะสะบ้า (09493)</option>
