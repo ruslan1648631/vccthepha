@@ -6277,25 +6277,48 @@
                 return q;
             };
             const allRows = await fetchAllFromTable('data', '*', filterBuilder);
+            // Deduplicate & Merge PCV Target Children
+            const childMap = new Map();
 
-            // กรองเฉพาะเด็กที่เกิดตั้งแต่ 1 ต.ค. 2568 (2025-10-01) เป็นต้นมา
+            (allRows || []).forEach(row => {
+                const rawDob = row.DOB || row.dob || row.birthdate || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || row['\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14'] || '';
+                if (!rawDob || rawDob === '-' || rawDob === '0') return;
+                const isoDob = parseThaiDateToISO(rawDob);
+                if (!isoDob || isoDob < '2025-10-01') return;
+
+                const rowId = String(row.CID || row.cid || row.ID || row.id || row['\u0E40\u0E25\u0E02\u0E1A\u0E31\u0E15\u0E23'] || '-').trim();
+                const rowHn = String(row.HN || row.hn || row['\u0E23\u0E2B\u0E31\u0E2A'] || '-').trim();
+                const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
+
+                // Unique Key for Deduplication: 1 person (CID) or 1 HN per facility
+                const uniqueKey = (rowId && rowId !== '-' && rowId !== '0') ? rowId : `${rowHcode}_${rowHn}`;
+
+                if (childMap.has(uniqueKey)) {
+                    const existing = childMap.get(uniqueKey);
+                    Object.keys(row).forEach(k => {
+                        if ((existing[k] === null || existing[k] === undefined || existing[k] === '' || existing[k] === '-') && (row[k] !== null && row[k] !== undefined && row[k] !== '' && row[k] !== '-')) {
+                            existing[k] = row[k];
+                        }
+                    });
+                } else {
+                    childMap.set(uniqueKey, Object.assign({}, row, { _isoDob: isoDob, _rawDob: rawDob }));
+                }
+            });
+
             const now = new Date();
             const children = [];
 
-            (allRows || []).forEach(row => {
-                const rawDob = row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด'] || '';
-                if (!rawDob || rawDob === '-' || rawDob === '0') return;
-                const isoDob = parseThaiDateToISO(rawDob);
-                if (!isoDob || isoDob < '2025-10-01') return; // เงื่อนไขสำคัญ: เด็กที่เกิดตั้งแต่ 1 ต.ค. 2568 เป็นต้นมา
-
-                const rowId = String(row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || '-').trim();
-                const rowHn = String(row.HN || row.hn || row['รหัส'] || '-').trim();
-                const rowName = String(row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-').trim();
+            childMap.forEach(row => {
+                const isoDob = row._isoDob;
+                const rawDob = row._rawDob;
+                const rowId = String(row.CID || row.cid || row.ID || row.id || row['\u0E40\u0E25\u0E02\u0E1A\u0E31\u0E15\u0E23'] || '-').trim();
+                const rowHn = String(row.HN || row.hn || row['\u0E23\u0E2B\u0E31\u0E2A'] || '-').trim();
+                const rowName = String(row.fullname || row['\u0E0A\u0E37\u0E48\u0E2D-\u0E2A\u0E01\u0E38\u0E25'] || row.childname || row['\u0E0A\u0E37\u0E48\u0E2D'] || '-').trim();
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
-                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['สถานพยาบาล']);
-                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(rawDob));
+                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['\u0E2A\u0E16\u0E32\u0E19\u0E1E\u0E22\u0E32\u0E1A\u0E32\u0E25']);
+                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['\u0E2D\u0E32\u0E22\u0E38'] && row['\u0E2D\u0E32\u0E22\u0E38'] !== '-') ? row['\u0E2D\u0E32\u0E22\u0E38'] : calculateAgeString(rawDob));
 
-                // คำนวณวันครบกำหนดตามเกณฑ์ 2p+1 (2 เดือน, 4 เดือน, 12 เดือน)
+                // Calculate due dates (2 months, 4 months, 12 months)
                 const bd = new Date(isoDob);
                 const d1 = new Date(bd.getFullYear(), bd.getMonth() + 2, bd.getDate());
                 const d2 = new Date(bd.getFullYear(), bd.getMonth() + 4, bd.getDate());
@@ -6305,12 +6328,10 @@
                 const pcv2DueDate = d2.toISOString().slice(0, 10);
                 const pcv3DueDate = d3.toISOString().slice(0, 10);
 
-                // ตรวจสอบข้อมูลวัคซีนที่ได้รับ
                 const pcv1Given = row.PCV1 || row.pcv1 || row['PCV1'] || row['pcv_1'] || null;
                 const pcv2Given = row.PCV2 || row.pcv2 || row['PCV2'] || row['pcv_2'] || null;
                 const pcv3Given = row.PCV3 || row.pcv3 || row['PCV3'] || row['pcv_3'] || null;
 
-                // ตรวจสอบวัคซีนที่ฉีดร่วม
                 const coVac1 = row['DTP+HB+Hib1'] || row.dtphbhib1 || row['IPV1'] || row.ipv1 || row['Rota1'] || null;
                 const coVac2 = row['DTP+HB+Hib2'] || row.dtphbhib2 || row['IPV2'] || row.ipv2 || row['Rota2'] || null;
                 const coVac3 = row['LJE1'] || row.lje1 || row.laje1 || row['MMR1'] || row.mmr1 || null;
@@ -6328,57 +6349,56 @@
 
                 if (pcv3Given || (pcv2Given && ageMonths < 12) || (pcv1Given && ageMonths < 4)) {
                     if (pcv3Given || (ageMonths >= 12 && pcv3Given) || (ageMonths >= 4 && ageMonths < 12 && pcv2Given) || (ageMonths < 4 && pcv1Given)) {
-                        status = 'ครบตามเกณฑ์อายุ';
+                        status = '\u0E04\u0E23\u0E1A\u0E15\u0E32\u0E21\u0E40\u0E01\u0E13\u0E11\u0E4C\u0E2D\u0E32\u0E22\u0E38';
                         statusCode = 'complete';
                     }
                 }
                 
                 if (!statusCode) {
                     if (ageMonths < 2) {
-                        status = 'ยังไม่ถึงกำหนดฉีด (< 2 เดือน)';
+                        status = '\u0E22\u0E31\u0E07\u0E44\u0E21\u0E48\u0E16\u0E36\u0E07\u0E01\u0E33\u0E2B\u0E19\u0E14\u0E09\u0E35\u0E14 (< 2 \u0E40\u0E14\u0E37\u0E2D\u0E19)';
                         statusCode = 'not_due';
                     } else if (ageMonths < 4) {
                         if (pcv1Given) {
-                            status = 'ฉีดเข็ม 1 แล้ว (รอเข็ม 2)';
+                            status = '\u0E09\u0E35\u0E14\u0E40\u0E02\u0E47\u0E21 1 \u0E41\u0E25\u0E49\u0E27 (\u0E23\u0E2D\u0E40\u0E02\u0E47\u0E21 2)';
                             statusCode = 'pcv1_done';
                         } else if (daysSinceDue1 > 30) {
-                            status = 'เกินกำหนดเข็มที่ 1';
+                            status = '\u0E40\u0E01\u0E34\u0E19\u0E01\u0E33\u0E2B\u0E19\u0E14\u0E40\u0E02\u0E47\u0E21\u0E17\u0E35\u0E48 1';
                             statusCode = 'overdue_1';
                         } else {
-                            status = 'ถึงเกณฑ์ฉีดเข็มที่ 1 (2 เดือน)';
+                            status = '\u0E16\u0E36\u0E07\u0E40\u0E01\u0E13\u0E11\u0E4C\u0E09\u0E35\u0E14\u0E40\u0E02\u0E47\u0E21\u0E17\u0E35\u0E48 1 (2 \u0E40\u0E14\u0E37\u0E2D\u0E19)';
                             statusCode = 'due_1';
                         }
                     } else if (ageMonths < 12) {
                         if (pcv2Given) {
-                            status = 'ฉีดเข็ม 2 แล้ว (รอเข็มกระตุ้น)';
+                            status = '\u0E09\u0E35\u0E14\u0E40\u0E02\u0E47\u0E21 2 \u0E41\u0E25\u0E49\u0E27 (\u0E23\u0E2D\u0E40\u0E02\u0E47\u0E21\u0E01\u0E23\u0E30\u0E15\u0E38\u0E49\u0E19)';
                             statusCode = 'pcv2_done';
                         } else if (pcv1Given) {
                             if (daysSinceDue2 > 30) {
-                                status = 'เกินกำหนดเข็มที่ 2';
+                                status = '\u0E40\u0E01\u0E34\u0E19\u0E01\u0E33\u0E2B\u0E19\u0E14\u0E40\u0E02\u0E47\u0E21\u0E17\u0E35\u0E48 2';
                                 statusCode = 'overdue_2';
                             } else {
-                                status = 'ถึงเกณฑ์ฉีดเข็มที่ 2 (4 เดือน)';
+                                status = '\u0E16\u0E36\u0E07\u0E40\u0E01\u0E13\u0E11\u0E4C\u0E09\u0E35\u0E14\u0E40\u0E02\u0E47\u0E21\u0E17\u0E35\u0E48 2 (4 \u0E40\u0E14\u0E37\u0E2D\u0E19)';
                                 statusCode = 'due_2';
                             }
                         } else {
-                            status = 'เกินกำหนดเข็มที่ 1 และ 2';
+                            status = '\u0E40\u0E01\u0E34\u0E19\u0E01\u0E33\u0E2B\u0E19\u0E14\u0E40\u0E02\u0E47\u0E21\u0E17\u0E35\u0E48 1 \u0E41\u0E25\u0E30 2';
                             statusCode = 'overdue_1_2';
                         }
                     } else {
-                        // อายุ >= 12 เดือน (1 ปีขึ้นไป)
                         if (pcv3Given) {
-                            status = 'ได้รับครบตามเกณฑ์ (3 เข็ม)';
+                            status = '\u0E44\u0E14\u0E49\u0E23\u0E31\u0E1A\u0E04\u0E23\u0E1A\u0E15\u0E32\u0E21\u0E40\u0E01\u0E13\u0E11\u0E4C (3 \u0E40\u0E02\u0E47\u0E21)';
                             statusCode = 'complete';
                         } else if (pcv2Given) {
                             if (daysSinceDue3 > 30) {
-                                status = 'เกินกำหนดเข็มกระตุ้น (เข็ม 3)';
+                                status = '\u0E40\u0E01\u0E34\u0E19\u0E01\u0E33\u0E2B\u0E19\u0E14\u0E40\u0E02\u0E47\u0E21\u0E01\u0E23\u0E30\u0E15\u0E38\u0E49\u0E19 (\u0E40\u0E02\u0E47\u0E21 3)';
                                 statusCode = 'overdue_3';
                             } else {
-                                status = 'ถึงเกณฑ์เข็มกระตุ้น (12 เดือน)';
+                                status = '\u0E16\u0E36\u0E07\u0E40\u0E01\u0E13\u0E11\u0E4C\u0E40\u0E02\u0E47\u0E21\u0E01\u0E23\u0E30\u0E15\u0E38\u0E49\u0E19 (12 \u0E40\u0E14\u0E37\u0E2D\u0E19)';
                                 statusCode = 'due_3';
                             }
                         } else {
-                            status = 'ค้างรับวัคซีน PCV';
+                            status = '\u0E04\u0E49\u0E32\u0E07\u0E23\u0E31\u0E1A\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19 PCV';
                             statusCode = 'overdue_all';
                         }
                     }
@@ -6393,15 +6413,15 @@
                     isoDob: isoDob,
                     age: ageComputed || '-',
                     ageMonths: ageMonths,
-                    type: row.type || row['ประเภท'] || 1,
-                    typeLabel: Number(row.type) === 4 ? 'Type 4 (นอกเขต)' : `Type ${row.type || 1} (ในเขต)`,
-                    houseNumber: row.house || row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
-                    village: row.moo || row.village_no || row.village || row['หมู่ที่'] || row['หมู่'] || '-',
-                    villageName: row.villname || row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-',
-                    subdistrict: row.subdistname || row.subdistrict || row['ตำบล'] || '-',
+                    type: row.type || row['type'] || 1,
+                    typeLabel: Number(row.type) === 4 ? 'Type 4 (\u0E19\u0E2D\u0E01\u0E40\u0E02\u0E15)' : `Type ${row.type || 1} (\u0E43\u0E19\u0E40\u0E02\u0E15)`,
+                    houseNumber: row.house || row.house_no || row.houseNumber || row['\u0E1A\u0E49\u0E32\u0E19\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48'] || '-',
+                    village: row.moo || row.village_no || row.village || row['\u0E2Blob/เธซเธกเธนเน'] || '-',
+                    villageName: row.villname || row.village_name || row.villageName || '-',
+                    subdistrict: row.subdistname || row.subdistrict || '-',
                     hcode: rowHcode,
                     hname: rowHname,
-                    phone: row.phone || row['โทรศัพท์'] || '-',
+                    phone: row.phone || row['\u0E42\u0E17\u0E23\u0E28\u0E31\u0E1E\u0E17\u0E4C'] || '-',
                     pcv1DueDate: pcv1DueDate,
                     pcv2DueDate: pcv2DueDate,
                     pcv3DueDate: pcv3DueDate,
@@ -6416,7 +6436,6 @@
                     rawRow: row
                 });
             });
-
             return { success: true, children: children };
         }
 
@@ -8999,7 +9018,6 @@
                     exp_date: item.exp_date ? String(item.exp_date).slice(0, 10) : null,
                     quantity_vials: Number(item.quantity_vials || 0),
                     doses_per_vial: Number(item.doses_per_vial || 1),
-                    total_doses: Number(item.quantity_vials || 0) * Number(item.doses_per_vial || 1),
                     source_destination: item.source_destination || null,
                     vvm_status: item.vvm_status || 'Stage 1',
                     temperature_c: item.temperature_c !== undefined && item.temperature_c !== '' ? Number(item.temperature_c) : null,
