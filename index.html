@@ -5064,7 +5064,7 @@
     function isSSOFacility(code, name) {
         const c = String(code || '').trim().replace(/^0+/, '');
         const n = String(name || '').trim();
-        return c === '00860' || n.includes('สสอ') || n.includes('สาธารณสุข');
+        return c === '860' || n.includes('สสอ') || n.includes('สาธารณสุข');
     }
     window.isSSOFacility = isSSOFacility;
 
@@ -5089,22 +5089,18 @@
 
     // [Note: Health facilities & tracking logic]
     const OFFICIAL_HOSPITALS = Object.assign({
-        '11390': 'รพ.เทพา',
+        '860': 'สสอ.เทพา',
         '00860': 'สสอ.เทพา',
-        '09491': 'รพ.สต.ตูหยง',
-        '09492': 'รพ.สต.ตาแปด',
-        '09493': 'รพ.สต.เกาะสะบ้า',
-        '09494': 'รพ.สต.ลำไพล',
-        '09495': 'รพ.สต.ท่าไทร',
-        '09496': 'รพ.สต.ท่าม่วง',
-        '09497': 'รพ.สต.พรุชิง',
-        '09498': 'รพ.สต.วังใหญ่',
-        '09499': 'รพ.สต.สะกอม',
-        '09500': 'รพ.สต.ท่าแมงลัก',
-        '11915': 'รพ.สต.ทุ่งโดน',
-        '15107': 'PCU2',
-        '15109': 'PCU1'
-		
+        '9491': 'รพ.สต.ตูหยง',
+        '9492': 'รพ.สต.ตาแปด',
+        '9493': 'รพ.สต.เกาะสะบ้า',
+        '9494': 'รพ.สต.ลำไพล',
+        '9495': 'รพ.สต.ท่าไทร',
+        '9496': 'รพ.สต.ท่าม่วง',
+        '9497': 'รพ.สต.พรุชิง',
+        '9498': 'รพ.สต.วังใหญ่',
+        '9499': 'รพ.สต.สะกอม',
+        '9500': 'รพ.สต.ท่าแมงลัก'
     }, HEALTH_FACILITIES);
     APP.facilityMap = Object.assign({}, OFFICIAL_HOSPITALS);
 
@@ -6118,62 +6114,77 @@
 
             // ✅ แปลงและจับคู่คอลัมน์ให้ตรงกับที่ทุกหน้าในระบบคาดหวัง (ทั้งชื่อไทยและอังกฤษ)
             const headers = ['hcode', 'CID', 'HN', 'ชื่อ-สกุล', 'ว/ด/ปเกิด', 'อายุ', 'บ้านเลขที่', 'หมู่ที่', 'โทรศัพท์', 'วันนัด', 'รหัสวัคซีน', 'ชื่อวัคซีน', 'appointdate'];
-            const appointments = data.map(row => {
-                const rawDob  = row.DOB || row.dob || row['ว/ด/ปเกิด'] || '';
-                const rawAppt = row.appointdate || row.date || row['วันนัด'] || row['วันที่นัด'] || '';
+            // Deduplicate & Merge Appointments by primary key = hcode, CID
+            const apptMap = new Map();
+            (data || []).forEach(row => {
+                const rawHcode = (row.hcode !== null && row.hcode !== undefined) ? String(row.hcode).trim() : '-';
+                const cidVal   = (row.CID !== null && row.CID !== undefined) ? String(row.CID).trim() : (row.cid || row.id || '-');
+                const cleanCid = String(cidVal).replace(/\D/g, '').trim();
+                const hnVal    = (row.HN !== null && row.HN !== undefined) ? String(row.HN).trim() : (row.hn || '-');
+                const primaryKey = cleanCid.length >= 5 ? `${rawHcode}_${cleanCid}` : `${rawHcode}_${hnVal}`;
+
+                const rawDob  = row.DOB || row.dob || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || '';
+                const rawAppt = row.appointdate || row.date || row['\u0E27\u0E31\u0E19\u0E19\u0E31\u0E14'] || row['\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E19\u0E31\u0E14'] || '';
                 const thaiAppt = rawAppt ? formatThaiDate(rawAppt) : '-';
                 const thaiDob  = rawDob ? formatThaiDate(rawDob) : '-';
                 const ageStr   = calculateAgeString(rawDob);
-                const cidVal   = (row.CID !== null && row.CID !== undefined) ? String(row.CID).trim() : (row.cid || row.id || '-');
-                const hnVal    = (row.HN !== null && row.HN !== undefined) ? String(row.HN).trim() : (row.hn || '-');
-                const nameVal  = row.fullname || row.name || row['ชื่อ-สกุล'] || '-';
-                const houseVal = row.house || row.houseNumber || row['บ้านเลขที่'] || '-';
+                const nameVal  = row.fullname || row.name || row['\u0E0A\u0E37\u0E48\u0E2D-\u0E2A\u0E01\u0E38\u0E25'] || '-';
+                const houseVal = row.house || row.houseNumber || row['\u0E1A\u0E49\u0E32\u0E19\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48'] || '-';
                 const mooVal   = (row.moo !== null && row.moo !== undefined) ? String(row.moo).trim() : (row.village || '-');
-                const phoneVal = row.phone || row['โทรศัพท์'] || '-';
+                const phoneVal = row.phone || row['\u0E42\u0E17\u0E23\u0E28\u0E31\u0E1E\u0E17\u0E4C'] || '-';
                 const cleanVac = (v) => {
                     if (v === null || v === undefined) return '';
                     const s = String(v).trim();
-                    return (!s || s === '-' || s === 'undefined' || s === 'null' || s === 'ไม่ระบุวัคซีน' || s === 'ไม่ระบุ' || s === 'N/A' || s === 'none') ? '' : s;
+                    return (!s || s === '-' || s === 'undefined' || s === 'null' || s === '\u0E44\u0E21\u0E48\u0E23\u0E30\u0E1A\u0E38\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19' || s === '\u0E44\u0E21\u0E48\u0E23\u0E30\u0E1A\u0E38' || s === 'N/A' || s === 'none') ? '' : s;
                 };
                 let foundVacCode = cleanVac(row.vaccinecode) || cleanVac(row.vaccine_code) || cleanVac(row.vaccode) || cleanVac(row.vaccineCode) || cleanVac(row.VaccineCode) || cleanVac(row.vaccine) || cleanVac(row.Vaccine);
                 if (!foundVacCode) {
                     for (let k of Object.keys(row)) {
                         const kl = k.toLowerCase().replace(/[\s_\-\.]/g, '');
-                        if (kl === 'vaccinecode' || kl === 'vaccode' || kl === 'vaccine' || kl === 'vccode' || kl.includes('รหัสวัคซีน') || kl.includes('วัคซีน')) {
+                        if (kl === 'vaccinecode' || kl === 'vaccode' || kl === 'vaccine' || kl === 'vccode' || kl.includes('\u0E23\u0E2B\u0E31\u0E2A\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19') || kl.includes('\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19')) {
                             foundVacCode = cleanVac(row[k]);
                             if (foundVacCode) break;
                         }
                     }
                 }
-                const vacCode = foundVacCode || '-';
+                const vacCode = foundVacCode || '';
                 let foundVacName = cleanVac(row.vaccinename) || cleanVac(row.vaccine_name) || cleanVac(row.vaccineName) || cleanVac(row.VaccineName);
                 if (!foundVacName) {
                     for (let k of Object.keys(row)) {
                         const kl = k.toLowerCase().replace(/[\s_\-\.]/g, '');
-                        if (kl === 'vaccinename' || kl.includes('ชื่อวัคซีน')) {
+                        if (kl === 'vaccinename' || kl.includes('\u0E0A\u0E37\u0E48\u0E2D\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19')) {
                             foundVacName = cleanVac(row[k]);
                             if (foundVacName) break;
                         }
                     }
                 }
-                const vacName = (vacCode !== '-' ? vacCode : (foundVacName || '-'));
+                const vacName = (vacCode ? vacCode : (foundVacName || ''));
                 const isoAppt  = rawAppt ? String(rawAppt).slice(0, 10) : '';
 
-                return [
-                    row.hcode !== null && row.hcode !== undefined ? String(row.hcode).trim() : '-',
-                    cidVal,
-                    hnVal,
-                    nameVal,
-                    thaiDob,
-                    ageStr,
-                    houseVal,
-                    mooVal,
-                    phoneVal,
-                    thaiAppt,
-                    vacCode,
-                    vacName,
-                    isoAppt
-                ];
+                if (apptMap.has(primaryKey)) {
+                    const existing = apptMap.get(primaryKey);
+                    if (vacCode && !existing._vacCodes.includes(vacCode)) existing._vacCodes.push(vacCode);
+                    if (vacName && !existing._vacNames.includes(vacName)) existing._vacNames.push(vacName);
+                    if ((!existing[12] || existing[12] === '-') && isoAppt) { existing[9] = thaiAppt; existing[12] = isoAppt; }
+                    if ((!existing[8] || existing[8] === '-') && phoneVal && phoneVal !== '-') existing[8] = phoneVal;
+                    if ((!existing[6] || existing[6] === '-') && houseVal && houseVal !== '-') existing[6] = houseVal;
+                } else {
+                    const item = [
+                        rawHcode, cidVal, hnVal, nameVal, thaiDob, ageStr, houseVal, mooVal, phoneVal, thaiAppt,
+                        vacCode || '-', vacName || '-', isoAppt
+                    ];
+                    item._vacCodes = vacCode ? [vacCode] : [];
+                    item._vacNames = vacName ? [vacName] : [];
+                    apptMap.set(primaryKey, item);
+                }
+            });
+
+            const appointments = Array.from(apptMap.values()).map(item => {
+                item[10] = item._vacCodes.length > 0 ? item._vacCodes.join(', ') : '-';
+                item[11] = item._vacNames.length > 0 ? item._vacNames.join(', ') : item[10];
+                delete item._vacCodes;
+                delete item._vacNames;
+                return item;
             });
             return { success: true, headers, appointments };
         }
@@ -6211,15 +6222,49 @@
                 }
             } catch (tErr) {}
 
-            let children = (data || []).filter(isInAreaChild).map(row => {
+            // Deduplicate & Merge Children (in-area)
+            const childMap = new Map();
+            (data || []).filter(isInAreaChild).forEach(row => {
+                const rawCid = String(row.CID || row.cid || row.ID || row.id || row['\u0E40\u0E25\u0E02\u0E1A\u0E31\u0E15\u0E23'] || '').replace(/\D/g, '').trim();
+                const rawHn = String(row.HN || row.hn || row['\u0E23\u0E2B\u0E31\u0E2A'] || '').trim();
+                const rawHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '';
+                const rawName = String(row.fullname || row['\u0E0A\u0E37\u0E48\u0E2D-\u0E2A\u0E01\u0E38\u0E25'] || row.childname || row['\u0E0A\u0E37\u0E48\u0E2D'] || '').trim();
+                const rawDob = String(row.DOB || row.dob || row.birthdate || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || row['\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14'] || '').trim();
+
+                let key = '';
+                if (rawCid.length >= 13) {
+                    key = 'CID_' + rawCid;
+                } else if (rawHcode && rawHn && rawHn !== '-' && rawHn !== '0') {
+                    key = 'HN_' + rawHcode + '_' + rawHn;
+                } else if (rawName && rawName !== '-') {
+                    key = 'NAME_' + rawName + '_' + rawDob;
+                } else {
+                    key = 'ROW_' + Math.random();
+                }
+
+                if (childMap.has(key)) {
+                    const existing = childMap.get(key);
+                    Object.keys(row).forEach(k => {
+                        const ev = existing[k];
+                        const nv = row[k];
+                        if ((ev === null || ev === undefined || ev === '' || ev === '-') && (nv !== null && nv !== undefined && nv !== '' && nv !== '-')) {
+                            existing[k] = nv;
+                        }
+                    });
+                } else {
+                    childMap.set(key, Object.assign({}, row));
+                }
+            });
+
+            let children = Array.from(childMap.values()).map(row => {
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
-                const rowId = row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || '-';
-                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
-                const rowName = row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-';
+                const rowId = row.CID || row.cid || row.ID || row.id || row['\u0E40\u0E25\u0E02\u0E1A\u0E31\u0E15\u0E23'] || '-';
+                const rowHn = row.HN || row.hn || row['\u0E23\u0E2B\u0E31\u0E2A'] || '-';
+                const rowName = row.fullname || row['\u0E0A\u0E37\u0E48\u0E2D-\u0E2A\u0E01\u0E38\u0E25'] || row.childname || row['\u0E0A\u0E37\u0E48\u0E2D'] || '-';
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
-                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['สถานพยาบาล']);
-                const rowDob = row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด'] || '-';
-                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(rowDob));
+                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['\u0E2A\u0E16\u0E32\u0E19\u0E1E\u0E22\u0E32\u0E1A\u0E32\u0E25']);
+                const rowDob = row.DOB || row.dob || row.birthdate || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || row['\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14'] || '-';
+                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['\u0E2D\u0E32\u0E22\u0E38'] && row['\u0E2D\u0E32\u0E22\u0E38'] !== '-') ? row['\u0E2D\u0E32\u0E22\u0E38'] : calculateAgeString(rowDob));
 
                 return {
                     id: rowId,
@@ -6227,17 +6272,17 @@
                     cid: rowId,
                     fullname: rowName,
                     birthDate: rowDob,
-                    type: row.type || row['ประเภท'] || '-',
+                    type: row.type || row['\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17'] || '-',
                     age: ageComputed || '-',
-                    houseNumber: row.house || row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
-                    village: row.moo || row.village_no || row.village || row['หมู่ที่'] || row['หมู่'] || '-',
-                    villageName: row.villname || row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-',
-                    subdistrict: row.subdistname || row.subdistrict || row['ตำบล'] || '-',
+                    houseNumber: row.house || row.house_no || row.houseNumber || row['\u0E1A\u0E49\u0E32\u0E19\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48'] || '-',
+                    village: row.moo || row.village_no || row.village || row['\u0E2B\u0E21\u0E39\u0E48\u0E17\u0E35\u0E48'] || row['\u0E2B\u0E21\u0E39\u0E48'] || '-',
+                    villageName: row.villname || row.village_name || row.villageName || row['\u0E0A\u0E37\u0E48\u0E2D\u0E2B\u0E21\u0E39\u0E48\u0E1A\u0E49\u0E32\u0E19'] || '-',
+                    subdistrict: row.subdistname || row.subdistrict || row['\u0E15\u0E33\u0E1A\u0E25'] || '-',
                     hcode: rowHcode,
                     hname: rowHname,
-                    asm: row.VHV || row.vhv || row.asm || row['อสม.'] || row['อสม'] || '-',
-                    phone: row.phone || row['โทรศัพท์'] || '-',
-                    gps: row.GPS || row.gps || row['พิกัด'] || row.lat_lng || '-',
+                    asm: row.VHV || row.vhv || row.asm || row['\u0E2D\u0E2A\u0E21.'] || row['\u0E2D\u0E2A\u0E21'] || '-',
+                    phone: row.phone || row['\u0E42\u0E17\u0E23\u0E28\u0E31\u0E1E\u0E17\u0E4C'] || '-',
+                    gps: row.GPS || row.gps || row['\u0E1E\u0E34\u0E01\u0E31\u0E14'] || row.lat_lng || '-',
                     status: evalRes.status,
                     missingVaccines: evalRes.missingVaccines
                 };
@@ -6487,15 +6532,37 @@
                 }
             } catch (tErr) {}
 
-            let children = (data || []).map(row => {
+            // Deduplicate & Merge Out of Area Children by primary key = hcode, CID
+            const ooaMap = new Map();
+            (data || []).forEach(row => {
+                const rawHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
+                const rawId = String(row.CID || row.cid || row.ID || row.id || row['\u0E40\u0E25\u0E02\u0E1A\u0E31\u0E15\u0E23'] || '').replace(/\D/g, '').trim();
+                const rawHn = String(row.HN || row.hn || row['\u0E23\u0E2B\u0E31\u0E2A'] || '').trim();
+                const primaryKey = rawId.length >= 5 ? `${rawHcode}_${rawId}` : `${rawHcode}_${rawHn}`;
+
+                if (ooaMap.has(primaryKey)) {
+                    const existing = ooaMap.get(primaryKey);
+                    Object.keys(row).forEach(k => {
+                        const ev = existing[k];
+                        const nv = row[k];
+                        if ((ev === null || ev === undefined || ev === '' || ev === '-') && (nv !== null && nv !== undefined && nv !== '' && nv !== '-')) {
+                            existing[k] = nv;
+                        }
+                    });
+                } else {
+                    ooaMap.set(primaryKey, Object.assign({}, row));
+                }
+            });
+
+            let children = Array.from(ooaMap.values()).map(row => {
                 const evalRes = evaluateChildVaccineStatus(row, refusedSet);
-                const rowId = row.CID || row.cid || row.ID || row.id || row['เลขบัตร'] || row['เลขประจำตัวประชาชน'] || '-';
-                const rowHn = row.HN || row.hn || row['รหัส'] || '-';
-                const rowName = row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-';
+                const rowId = row.CID || row.cid || row.ID || row.id || row['\u0E40\u0E25\u0E02\u0E1A\u0E31\u0E15\u0E23'] || row['\u0E40\u0E25\u0E02\u0E1B\u0E23\u0E30\u0E08\u0E33\u0E15\u0E31\u0E27\u0E1B\u0E23\u0E30\u0E0A\u0E32\u0E0A\u0E19'] || '-';
+                const rowHn = row.HN || row.hn || row['\u0E23\u0E2B\u0E31\u0E2A'] || '-';
+                const rowName = row.fullname || row['\u0E0A\u0E37\u0E48\u0E2D-\u0E2A\u0E01\u0E38\u0E25'] || row.childname || row['\u0E0A\u0E37\u0E48\u0E2D'] || '-';
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
-                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['สถานพยาบาล']);
-                const rowDob = row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด'] || '-';
-                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(rowDob));
+                const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['\u0E2A\u0E16\u0E32\u0E19\u0E1E\u0E22\u0E32\u0E1A\u0E32\u0E25']);
+                const rowDob = row.DOB || row.dob || row.birthdate || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || row['\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14'] || '-';
+                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['\u0E2D\u0E32\u0E22\u0E38'] && row['\u0E2D\u0E32\u0E22\u0E38'] !== '-') ? row['\u0E2D\u0E32\u0E22\u0E38'] : calculateAgeString(rowDob));
 
                 return {
                     id: rowId,
@@ -6505,14 +6572,15 @@
                     birthDate: rowDob,
                     type: 4,
                     age: ageComputed || '-',
-                    houseNumber: row.house || row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
-                    village: row.moo || row.village_no || row.village || row['หมู่ที่'] || row['หมู่'] || '-',
-                    villageName: row.villname || row.village_name || row.villageName || row['ชื่อหมู่บ้าน'] || '-',
-                    subdistrict: row.subdistname || row.subdistrict || row['ตำบล'] || '-',
+                    houseNumber: row.house || row.house_no || row.houseNumber || row['\u0E1A\u0E49\u0E32\u0E19\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48'] || '-',
+                    village: row.moo || row.village_no || row.village || row['\u0E2B\u0E21\u0E39\u0E48\u0E17\u0E35\u0E48'] || row['\u0E2B\u0E21\u0E39\u0E48'] || '-',
+                    villageName: row.villname || row.village_name || row.villageName || row['\u0E0A\u0E37\u0E48\u0E2D\u0E2B\u0E21\u0E39\u0E48\u0E1A\u0E49\u0E32\u0E19'] || '-',
+                    subdistrict: row.subdistname || row.subdistrict || row['\u0E15\u0E33\u0E1A\u0E25'] || '-',
                     hcode: rowHcode,
                     hname: rowHname,
-                    phone: row.phone || row['โทรศัพท์'] || '-',
-                    gps: row.GPS || row.gps || row['พิกัด'] || row.lat_lng || '-',
+                    asm: row.VHV || row.vhv || row.asm || row['\u0E2D\u0E2A\u0E21.'] || row['\u0E2D\u0E2A\u0E21'] || '-',
+                    phone: row.phone || row['\u0E42\u0E17\u0E23\u0E28\u0E31\u0E1E\u0E17\u0E4C'] || '-',
+                    gps: row.GPS || row.gps || row['\u0E1E\u0E34\u0E01\u0E31\u0E14'] || row.lat_lng || '-',
                     status: evalRes.status,
                     missingVaccines: evalRes.missingVaccines
                 };
@@ -11646,7 +11714,6 @@ function updateBottomNavActive(page) {
             '<option value="09498">รพ.สต.วังใหญ่ (09498)</option><option value="09499">รพ.สต.สะกอม (09499)</option>' +
             '<option value="09500">รพ.สต.ท่าแมงลัก (09500)</option><option value="11915">รพ.สต.ทุ่งโดน (11915)</option>' +
             '<option value="15107">PCU2 (15107)</option><option value="15109">PCU1 (15109)</option>' +
-			'<option value="11390">รพ.เทพา (11390)</option>' +
             '</select></div>' +
             '<div class="form-group"><label>ตำแหน่ง</label><select id="um_role"><option value="เจ้าหน้าที่">เจ้าหน้าที่</option><option value="อสม.">อสม.</option><option value="Admin_HOS">Admin ระดับสถานพยาบาล</option><option value="Admin_Ampur">Admin ระดับอำเภอ</option></select></div>' +
             '</div>' +
@@ -12649,18 +12716,32 @@ window.switchLogTab = function(tab) {
     }
 
     function exportMissingCsv() {
-    if (!APP.missingAllRecords || APP.missingAllRecords.length === 0) {
-        return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก', 'info');
-    }
-    
-    // ✅ Audit Log
-    logActivity('EXPORT', 'export',
-        `ดาวน์โหลดรายชื่อเด็กขาดนัด (${APP.missingAllRecords.length} รายการ)`);
+        if (!APP.missingAllRecords || APP.missingAllRecords.length === 0) {
+            return Swal.fire('\u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19', '\u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A\u0E2A\u0E48\u0E07\u0E2D\u0E2D\u0E01', 'info');
+        }
+        
+        // \u0E01\u0E23\u0E2D\u0E07\u0E15\u0E31\u0E14\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E0levels\u0E0B\u0E49\u0E33\u0E01\u0E48\u0E2D\u0E19\u0E2A\u0E48\u0E07\u0E2D\u0E2D\u0E01 (Deduplicate)
+        const seen = new Set();
+        const uniqueRecords = [];
+        APP.missingAllRecords.forEach(c => {
+            const cleanCid = String(c.cid || c.id || '').replace(/\D/g, '').trim();
+            const cleanHn = String(c.hn || '').trim();
+            const cleanName = String(c.fullname || '').trim();
+            const key = cleanCid.length >= 13 ? cleanCid : (cleanHn && c.hcode ? (c.hcode + '_' + cleanHn) : cleanName);
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueRecords.push(c);
+            }
+        });
+
+        // Audit Log
+        logActivity('EXPORT', 'export',
+            `\u0E14\u0E32\u0E27\u0E19\u0E4C\u0E42\u0E2B\u0E25\u0E14\u0E23\u0E32\u0E22\u0E0A\u0E37\u0E48\u0E2D\u0E40\u0E14\u0E47\u0E01\u0E02\u0E32\u0E14\u0E19\u0E31\u0E14 (${uniqueRecords.length} \u0E23\u0E32\u0E22\u0E01\u0E32\u0E23)`);
 
         const rows = [];
-        rows.push(['HN', 'ชื่อ-สกุล', 'วันเกิด', 'อายุ', 'บ้านเลขที่', 'หมู่ที่', 'โทรศัพท์', 'พิกัด GPS', 'อสม. ผู้รับผิดชอบ', 'สถานะ', 'วัคซีนที่ขาด']);
+        rows.push(['HN', '\u0E0A\u0E37\u0E48\u0E2D-\u0E2A\u0E01\u0E38\u0E25', '\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14', '\u0E2D\u0E32\u0E22\u0E38', '\u0E1A\u0E49\u0E32\u0E19\u0E40\u0E25\u0E02\u0E17\u0E35\u0E48', '\u0E2B\u0E21\u0E39\u0E48\u0E17\u0E35\u0E48', '\u0E42\u0E17\u0E23\u0E28\u0E31\u0E1E\u0E17\u0E4C', '\u0E1E\u0E34\u0E01\u0E31\u0E14 GPS', '\u0E2D\u0E2A\u0E21. \u0E1C\u0E39\u0E49\u0E23\u0E31\u0E1A\u0E1C\u0E34\u0E14\u0E0A\u0E2D\u0E1A', '\u0E2A\u0E16\u0E32\u0E19\u0E30', '\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19\u0E17\u0E35\u0E48\u0E02\u0E32\u0E14']);
 
-        APP.missingAllRecords.forEach(function(c) {
+        uniqueRecords.forEach(function(c) {
             rows.push([
                 c.hn || '',
                 c.fullname || '',
@@ -12887,19 +12968,27 @@ window.switchLogTab = function(tab) {
 }
 
     function exportApptCsv() {
-    if (!APP.apptAllRecords || APP.apptAllRecords.length === 0) {
-        return Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับ export', 'info');
-    }
-    
-    // ✅ Audit Log
-    logActivity('EXPORT', 'export',
-        `ดาวน์โหลดรายชื่อนัดวัคซีน (${APP.apptAllRecords.length} รายการ)`);
+        if (!APP.apptAllRecords || APP.apptAllRecords.length === 0) {
+            return Swal.fire('\u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19', '\u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A export', 'info');
+        }
         
-        // ฟังก์ชันตรวจสอบว่าควรซ่อนคอลัมน์นี้หรือไม่ (ใช้ตรวจสอบร่วมกับตอนแสดงผล)
-        const isHiddenCol = (idx, hName) => {
-            const hStr = hName ? hName.toString().trim().toUpperCase() : '';
-            return hStr === 'ID' || hStr === 'CID' || hStr === 'ชื่อวัคชีน' || hStr === 'APPOINTDATE';
-        };
+        // Deduplicate rows by primary key = hcode, CID
+        const seen = new Set();
+        const uniqueAppts = [];
+        APP.apptAllRecords.forEach(r => {
+            const hcode = String(r[0] || '').trim();
+            const cid = String(r[1] || '').replace(/\D/g, '').trim();
+            const hn = String(r[2] || '').trim();
+            const key = cid.length >= 5 ? `${hcode}_${cid}` : `${hcode}_${hn}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueAppts.push(r);
+            }
+        });
+
+        // Audit Log
+        logActivity('EXPORT', 'export',
+            `\u0E14\u0E32\u0E27\u0E19\u0E4C\u0E42\u0E2B\u0E25\u0E14\u0E23\u0E32\u0E22\u0E0A\u0E37\u0E48\u0E2D\u0E19\u0E31\u0E14\u0E27\u0E31\u0E04\u0E0B\u0E35\u0E19 (${uniqueAppts.length} \u0E23\u0E32\u0E22\u0E01\u0E32\u0E23)`);
 
         const rows = [];
         
@@ -12911,7 +13000,7 @@ window.switchLogTab = function(tab) {
             return hName; 
         }));
 
-        APP.apptAllRecords.forEach(function(r) {
+        uniqueAppts.forEach(function(r) {
             const rowData = [];
             for (let i = 0; i < APP.apptHeaders.length; i++) {
                 // ข้ามการนำข้อมูลของคอลัมน์ที่ต้องการซ่อน ออกมาแสดงผล
@@ -19873,12 +19962,27 @@ async function doOutOfAreaChildSearch() {
 
 function exportOutOfAreaToExcel() {
     if (!OUT_OF_AREA_DATA || OUT_OF_AREA_DATA.length === 0) {
-        Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก Excel', 'info');
+        Swal.fire('\u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19', '\u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A\u0E2A\u0E48\u0E07\u0E2D\u0E2D\u0E01 Excel', 'info');
         return;
     }
 
     try {
-        showLoading('กำลังสร้างไฟล์ Excel...');
+        showLoading('\u0E01\u0E33\u0E25\u0E31\u0E07\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E47\u0E1F\u0E25\u0E4C Excel...');
+
+        // Deduplicate rows by primary key = hcode, CID
+        const seen = new Set();
+        const uniqueOutOfArea = [];
+        OUT_OF_AREA_DATA.forEach(c => {
+            const hcode = String(c.hcode || '').trim();
+            const cid = String(c.cid || c.id || '').replace(/\D/g, '').trim();
+            const hn = String(c.hn || '').trim();
+            const key = cid.length >= 5 ? `${hcode}_${cid}` : `${hcode}_${hn}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueOutOfArea.push(c);
+            }
+        });
+
         const wb = XLSX.utils.book_new();
         const today = new Date();
         const thaiDateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear() + 543}`;
@@ -19886,12 +19990,12 @@ function exportOutOfAreaToExcel() {
         const rows = [
             ['รายงานรายชื่อเด็กนอกเขตรับผิดชอบ (Type 4)'],
             ['เครือข่ายสุขภาพอำเภอเทพา จังหวัดสงขลา'],
-            [`วันที่ออกรายงาน: ${thaiDateStr} | จำนวนเด็กนอกเขตทั้งหมด: ${OUT_OF_AREA_DATA.length} คน`],
+            [`วันที่ออกรายงาน: ${thaiDateStr} | จำนวนเด็กนอกเขตทั้งหมด: ${uniqueOutOfArea.length} คน`],
             [],
             ['#', 'รหัสสถานพยาบาล', 'สถานพยาบาล', 'เลขบัตรประชาชน (CID)', 'HN', 'ชื่อ-สกุล', 'ว/ด/ปเกิด', 'อายุ', 'ประเภท', 'บ้านเลขที่', 'หมู่ที่', 'ตำบล', 'เบอร์โทรศัพท์', 'สถานะวัคซีน', 'วัคซีนที่ขาด']
         ];
 
-        OUT_OF_AREA_DATA.forEach((c, idx) => {
+        uniqueOutOfArea.forEach((c, idx) => {
             const facName = getFacilityDisplayName(c.hcode, c.hname);
             rows.push([
                 idx + 1,
@@ -19944,7 +20048,7 @@ function exportOutOfAreaToExcel() {
         Swal.fire({
             icon: 'success',
             title: 'ส่งออกไฟล์สำเร็จ!',
-            html: `<div style="font-family:Kanit; font-size:14px;"><p>ไฟล์: <strong>${esc(fileName)}</strong></p><p style="color:#64748b; font-size:13px; margin-top:8px;">จำนวนเด็กนอกเขตทั้งหมด ${OUT_OF_AREA_DATA.length} คน</p></div>`,
+            html: `<div style="font-family:Kanit; font-size:14px;"><p>ไฟล์: <strong>${esc(fileName)}</strong></p><p style="color:#64748b; font-size:13px; margin-top:8px;">จำนวนเด็กนอกเขตทั้งหมด ${uniqueOutOfArea.length} คน</p></div>`,
             timer: 3000,
             showConfirmButton: false
         });
@@ -20486,12 +20590,27 @@ function viewPcvChildDetail(cidOrHn) {
 
 function exportPcvExcel() {
     if (!PCV_FILTERED_CHILDREN || PCV_FILTERED_CHILDREN.length === 0) {
-        Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลสำหรับส่งออก Excel', 'info');
+        Swal.fire('\u0E41\u0E08\u0E49\u0E07\u0E40\u0E15\u0E37\u0E2D\u0E19', '\u0E44\u0E21\u0E48\u0E21\u0E35\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A\u0E2A\u0E48\u0E07\u0E2D\u0E2D\u0E01 Excel', 'info');
         return;
     }
 
     try {
-        showLoading('กำลังสร้างไฟล์ Excel...');
+        showLoading('\u0E01\u0E33\u0E25\u0E31\u0E07\u0E2A\u0E23\u0E49\u0E32\u0E07\u0E47\u0E1F\u0E25\u0E4C Excel...');
+
+        // Deduplicate rows by primary key = hcode, CID
+        const seen = new Set();
+        const uniqueChildren = [];
+        PCV_FILTERED_CHILDREN.forEach(c => {
+            const hcode = String(c.hcode || '').trim();
+            const cid = String(c.cid || c.id || '').replace(/\D/g, '').trim();
+            const hn = String(c.hn || '').trim();
+            const key = cid.length >= 5 ? `${hcode}_${cid}` : `${hcode}_${hn}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueChildren.push(c);
+            }
+        });
+
         const wb = XLSX.utils.book_new();
         const today = new Date();
         const thaiDateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear() + 543}`;
@@ -20499,12 +20618,12 @@ function exportPcvExcel() {
         const rows = [
             ['รายงานกลุ่มเป้าหมายวัคซีน PCV (เด็กที่เกิดตั้งแต่ 1 ต.ค. 2568 เป็นต้นมา)'],
             ['ตามแผนงานสร้างเสริมภูมิคุ้มกันโรค กระทรวงสาธารณสุข (สูตร 2p+1: อายุ 2, 4 และ 12 เดือน)'],
-            [`วันที่ออกรายงาน: ${thaiDateStr} | จำนวนเด็กกลุ่มเป้าหมายทั้งหมด: ${PCV_FILTERED_CHILDREN.length} คน`],
+            [`วันที่ออกรายงาน: ${thaiDateStr} | จำนวนเด็กกลุ่มเป้าหมายทั้งหมด: ${uniqueChildren.length} คน`],
             [],
             ['#', 'รหัสสถานพยาบาล', 'สถานพยาบาล', 'เลขประจำตัวประชาชน (CID)', 'HN', 'ชื่อ-สกุล', 'ว/ด/ปเกิด', 'อายุปัจจุบัน', 'ประเภท', 'บ้านเลขที่', 'หมู่ที่', 'ตำบล', 'เบอร์โทรศัพท์', 'วันครบกำหนด PCV1 (2ด.)', 'วันที่ได้รับ PCV1', 'วันครบกำหนด PCV2 (4ด.)', 'วันที่ได้รับ PCV2', 'วันครบกำหนด PCV3 (12ด.)', 'วันที่ได้รับ PCV3', 'การประเมินสถานะ PCV']
         ];
 
-        PCV_FILTERED_CHILDREN.forEach((c, idx) => {
+        uniqueChildren.forEach((c, idx) => {
             const facName = getFacilityDisplayName(c.hcode, c.hname);
             rows.push([
                 idx + 1,
@@ -20567,7 +20686,7 @@ function exportPcvExcel() {
         Swal.fire({
             icon: 'success',
             title: 'ส่งออกไฟล์สำเร็จ!',
-            html: `<div style="font-family:Kanit; font-size:14px;"><p>ไฟล์: <strong>${esc(fileName)}</strong></p><p style="color:#64748b; font-size:13px; margin-top:8px;">จำนวนเด็กทั้งหมด ${PCV_FILTERED_CHILDREN.length} คน</p></div>`,
+            html: `<div style="font-family:Kanit; font-size:14px;"><p>ไฟล์: <strong>${esc(fileName)}</strong></p><p style="color:#64748b; font-size:13px; margin-top:8px;">จำนวนเด็กทั้งหมด ${uniqueChildren.length} คน</p></div>`,
             timer: 3000,
             showConfirmButton: false
         });
@@ -20973,7 +21092,6 @@ function exportPcvExcel() {
                                     <label class="form-label-req">สถานพยาบาล (hcode)</label>
                                     <select id="stm_hcode" required>
                                         <option value="00860">สสอ.เทพา (00860)</option>
-										<option value="11390">รพ.เทพา (11390)</option>
                                         <option value="09491">รพ.สต.ตูหยง (09491)</option>
                                         <option value="09492">รพ.สต.ตาแปด (09492)</option>
                                         <option value="09493">รพ.สต.เกาะสะบ้า (09493)</option>
