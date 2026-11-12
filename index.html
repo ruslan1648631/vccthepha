@@ -6427,7 +6427,7 @@
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
 
                 // Unique Key for Deduplication: 1 person (CID) or 1 HN per facility
-                const uniqueKey = (rowId && rowId !== '-' && rowId !== '0') ? rowId : ${rowHcode}_;
+                const uniqueKey = (rowId && rowId !== '-' && rowId !== '0') ? rowId : (rowHcode + '_' + rowHn);
 
                 if (childMap.has(uniqueKey)) {
                     const existing = childMap.get(uniqueKey);
@@ -6484,7 +6484,7 @@
                     const y = dt.getFullYear();
                     const m = String(dt.getMonth() + 1).padStart(2, '0');
                     const day = String(dt.getDate()).padStart(2, '0');
-                    return ${y}--;
+                    return y + '-' + m + '-' + day;
                 };
 
                 // วันคลินิกวัคซีนประจำสัปดาห์ถัดไป (วันพุธถัดไป หรืออย่างน้อย 7 วัน)
@@ -6502,7 +6502,7 @@
                 const cleanCid = rowId.replace(/\D/g, '').trim();
                 const cleanHn = rowHn.trim();
                 const bookedAppt = (cleanCid.length >= 5 && upcomingApptsByCid.get(cleanCid)) || 
-                                   (cleanHn && upcomingApptsByFacHn.get(${rowHcode}_)) || 
+                                   (cleanHn && upcomingApptsByFacHn.get(rowHcode + '_' + cleanHn)) || 
                                    (cleanHn && upcomingApptsByHn.get(cleanHn)) || null;
 
                 // กำหนดการวัคซีนตามเกณฑ์ของเด็ก (EPI Milestones)
