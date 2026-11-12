@@ -6358,6 +6358,61 @@
                 return q;
             };
             const allRows = await fetchAllFromTable('data', '*', filterBuilder);
+
+            // ดึงข้อมูลการนัดหมายจากตาราง appoint เพื่อใช้จับคู่กับวันนัดถัดไปของเด็ก
+            const apptFilterBuilder = (q) => {
+                if (!canSeeAll && userHc) {
+                    const unp = userHcNorm;
+                    const pad = userHc.padStart(5, '0');
+                    q = q.or('hcode.eq.' + userHc + ',hcode.eq.' + unp + ',hcode.eq.' + pad);
+                } else if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                    const unp = String(filters.hcode).replace(/^0+/, '');
+                    const pad = String(filters.hcode).padStart(5, '0');
+                    q = q.or('hcode.eq.' + filters.hcode + ',hcode.eq.' + unp + ',hcode.eq.' + pad);
+                }
+                return q;
+            };
+            let apptRows = [];
+            try {
+                apptRows = await fetchAllFromTable('appoint', '*', apptFilterBuilder) || [];
+            } catch (errAppt) {
+                console.warn('getPcvTargetReport: could not fetch appoint table', errAppt);
+            }
+
+            const todayIso = new Date().toISOString().slice(0, 10);
+            const upcomingApptsByCid = new Map();
+            const upcomingApptsByHn = new Map();
+            const upcomingApptsByFacHn = new Map();
+
+            (apptRows || []).forEach(a => {
+                const rawAppt = a.appointdate || a.date || a['วันนัด'] || a['วันที่นัด'] || '';
+                if (!rawAppt) return;
+                const isoAppt = (typeof parseThaiDateToISO === 'function') ? parseThaiDateToISO(rawAppt) : String(rawAppt).slice(0, 10);
+                if (!isoAppt || isoAppt < todayIso) return; // เฉพาะนัดหมายที่เป็นปัจจุบันหรืออนาคต (>= today)
+
+                const aHcode = String(a.hcode || '').trim();
+                const aCid = String(a.CID || a.cid || a.id || '').replace(/\D/g, '').trim();
+                const aHn = String(a.HN || a.hn || '').trim();
+                const vName = a.vaccinename || a.vaccine_name || a.vaccine || a.vaccinecode || '';
+
+                const apptObj = { date: isoAppt, vacName: vName, raw: a };
+
+                if (aCid && aCid.length >= 5) {
+                    if (!upcomingApptsByCid.has(aCid) || isoAppt < upcomingApptsByCid.get(aCid).date) {
+                        upcomingApptsByCid.set(aCid, apptObj);
+                    }
+                }
+                if (aHn && aHn !== '-' && aHn !== '0') {
+                    if (!upcomingApptsByHn.has(aHn) || isoAppt < upcomingApptsByHn.get(aHn).date) {
+                        upcomingApptsByHn.set(aHn, apptObj);
+                    }
+                    const key = aHcode + '_' + aHn;
+                    if (!upcomingApptsByFacHn.has(key) || isoAppt < upcomingApptsByFacHn.get(key).date) {
+                        upcomingApptsByFacHn.set(key, apptObj);
+                    }
+                }
+            });
+
             // Deduplicate & Merge PCV Target Children
             const childMap = new Map();
 
@@ -6365,7 +6420,6 @@
                 const rawDob = row.DOB || row.dob || row.birthdate || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || row['\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14'] || '';
                 if (!rawDob || rawDob === '-' || rawDob === '0') return;
                 const isoDob = parseThaiDateToISO(rawDob);
-                const todayIso = new Date().toISOString().slice(0, 10);
                 if (!isoDob || isoDob < '2025-10-01' || isoDob > todayIso) return; // ✅ ข้ามเด็กที่เกิดก่อน 1 ต.ค. 2568 หรือวันเกิดเป็นอนาคต (ข้อมูลผิดพลาด)
 
                 const rowId = String(row.CID || row.cid || row.ID || row.id || row['\u0E40\u0E25\u0E02\u0E1A\u0E31\u0E15\u0E23'] || '-').trim();
@@ -6373,7 +6427,7 @@
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
 
                 // Unique Key for Deduplication: 1 person (CID) or 1 HN per facility
-                const uniqueKey = (rowId && rowId !== '-' && rowId !== '0') ? rowId : `${rowHcode}_${rowHn}`;
+                const uniqueKey = (rowId && rowId !== '-' && rowId !== '0') ? rowId : ${rowHcode}_;
 
                 if (childMap.has(uniqueKey)) {
                     const existing = childMap.get(uniqueKey);
@@ -6421,6 +6475,49 @@
                 const coVac2 = row['DTP+HB+Hib2'] || row.dtphbhib2 || row['IPV2'] || row.ipv2 || row['Rota2'] || null;
                 const coVac3 = row['LJE1'] || row.lje1 || row.laje1 || row['MMR1'] || row.mmr1 || null;
 
+                const addMonthsSafe = (d, m) => new Date(d.getFullYear(), d.getMonth() + m, d.getDate());
+                const addDaysSafe = (d, days) => new Date(d.getTime() + days * 86400000);
+                const toIsoDate = (d) => {
+                    if (!d) return null;
+                    const dt = (d instanceof Date) ? d : new Date(d);
+                    if (isNaN(dt.getTime())) return null;
+                    const y = dt.getFullYear();
+                    const m = String(dt.getMonth() + 1).padStart(2, '0');
+                    const day = String(dt.getDate()).padStart(2, '0');
+                    return ${y}--;
+                };
+
+                // วันคลินิกวัคซีนประจำสัปดาห์ถัดไป (วันพุธถัดไป หรืออย่างน้อย 7 วัน)
+                const getNextClinicDay = (refDate) => {
+                    const d = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+                    let diff = (3 - d.getDay() + 7) % 7;
+                    if (diff === 0) diff = 7;
+                    d.setDate(d.getDate() + diff);
+                    return d;
+                };
+                const nextClinicDate = getNextClinicDay(now);
+                const nextClinicIso = toIsoDate(nextClinicDate);
+
+                // ค้นหานัดหมายในระบบของเด็กคนนี้ (ถ้ามี)
+                const cleanCid = rowId.replace(/\D/g, '').trim();
+                const cleanHn = rowHn.trim();
+                const bookedAppt = (cleanCid.length >= 5 && upcomingApptsByCid.get(cleanCid)) || 
+                                   (cleanHn && upcomingApptsByFacHn.get(${rowHcode}_)) || 
+                                   (cleanHn && upcomingApptsByHn.get(cleanHn)) || null;
+
+                // กำหนดการวัคซีนตามเกณฑ์ของเด็ก (EPI Milestones)
+                const routineMilestones = [
+                    { ageMonths: 2, date: addMonthsSafe(bd, 2), name: 'พร้อม DTP-HB-Hib1+IPV1+Rota1 (2 ด.)' },
+                    { ageMonths: 4, date: addMonthsSafe(bd, 4), name: 'พร้อม DTP-HB-Hib2+IPV2+Rota2 (4 ด.)' },
+                    { ageMonths: 6, date: addMonthsSafe(bd, 6), name: 'พร้อม DTP-HB-Hib3+OPV3+Rota3 (6 ด.)' },
+                    { ageMonths: 9, date: addMonthsSafe(bd, 9), name: 'พร้อม MMR1 (9 ด.)' },
+                    { ageMonths: 12, date: addMonthsSafe(bd, 12), name: 'พร้อม LAJE1 (12 ด.)' },
+                    { ageMonths: 18, date: addMonthsSafe(bd, 18), name: 'พร้อม DTP4+OPV4+MMR2 (18 ด.)' },
+                    { ageMonths: 30, date: addMonthsSafe(bd, 30), name: 'พร้อม LAJE2 (2 ปี 6 ด.)' }
+                ];
+                const upcomingMilestones = routineMilestones.filter(m => toIsoDate(m.date) >= todayIso);
+                const nextRoutine = upcomingMilestones.length > 0 ? upcomingMilestones[0] : null;
+
                 // คำนวณอายุที่เริ่มรับวัคซีน PCV เข็มแรก
                 let startAgeMonths = ageMonths;
                 if (pcv1Given) {
@@ -6439,10 +6536,6 @@
                 const isTwoDoseSchedule = (startAgeMonths >= 12);
                 const isExceededAge = (!pcv1Given && ageMonths >= 24);
 
-                const addMonthsSafe = (d, m) => new Date(d.getFullYear(), d.getMonth() + m, d.getDate());
-                const addDaysSafe = (d, days) => new Date(d.getTime() + days * 86400000);
-                const toIsoDate = (d) => d ? d.toISOString().slice(0, 10) : null;
-
                 let pcv1DueDate = null;
                 let pcv2DueDate = null;
                 let pcv3DueDate = null;
@@ -6450,98 +6543,138 @@
                 let pcv2CoNote = '';
                 let pcv3CoNote = '';
 
-                if (isTwoDoseSchedule) {
-                    // === สูตร 2 เข็ม (เริ่มอายุ 12-23 เดือน) ===
-                    const d1 = addMonthsSafe(bd, 12);
-                    pcv1DueDate = toIsoDate(d1);
-
-                    if (startAgeMonths === 12) {
-                        pcv1CoNote = 'พร้อมวัคซีน LAJE1';
-                        pcv2CoNote = 'เร็วที่สุด ห่างจากเข็ม 1 >= 8 สัปดาห์ (ไม่เกิน 18 ด.)';
-                    } else if (startAgeMonths >= 13 && startAgeMonths <= 14) {
-                        pcv1CoNote = 'ให้ทันที';
-                        pcv2CoNote = 'เร็วที่สุด ห่างจากเข็ม 1 >= 8 สัปดาห์ (ไม่เกิน 18 ด.)';
-                    } else if (startAgeMonths >= 15 && startAgeMonths <= 16) {
-                        pcv1CoNote = 'ให้ทันที';
-                        pcv2CoNote = 'ห่างจากเข็ม 1 >= 8 สัปดาห์ หรือพร้อม DTP4+OPV4+MMR2 (18 ด.)';
-                    } else if (startAgeMonths >= 17 && startAgeMonths <= 18) {
-                        pcv1CoNote = 'พร้อม DTP4+OPV4+MMR2 (18 ด.) หรือให้ทันที';
-                        pcv2CoNote = 'ห่างจากเข็ม 1 >= 8 สัปดาห์ (ไม่เกิน 2 ปี)';
-                    } else {
-                        pcv1CoNote = 'ให้ทันที';
-                        pcv2CoNote = 'ห่างจากเข็ม 1 >= 8 สัปดาห์';
-                    }
-
-                    if (pcv1Given) {
-                        const p1D = new Date(pcv1Given);
-                        pcv2DueDate = toIsoDate(!isNaN(p1D.getTime()) ? addDaysSafe(p1D, 56) : addDaysSafe(d1, 56));
-                    } else {
-                        pcv2DueDate = toIsoDate(addDaysSafe(d1, 56));
-                    }
-
-                    pcv3DueDate = null;
-                    pcv3CoNote = 'ไม่ต้องฉีด (สูตร 2 เข็ม)';
-
+                // ==========================================
+                // 1. คำนวณวันนัด PCV เข็ม 1
+                // ==========================================
+                if (pcv1Given) {
+                    pcv1DueDate = toIsoDate(pcv1Given);
+                    pcv1CoNote = '';
                 } else {
-                    // === สูตร 3 เข็ม (เริ่มก่อนอายุ 12 เดือน) ===
-                    const d1 = addMonthsSafe(bd, 2);
-                    const d2 = addMonthsSafe(bd, 4);
-                    const d3 = addMonthsSafe(bd, 12);
-
-                    pcv1DueDate = toIsoDate(d1);
-
-                    if (pcv1Given) {
-                        const p1D = new Date(pcv1Given);
-                        const minD2 = !isNaN(p1D.getTime()) ? addDaysSafe(p1D, 28) : d2;
-                        pcv2DueDate = toIsoDate(minD2 > d2 ? minD2 : d2);
-                    } else {
-                        pcv2DueDate = toIsoDate(d2);
-                    }
-
-                    if (pcv2Given) {
-                        const p2D = new Date(pcv2Given);
-                        const minD3 = !isNaN(p2D.getTime()) ? addDaysSafe(p2D, 56) : d3;
-                        pcv3DueDate = toIsoDate(minD3 > d3 ? minD3 : d3);
-                    } else {
-                        pcv3DueDate = toIsoDate(d3);
-                    }
-
-                    if (startAgeMonths <= 2) {
+                    const stdM2 = addMonthsSafe(bd, 2);
+                    if (!isTwoDoseSchedule && toIsoDate(stdM2) >= todayIso) {
+                        // เด็กอายุยังไม่ถึง 2 เดือน (ยังไม่ถึงเกณฑ์)
+                        pcv1DueDate = toIsoDate(stdM2);
                         pcv1CoNote = 'พร้อม DTP-HB-Hib1 + IPV1 + Rota1';
-                        pcv2CoNote = 'อายุ 4 ด. พร้อม DTP-HB-Hib2 + IPV2 + Rota2';
-                        pcv3CoNote = 'อายุ 12 ด. พร้อม LAJE1';
-                    } else if (startAgeMonths === 3) {
-                        pcv1CoNote = 'ให้ทันที';
-                        pcv2CoNote = 'พร้อมวัคซีน 4 ด. หรือ 6 ด.';
-                        pcv3CoNote = 'อายุ 12 ด. พร้อม LAJE1';
-                    } else if (startAgeMonths === 4) {
-                        pcv1CoNote = 'พร้อม DTP-HB-Hib2 + IPV2 + Rota2';
-                        pcv2CoNote = 'อายุ 6 ด. พร้อม DTP-HB-Hib3 + OPV3 + Rota3';
-                        pcv3CoNote = 'อายุ 12 ด. พร้อม LAJE1';
-                    } else if (startAgeMonths === 5) {
-                        pcv1CoNote = 'ให้ทันที';
-                        pcv2CoNote = 'อายุ 6 ด. พร้อม DTP-HB-Hib3 + OPV3 + Rota3';
-                        pcv3CoNote = 'อายุ 12 ด. พร้อม LAJE1';
-                    } else if (startAgeMonths === 6) {
-                        pcv1CoNote = 'พร้อม DTP-HB-Hib3 + OPV3 + Rota3';
-                        pcv2CoNote = 'อายุ 7-8 ด. หรือพร้อม MMR1 (9 ด.)';
-                        pcv3CoNote = 'อายุ 12 ด. พร้อม LAJE1';
-                    } else if (startAgeMonths >= 7 && startAgeMonths <= 8) {
-                        pcv1CoNote = 'ให้ทันที';
-                        pcv2CoNote = 'อายุ 8 ด. หรือพร้อม MMR1 (9 ด.)';
-                        pcv3CoNote = 'อายุ 12-15 เดือน';
-                    } else if (startAgeMonths === 9) {
-                        pcv1CoNote = 'พร้อมวัคซีน MMR1';
-                        pcv2CoNote = 'อายุ 10 เดือน';
-                        pcv3CoNote = 'อายุ 12-15 เดือน';
                     } else {
-                        pcv1CoNote = 'ให้ทันที';
-                        pcv2CoNote = 'อายุ 11 ด. หรือพร้อม LAJE1 (12 ด.)';
-                        pcv3CoNote = 'อายุ 15-18 เดือน';
+                        // วันกำหนดเดิมในอดีตผ่านมาแล้ว -> ออกวันนัดใหม่ (>= today)
+                        if (bookedAppt) {
+                            pcv1DueDate = bookedAppt.date;
+                            pcv1CoNote = 'ตรงกับวันนัด' + (bookedAppt.vacName ? ' (' + bookedAppt.vacName + ')' : '');
+                        } else if (nextRoutine && (nextRoutine.date.getTime() - now.getTime()) <= 45 * 86400000) {
+                            // ถ้ามีวัคซีนตามเกณฑ์ครั้งถัดไปภายใน 45 วัน ให้นัดตรงกับวันนั้น (เช่น อายุ 11 ด. ใกล้ 12 ด. พร้อม LAJE1)
+                            pcv1DueDate = toIsoDate(nextRoutine.date);
+                            pcv1CoNote = 'นัดครั้งถัดไป ' + nextRoutine.name;
+                        } else {
+                            // นัดวันคลินิกถัดไปเร็วที่สุด
+                            pcv1DueDate = nextClinicIso;
+                            pcv1CoNote = isTwoDoseSchedule ? 'นัดวันใหม่ (สูตร 2 เข็ม ให้ทันที)' : 'นัดวันใหม่ (ให้ทันที/ติดตามฉีด)';
+                        }
                     }
                 }
 
-                // ประเมินสถานะวัคซีน PCV ตามเกณฑ์ตาราง
+                // ==========================================
+                // 2. คำนวณวันนัด PCV เข็ม 2
+                // ==========================================
+                if (pcv2Given) {
+                    pcv2DueDate = toIsoDate(pcv2Given);
+                    pcv2CoNote = '';
+                } else {
+                    const refD1 = pcv1Given ? new Date(pcv1Given) : (pcv1DueDate ? new Date(pcv1DueDate) : now);
+
+                    if (isTwoDoseSchedule) {
+                        // === สูตร 2 เข็ม (เด็กเริ่มอายุ 12-23 เดือน) ===
+                        // ห่างจากเข็ม 1 อย่างน้อย 8 สัปดาห์ (56 วัน)
+                        const minD2 = addDaysSafe(refD1, 56);
+                        if (toIsoDate(minD2) < todayIso) {
+                            if (bookedAppt && bookedAppt.date >= todayIso) {
+                                pcv2DueDate = bookedAppt.date;
+                                pcv2CoNote = 'ตรงกับวันนัด' + (bookedAppt.vacName ? ' (' + bookedAppt.vacName + ')' : '');
+                            } else {
+                                pcv2DueDate = nextClinicIso;
+                                pcv2CoNote = 'นัดวันใหม่ (ห่างจากเข็ม 1 >= 8 สัปดาห์)';
+                            }
+                        } else {
+                            const m18 = addMonthsSafe(bd, 18);
+                            if (toIsoDate(m18) >= toIsoDate(minD2) && (m18.getTime() - minD2.getTime()) <= 45 * 86400000) {
+                                pcv2DueDate = toIsoDate(m18);
+                                pcv2CoNote = 'ห่าง >= 8 สัปดาห์ (พร้อม DTP4+OPV4+MMR2 ที่ 18 ด.)';
+                            } else {
+                                pcv2DueDate = toIsoDate(minD2);
+                                pcv2CoNote = 'เร็วที่สุด ห่างจากเข็ม 1 >= 8 สัปดาห์ (ไม่เกิน 18 ด.)';
+                            }
+                        }
+                    } else {
+                        // === สูตร 3 เข็ม (เด็กเริ่มก่อน 12 เดือน) ===
+                        // ห่างจากเข็ม 1 อย่างน้อย 4 สัปดาห์ (28 วัน) และอายุ >= 4 เดือน
+                        const stdM4 = addMonthsSafe(bd, 4);
+                        const minD2 = addDaysSafe(refD1, 28);
+                        let targetD2 = minD2 > stdM4 ? minD2 : stdM4;
+
+                        if (toIsoDate(targetD2) < todayIso) {
+                            if (bookedAppt && bookedAppt.date >= todayIso) {
+                                pcv2DueDate = bookedAppt.date;
+                                pcv2CoNote = 'ตรงกับวันนัด' + (bookedAppt.vacName ? ' (' + bookedAppt.vacName + ')' : '');
+                            } else if (nextRoutine && toIsoDate(nextRoutine.date) >= toIsoDate(minD2) && (nextRoutine.date.getTime() - now.getTime()) <= 45 * 86400000) {
+                                pcv2DueDate = toIsoDate(nextRoutine.date);
+                                pcv2CoNote = 'นัดครั้งถัดไป ' + nextRoutine.name;
+                            } else {
+                                const clinicD2 = minD2 > nextClinicDate ? minD2 : nextClinicDate;
+                                pcv2DueDate = toIsoDate(clinicD2);
+                                pcv2CoNote = 'นัดวันใหม่ (ห่างจากเข็ม 1 >= 4 สัปดาห์)';
+                            }
+                        } else {
+                            pcv2DueDate = toIsoDate(targetD2);
+                            if (startAgeMonths <= 2) {
+                                pcv2CoNote = 'อายุ 4 ด. พร้อม DTP-HB-Hib2 + IPV2 + Rota2';
+                            } else if (startAgeMonths <= 5) {
+                                pcv2CoNote = 'อายุ 6 ด. พร้อม DTP-HB-Hib3 + OPV3 + Rota3';
+                            } else if (startAgeMonths <= 8) {
+                                pcv2CoNote = 'อายุ 8 ด. หรือพร้อม MMR1 (9 ด.)';
+                            } else {
+                                pcv2CoNote = 'อายุ 11 ด. หรือพร้อม LAJE1 (12 ด.)';
+                            }
+                        }
+                    }
+                }
+
+                // ==========================================
+                // 3. คำนวณวันนัด PCV เข็ม 3 (Booster)
+                // ==========================================
+                if (isTwoDoseSchedule) {
+                    pcv3DueDate = null;
+                    pcv3CoNote = 'ไม่ต้องฉีด (สูตร 2 เข็ม)';
+                } else if (pcv3Given) {
+                    pcv3DueDate = toIsoDate(pcv3Given);
+                    pcv3CoNote = '';
+                } else {
+                    // เข็ม 3: ต้องอายุ >= 12 เดือน และห่างจากเข็ม 2 อย่างน้อย 8 สัปดาห์ (56 วัน)
+                    const stdM12 = addMonthsSafe(bd, 12);
+                    const refD2 = pcv2Given ? new Date(pcv2Given) : (pcv2DueDate ? new Date(pcv2DueDate) : addMonthsSafe(bd, 4));
+                    const minD3 = addDaysSafe(refD2, 56);
+                    let targetD3 = minD3 > stdM12 ? minD3 : stdM12;
+
+                    if (toIsoDate(targetD3) < todayIso) {
+                        if (bookedAppt && bookedAppt.date >= todayIso) {
+                            pcv3DueDate = bookedAppt.date;
+                            pcv3CoNote = 'ตรงกับวันนัด' + (bookedAppt.vacName ? ' (' + bookedAppt.vacName + ')' : '');
+                        } else {
+                            const clinicD3 = minD3 > nextClinicDate ? minD3 : nextClinicDate;
+                            pcv3DueDate = toIsoDate(clinicD3);
+                            pcv3CoNote = 'นัดวันใหม่ เข็มกระตุ้น (อายุ >= 12 ด.)';
+                        }
+                    } else {
+                        pcv3DueDate = toIsoDate(targetD3);
+                        if (startAgeMonths <= 6) {
+                            pcv3CoNote = 'อายุ 12 ด. พร้อม LAJE1';
+                        } else {
+                            pcv3CoNote = 'อายุ 12-15 เดือน (หรือ 15-18 เดือน)';
+                        }
+                    }
+                }
+
+                // ==========================================
+                // 4. ประเมินสถานะวัคซีน PCV ตามเกณฑ์ตาราง
+                // ==========================================
                 let status = '';
                 let statusCode = '';
 
@@ -6556,13 +6689,11 @@
                         status = 'ยังไม่ถึงกำหนดฉีด (< 2 เดือน)';
                         statusCode = 'not_due';
                     } else {
-                        const d1 = new Date(pcv1DueDate);
-                        const daysSinceDue1 = Math.floor((now - d1) / 86400000);
-                        if (daysSinceDue1 > 30) {
-                            status = isTwoDoseSchedule ? 'เกินกำหนดเข็ม 1 (สูตร 2 เข็ม)' : 'เกินกำหนดเข็มที่ 1';
-                            statusCode = 'overdue_1';
+                        if (bookedAppt) {
+                            status = isTwoDoseSchedule ? 'มีนัดหมายแล้ว (สูตร 2 เข็ม)' : 'มีนัดหมายแล้ว (เข็ม 1)';
+                            statusCode = 'due_1';
                         } else {
-                            status = isTwoDoseSchedule ? 'ถึงเกณฑ์เข็ม 1 (เด็กโต 12-23 ด.)' : 'ถึงเกณฑ์ฉีดเข็มที่ 1 (2 เดือน)';
+                            status = isTwoDoseSchedule ? 'ถึงเกณฑ์เข็ม 1 (สูตร 2 เข็ม)' : 'ถึงเกณฑ์ฉีดเข็มที่ 1';
                             statusCode = 'due_1';
                         }
                     }
@@ -6572,14 +6703,8 @@
                         status = 'ฉีดเข็ม 1 แล้ว (รอเข็ม 2)';
                         statusCode = 'pcv1_done';
                     } else {
-                        const daysSinceDue2 = Math.floor((now - d2) / 86400000);
-                        if (daysSinceDue2 > 30) {
-                            status = 'เกินกำหนดเข็มที่ 2';
-                            statusCode = 'overdue_2';
-                        } else {
-                            status = isTwoDoseSchedule ? 'ถึงเกณฑ์เข็ม 2 (ห่าง 8 สัปดาห์)' : 'ถึงเกณฑ์ฉีดเข็มที่ 2';
-                            statusCode = 'due_2';
-                        }
+                        status = isTwoDoseSchedule ? 'ถึงเกณฑ์เข็ม 2 (ห่าง 8 สัปดาห์)' : 'ถึงเกณฑ์ฉีดเข็มที่ 2';
+                        statusCode = 'due_2';
                     }
                 } else if (!pcv3Given && !isTwoDoseSchedule) {
                     const d3 = new Date(pcv3DueDate);
@@ -6587,14 +6712,8 @@
                         status = 'ฉีดเข็ม 2 แล้ว (รอเข็มกระตุ้น)';
                         statusCode = 'pcv2_done';
                     } else {
-                        const daysSinceDue3 = Math.floor((now - d3) / 86400000);
-                        if (daysSinceDue3 > 30) {
-                            status = 'เกินกำหนดเข็มกระตุ้น (เข็ม 3)';
-                            statusCode = 'overdue_3';
-                        } else {
-                            status = 'ถึงเกณฑ์เข็มกระตุ้น (12 เดือน)';
-                            statusCode = 'due_3';
-                        }
+                        status = 'ถึงเกณฑ์เข็มกระตุ้น (12 เดือน)';
+                        statusCode = 'due_3';
                     }
                 }
 
@@ -21258,15 +21377,14 @@ function renderPcvTargetTable() {
         }
         if (vacDate) {
             const dStr = window.formatThaiDateShort ? window.formatThaiDateShort(vacDate) : vacDate;
-            return `<div style="color:#059669; font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:3px;"><i class="fas fa-check-circle"></i> ${esc(dStr)}</div>`;
+            return '<div style="color:#059669; font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:3px;"><i class="fas fa-check-circle"></i> ' + esc(dStr) + '</div>';
         }
         if (!dueDate) {
             return '<span style="color:#cbd5e1;">-</span>';
         }
         const dueStr = window.formatThaiDateShort ? window.formatThaiDateShort(dueDate) : dueDate;
-        let noteHtml = coNote ? `<div style="font-size:10px; color:#64748b; margin-top:2px; line-height:1.2;">${esc(coNote)}</div>` : '';
-        let coHtml = coVac ? `<div style="font-size:10px; color:#0284c7; margin-top:2px;">(ฉีดแล้ว: ${esc(window.formatThaiDateShort ? window.formatThaiDateShort(coVac) : coVac)})</div>` : '';
-        return `<div><span style="color:#64748b; font-size:11px; background:#f1f5f9; padding:2px 6px; border-radius:4px; white-space:nowrap;">นัด: ${esc(dueStr)}</span>${noteHtml}${coHtml}</div>`;
+        let noteHtml = coNote ? '<div style="font-size:10.5px; color:#475569; margin-top:3px; line-height:1.25;">' + esc(coNote) + '</div>' : '';
+        return '<div><span style="color:#0284c7; font-weight:600; font-size:11px; background:#e0f2fe; padding:2px 7px; border-radius:4px; white-space:nowrap; display:inline-block;"><i class="far fa-calendar-alt" style="font-size:10px; margin-right:3px;"></i>นัด: ' + esc(dueStr) + '</span>' + noteHtml + '</div>';
     };
 
     tbody.innerHTML = pageItems.map((c, idx) => {
@@ -21347,6 +21465,50 @@ function changePcvPage(newPage) {
         renderPcvTargetTable();
     }
 }
+
+window.openPrintModalForChild = function(cidOrHn) {
+    if (!cidOrHn) return;
+    const child = (window.PCV_FILTERED_CHILDREN || []).find(x => x.cid === cidOrHn || x.hn === cidOrHn || x.id === cidOrHn);
+    if (child && typeof ensureMiniSlipModal === 'function') {
+        let nextDoseDate = '';
+        let nextDoseName = '';
+        if (!child.pcv1Date && child.pcv1DueDate) {
+            nextDoseDate = child.pcv1DueDate;
+            nextDoseName = 'วัคซีน PCV เข็ม 1' + (child.pcv1CoNote ? ' (' + child.pcv1CoNote + ')' : '');
+        } else if (!child.pcv2Date && child.pcv2DueDate) {
+            nextDoseDate = child.pcv2DueDate;
+            nextDoseName = 'วัคซีน PCV เข็ม 2' + (child.pcv2CoNote ? ' (' + child.pcv2CoNote + ')' : '');
+        } else if (!child.isTwoDoseSchedule && !child.pcv3Date && child.pcv3DueDate) {
+            nextDoseDate = child.pcv3DueDate;
+            nextDoseName = 'วัคซีน PCV เข็ม 3 (Booster)' + (child.pcv3CoNote ? ' (' + child.pcv3CoNote + ')' : '');
+        }
+
+        ensureMiniSlipModal();
+        const facName = getFacilityDisplayName(child.hcode, child.hname || 'คลินิกเด็กดี');
+        window.CURRENT_MINI_SLIP_DATA = {
+            hcode: child.hcode || '',
+            facilityName: facName,
+            hn: child.hn || '-',
+            fullname: child.fullname || '-',
+            dob: child.birthDate || '-',
+            age: child.age || '-',
+            houseNumber: child.houseNumber || '-',
+            village: child.village || '-',
+            phone: child.phone || '-',
+            apptDate: nextDoseDate ? (window.formatThaiDateShort ? window.formatThaiDateShort(nextDoseDate) : nextDoseDate) : 'ตามนัดหมาย',
+            vacCode: 'PCV',
+            vacName: nextDoseName || 'วัคซีน PCV ตามเกณฑ์',
+            cid: child.cid || cidOrHn
+        };
+        if (typeof onSlipSettingChange === 'function') onSlipSettingChange();
+        const m = document.getElementById('miniSlipModal');
+        if (m) m.classList.add('active');
+        return;
+    }
+    if (typeof openSlipForChildFromDetail === 'function') {
+        openSlipForChildFromDetail(cidOrHn);
+    }
+};
 
 function viewPcvChildDetail(cidOrHn) {
     if (!cidOrHn) return;
