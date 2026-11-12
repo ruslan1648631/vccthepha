@@ -5909,12 +5909,18 @@
                 subdistrict = args[0];
             }
 
+            const roleNorm = String(role || '').toLowerCase().trim();
+            const hcNorm = String(hcode || '').replace(/^0+/, '');
+            const isAdminAmpur = (roleNorm === 'admin_ampur' || roleNorm === 'admin');
+            const isSpecialOfficer = (roleNorm === 'เจ้าหน้าที่') && (hcNorm === '860' || hcode === '11390');
+            const canSeeAll = isAdminAmpur || isSpecialOfficer;
+
             let query = supabaseClient.from('villages').select('*').order('village_no', { ascending: true });
             if (subdistrict && subdistrict !== 'ทั้งหมด') {
                 query = query.eq('subdistrict', subdistrict);
             }
-            if (role === 'Admin_HOS' && hcode) {
-                const unp = String(hcode).replace(/^0+/, '');
+            if (!canSeeAll && hcode) {
+                const unp = hcNorm;
                 const pad = String(hcode).padStart(5, '0');
                 query = query.or(`hcode.eq.${hcode},hcode.eq.${unp},hcode.eq.${pad}`);
             }
@@ -6098,11 +6104,22 @@
         // 15. ดึงรายชื่อนัดหมาย (Appointments)
         if (fnName === 'getAppointments') {
             const filters = args[0] || {};
+            const userRoleNorm = String(filters.userRole || '').toLowerCase().trim();
+            const userHc = String(filters.userHcode || '').trim();
+            const userHcNorm = userHc.replace(/^0+/, '');
+            const isAdminAmpur = (userRoleNorm === 'admin_ampur' || userRoleNorm === 'admin');
+            const isSpecialOfficer = (userRoleNorm === 'เจ้าหน้าที่') && (userHcNorm === '860' || userHc === '00860' || userHc === '11390');
+            const canSeeAll = isAdminAmpur || isSpecialOfficer;
+
             const apptFilterBuilder = (q) => {
-                if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                    const unp = String(filters.userHcode).replace(/^0+/, '');
-                    const pad = String(filters.userHcode).padStart(5, '0');
-                    q = q.or('hcode.eq.' + filters.userHcode + ',hcode.eq.' + unp + ',hcode.eq.' + pad);
+                if (!canSeeAll && userHc) {
+                    const unp = userHcNorm;
+                    const pad = userHc.padStart(5, '0');
+                    q = q.or('hcode.eq.' + userHc + ',hcode.eq.' + unp + ',hcode.eq.' + pad);
+                } else if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                    const unp = String(filters.hcode).replace(/^0+/, '');
+                    const pad = String(filters.hcode).padStart(5, '0');
+                    q = q.or('hcode.eq.' + filters.hcode + ',hcode.eq.' + unp + ',hcode.eq.' + pad);
                 }
                 return q;
             };
@@ -6193,16 +6210,23 @@
         // 16. ดึงรายชื่อเด็ก (Children) — เฉพาะเด็กในเขต Type 1, 3
         if (fnName === 'getChildren') {
             const filters = args[0] || {};
+            const userRoleNorm = String(filters.userRole || '').toLowerCase().trim();
+            const userHc = String(filters.userHcode || '').trim();
+            const userHcNorm = userHc.replace(/^0+/, '');
+            const isAdminAmpur = (userRoleNorm === 'admin_ampur' || userRoleNorm === 'admin');
+            const isSpecialOfficer = (userRoleNorm === 'เจ้าหน้าที่') && (userHcNorm === '860' || userHc === '00860' || userHc === '11390');
+            const canSeeAll = isAdminAmpur || isSpecialOfficer;
+
             const filterBuilder = (q) => {
                 q = q.in('type', [1, 3]); // ✅ ดึงเฉพาะเด็กในเขต type = 1, 3
-                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                if (!canSeeAll && userHc) {
+                    const unp = userHcNorm;
+                    const pad = userHc.padStart(5, '0');
+                    q = q.or(`hcode.eq.${userHc},hcode.eq.${unp},hcode.eq.${pad}`);
+                } else if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
                     const unp = String(filters.hcode).replace(/^0+/, '');
                     const pad = String(filters.hcode).padStart(5, '0');
                     q = q.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
-                } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                    const unp = String(filters.userHcode).replace(/^0+/, '');
-                    const pad = String(filters.userHcode).padStart(5, '0');
-                    q = q.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
                 }
                 return q;
             };
@@ -6264,7 +6288,8 @@
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
                 const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['\u0E2A\u0E16\u0E32\u0E19\u0E1E\u0E22\u0E32\u0E1A\u0E32\u0E25']);
                 const rowDob = row.DOB || row.dob || row.birthdate || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || row['\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14'] || '-';
-                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['\u0E2D\u0E32\u0E22\u0E38'] && row['\u0E2D\u0E32\u0E22\u0E38'] !== '-') ? row['\u0E2D\u0E32\u0E22\u0E38'] : calculateAgeString(rowDob));
+                const dynamicAge = calculateAgeString(rowDob);
+                const ageComputed = (dynamicAge && dynamicAge !== '-') ? dynamicAge : ((row.age && row.age !== '-') ? row.age : ((row['\u0E2D\u0E32\u0E22\u0E38'] && row['\u0E2D\u0E32\u0E22\u0E38'] !== '-') ? row['\u0E2D\u0E32\u0E22\u0E38'] : '-'));
 
                 return {
                     id: rowId,
@@ -6308,20 +6333,27 @@
                 // 16.6 รายงานกลุ่มเป้าหมายวัคซีน PCV (เด็กที่เกิดตั้งแต่ 1 ต.ค. 2568)
         if (fnName === 'getPcvTargetReport') {
             const filters = args[0] || {};
+            const userRoleNorm = String(filters.userRole || '').toLowerCase().trim();
+            const userHc = String(filters.userHcode || '').trim();
+            const userHcNorm = userHc.replace(/^0+/, '');
+            const isAdminAmpur = (userRoleNorm === 'admin_ampur' || userRoleNorm === 'admin');
+            const isSpecialOfficer = (userRoleNorm === 'เจ้าหน้าที่') && (userHcNorm === '860' || userHc === '00860' || userHc === '11390');
+            const canSeeAll = isAdminAmpur || isSpecialOfficer;
+
             const filterBuilder = (q) => {
                 if (filters.type && filters.type !== 'ทั้งหมด') {
                     if (filters.type === 'in_area') q = q.in('type', [1, 3]);
                     else if (filters.type === 'out_of_area') q = q.eq('type', 4);
                     else q = q.eq('type', Number(filters.type));
                 }
-                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                if (!canSeeAll && userHc) {
+                    const unp = userHcNorm;
+                    const pad = userHc.padStart(5, '0');
+                    q = q.or(`hcode.eq.${userHc},hcode.eq.${unp},hcode.eq.${pad}`);
+                } else if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
                     const unp = String(filters.hcode).replace(/^0+/, '');
                     const pad = String(filters.hcode).padStart(5, '0');
                     q = q.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
-                } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                    const unp = String(filters.userHcode).replace(/^0+/, '');
-                    const pad = String(filters.userHcode).padStart(5, '0');
-                    q = q.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
                 }
                 return q;
             };
@@ -6365,10 +6397,15 @@
                 const rowName = String(row.fullname || row['\u0E0A\u0E37\u0E48\u0E2D-\u0E2A\u0E01\u0E38\u0E25'] || row.childname || row['\u0E0A\u0E37\u0E48\u0E2D'] || '-').trim();
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
                 const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['\u0E2A\u0E16\u0E32\u0E19\u0E1E\u0E22\u0E32\u0E1A\u0E32\u0E25']);
-                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['\u0E2D\u0E32\u0E22\u0E38'] && row['\u0E2D\u0E32\u0E22\u0E38'] !== '-') ? row['\u0E2D\u0E32\u0E22\u0E38'] : calculateAgeString(rawDob));
+                
+                // คำนวณอายุเด็กตามจริงจากวันเกิด (ปี, เดือน, วัน)
+                const ageDetail = (typeof calculateChildAgeDetail === 'function') 
+                    ? calculateChildAgeDetail(isoDob || rawDob, now) 
+                    : null;
+                const ageComputed = ageDetail ? ageDetail.text : (calculateAgeString(rawDob) || (row.age && row.age !== '-' ? row.age : '-'));
 
                 // Calculate due dates (2 months, 4 months, 12 months)
-                const bd = new Date(isoDob);
+                const bd = (ageDetail && ageDetail.dob) ? ageDetail.dob : new Date(isoDob);
                 const d1 = new Date(bd.getFullYear(), bd.getMonth() + 2, bd.getDate());
                 const d2 = new Date(bd.getFullYear(), bd.getMonth() + 4, bd.getDate());
                 const d3 = new Date(bd.getFullYear() + 1, bd.getMonth(), bd.getDate());
@@ -6385,8 +6422,8 @@
                 const coVac2 = row['DTP+HB+Hib2'] || row.dtphbhib2 || row['IPV2'] || row.ipv2 || row['Rota2'] || null;
                 const coVac3 = row['LJE1'] || row.lje1 || row.laje1 || row['MMR1'] || row.mmr1 || null;
 
-                let ageMonths = (now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth());
-                if (now.getDate() < bd.getDate()) ageMonths--;
+                let ageMonths = ageDetail ? ageDetail.totalMonths : ((now.getFullYear() - bd.getFullYear()) * 12 + (now.getMonth() - bd.getMonth()));
+                if (!ageDetail && now.getDate() < bd.getDate()) ageMonths--;
                 if (ageMonths < 0) ageMonths = 0;
 
                 const daysSinceDue1 = Math.floor((now - d1) / 86400000);
@@ -6492,16 +6529,23 @@
         // 16.5 ดึงรายชื่อเด็กนอกเขต Type = 4 (Get Out of Area Children)
         if (fnName === 'getOutOfAreaChildren') {
             const filters = args[0] || {};
+            const userRoleNorm = String(filters.userRole || '').toLowerCase().trim();
+            const userHc = String(filters.userHcode || '').trim();
+            const userHcNorm = userHc.replace(/^0+/, '');
+            const isAdminAmpur = (userRoleNorm === 'admin_ampur' || userRoleNorm === 'admin');
+            const isSpecialOfficer = (userRoleNorm === 'เจ้าหน้าที่') && (userHcNorm === '860' || userHc === '00860' || userHc === '11390');
+            const canSeeAll = isAdminAmpur || isSpecialOfficer;
+
             const filterBuilder = (q) => {
                 q = q.eq('type', 4);
-                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                if (!canSeeAll && userHc) {
+                    const unp = userHcNorm;
+                    const pad = userHc.padStart(5, '0');
+                    q = q.or(`hcode.eq.${userHc},hcode.eq.${unp},hcode.eq.${pad}`);
+                } else if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
                     const unp = String(filters.hcode).replace(/^0+/, '');
                     const pad = String(filters.hcode).padStart(5, '0');
                     q = q.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
-                } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                    const unp = String(filters.userHcode).replace(/^0+/, '');
-                    const pad = String(filters.userHcode).padStart(5, '0');
-                    q = q.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
                 }
                 return q;
             };
@@ -6516,6 +6560,12 @@
                                     (row['ประเภท'] !== undefined && row['ประเภท'] !== null ? row['ประเภท'] : null)));
                     return t === 4;
                 });
+                if (!canSeeAll && userHc) {
+                    data = data.filter(row => {
+                        const rh = String(row.hcode || '').trim().replace(/^0+/, '');
+                        return rh === userHcNorm;
+                    });
+                }
             }
 
             const refusedSet = new Set();
@@ -6562,7 +6612,8 @@
                 const rowHcode = (row.hcode !== undefined && row.hcode !== null) ? String(row.hcode).trim() : '-';
                 const rowHname = row.hname || getFacilityDisplayName(rowHcode, row.hospital || row['\u0E2A\u0E16\u0E32\u0E19\u0E1E\u0E22\u0E32\u0E1A\u0E32\u0E25']);
                 const rowDob = row.DOB || row.dob || row.birthdate || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || row['\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14'] || '-';
-                const ageComputed = (row.age && row.age !== '-') ? row.age : ((row['\u0E2D\u0E32\u0E22\u0E38'] && row['\u0E2D\u0E32\u0E22\u0E38'] !== '-') ? row['\u0E2D\u0E32\u0E22\u0E38'] : calculateAgeString(rowDob));
+                const dynamicAge = calculateAgeString(rowDob);
+                const ageComputed = (dynamicAge && dynamicAge !== '-') ? dynamicAge : ((row.age && row.age !== '-') ? row.age : ((row['\u0E2D\u0E32\u0E22\u0E38'] && row['\u0E2D\u0E32\u0E22\u0E38'] !== '-') ? row['\u0E2D\u0E32\u0E22\u0E38'] : '-'));
 
                 return {
                     id: rowId,
@@ -6698,7 +6749,8 @@
 
                 const first = rows[0];
                 const firstDob = first.DOB || first.dob || first.birthdate || first['ว/ด/ปเกิด'] || first['วันเกิด'] || '-';
-                const firstAge = (first.age && first.age !== '-') ? first.age : calculateAgeString(firstDob);
+                const dynamicFirstAge = calculateAgeString(firstDob);
+                const firstAge = (dynamicFirstAge && dynamicFirstAge !== '-') ? dynamicFirstAge : ((first.age && first.age !== '-') ? first.age : '-');
                 const fullname = String(first.fullname || first.childname || first['ชื่อ-สกุล'] || first['ชื่อ'] || 'ไม่ระบุชื่อ').trim();
 
                 // Search filter (CID, fullname, HN)
@@ -7154,18 +7206,28 @@
         // 21. ดึงข้อมูลพิกัดเด็กสำหรับแผนที่ (Get All Children For Map) — เฉพาะเด็กในเขต Type 1, 3
         if (fnName === 'getAllChildrenForMap') {
             const filters = args[0] || {};
-            let query = supabaseClient.from('data').select('*').in('type', [1, 3]);
-            if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
-                const unp = String(filters.hcode).replace(/^0+/, '');
-                const pad = String(filters.hcode).padStart(5, '0');
-                query = query.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
-            } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                const unp = String(filters.userHcode).replace(/^0+/, '');
-                const pad = String(filters.userHcode).padStart(5, '0');
-                query = query.or(`hcode.eq.${filters.userHcode},hcode.eq.${unp},hcode.eq.${pad}`);
-            }
-            const { data, error } = await query.limit(3000);
-            if (error) throw error;
+            const userRoleNorm = String(filters.userRole || '').toLowerCase().trim();
+            const userHc = String(filters.userHcode || '').trim();
+            const userHcNorm = userHc.replace(/^0+/, '');
+            const isMapAdminAmpur = (userRoleNorm === 'admin_ampur' || userRoleNorm === 'admin');
+            const isSpecialOfficer = (userRoleNorm === 'เจ้าหน้าที่') && (userHcNorm === '860' || userHc === '00860' || userHc === '11390');
+            const canSeeAll = isMapAdminAmpur || isSpecialOfficer;
+
+            const filterBuilder = (q) => {
+                q = q.in('type', [1, 3]);
+                if (!canSeeAll && userHc) {
+                    const unp = userHcNorm;
+                    const pad = userHc.padStart(5, '0');
+                    q = q.or(`hcode.eq.${userHc},hcode.eq.${unp},hcode.eq.${pad}`);
+                } else if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                    const unp = String(filters.hcode).replace(/^0+/, '');
+                    const pad = String(filters.hcode).padStart(5, '0');
+                    q = q.or(`hcode.eq.${filters.hcode},hcode.eq.${unp},hcode.eq.${pad}`);
+                }
+                return q;
+            };
+
+            const data = await fetchAllFromTable('data', '*', filterBuilder);
 
             const refusedSet = new Set();
             try {
@@ -7260,7 +7322,7 @@
                     lat: hasValidGps ? lat : null,
                     lng: hasValidGps ? lng : null,
                     hasGps: hasValidGps,
-                    age: (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(row.DOB || row.dob || row['ว/ด/ปเกิด'])),
+                    age: calculateAgeString(row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด']) || (row.age && row.age !== '-' ? row.age : (row['อายุ'] && row['อายุ'] !== '-' ? row['อายุ'] : '-')),
                     houseNumber: row.house || row.house_no || row.houseNumber || row['บ้านเลขที่'] || '-',
                     phone: row.phone || row['โทรศัพท์'] || '-',
                     fatherName: row.father || row.fatherName || row['ชื่อบิดา'] || '-',
@@ -7961,7 +8023,7 @@
                 fullname: raw.fullname || raw.childname || raw['ชื่อ-สกุล'] || raw['ชื่อ'] || '-',
                 birthDate: raw.DOB || raw.dob || raw.birthdate || raw['ว/ด/ปเกิด'] || raw['วันเกิด'] || '-',
                 type: raw.type || raw['ประเภท'] || '-',
-                age: (raw.age && raw.age !== '-') ? raw.age : ((raw['อายุ'] && raw['อายุ'] !== '-') ? raw['อายุ'] : calculateAgeString(raw.DOB || raw.dob || raw['ว/ด/ปเกิด'])),
+                age: calculateAgeString(raw.DOB || raw.dob || raw['ว/ด/ปเกิด']) || (raw.age && raw.age !== '-' ? raw.age : (raw['อายุ'] && raw['อายุ'] !== '-' ? raw['อายุ'] : '-')),
                 houseNumber: raw.house || raw.house_no || raw.houseNumber || raw['บ้านเลขที่'] || '-',
                 village: raw.moo || raw.village_no || raw.village || raw['หมู่ที่'] || raw['หมู่'] || '-',
                 villageName: raw.villname || raw.village_name || raw.villageName || raw['ชื่อหมู่บ้าน'] || '-',
@@ -8037,7 +8099,7 @@
                     fullname: row.fullname || row['ชื่อ-สกุล'] || row.childname || row['ชื่อ'] || '-',
                     birthDate: row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || '-',
                     type: row.type || row['ประเภท'] || '-',
-                    age: (row.age && row.age !== '-') ? row.age : ((row['อายุ'] && row['อายุ'] !== '-') ? row['อายุ'] : calculateAgeString(row.DOB || row.dob || row['ว/ด/ปเกิด'])),
+                    age: calculateAgeString(row.DOB || row.dob || row.birthdate || row['ว/ด/ปเกิด'] || row['วันเกิด']) || (row.age && row.age !== '-' ? row.age : (row['อายุ'] && row['อายุ'] !== '-' ? row['อายุ'] : '-')),
                     houseNumber: row.house || row.house_no || row['บ้านเลขที่'] || '-',
                     village: row.moo || row.village_no || row.village || '-',
                     villageName: row.villname || row.village_name || row.villageName || '-',
@@ -8988,11 +9050,18 @@
         if (fnName === 'getVaccineStock') {
             const filters = args[0] || {};
             try {
+                const roleNorm = String(filters.userRole || '').toLowerCase().trim();
+                const userHc = String(filters.userHcode || '').trim();
+                const userHcNorm = userHc.replace(/^0+/, '');
+                const isAdminAmpur = (roleNorm === 'admin_ampur' || roleNorm === 'admin');
+                const isSpecialOfficer = (roleNorm === 'เจ้าหน้าที่') && (userHcNorm === '860' || userHc === '11390');
+                const canSeeAll = isAdminAmpur || isSpecialOfficer;
+
                 let q = supabaseClient.from('vaccine_stock').select('*').order('transaction_date', { ascending: false });
-                if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
+                if (!canSeeAll && userHc) {
+                    q = q.eq('hcode', userHc.padStart(5, '0'));
+                } else if (filters.hcode && filters.hcode !== 'ทั้งหมด') {
                     q = q.eq('hcode', String(filters.hcode).padStart(5, '0'));
-                } else if (filters.userRole === 'Admin_HOS' && filters.userHcode) {
-                    q = q.eq('hcode', String(filters.userHcode).padStart(5, '0'));
                 }
                 const { data, error } = await q;
                 if (error) {
@@ -9873,65 +9942,152 @@ function collapseAllVillages() {
 
     function parseAgeToMonths(ageStr) {
         if (!ageStr) return 0;
-        if (ageStr.includes('ไม่ถึง 1 เดือน') || ageStr.includes('แรกเกิด')) return 0.5;
+        const s = String(ageStr).trim();
+        if (s.includes('ไม่ถึง 1 เดือน') || s.includes('แรกเกิด') || s.includes('วัน')) {
+            // ถ้ามีระบุเดือนด้วย เช่น "1 เดือน 15 วัน" ให้ไปคำนวณเดือนด้านล่าง
+            if (!s.includes('เดือน') && !s.includes('ปี')) return 0.5;
+        }
         let m = 0;
-        const yMatch = ageStr.match(/(\d+)\s*ปี/);
-        const mMatch = ageStr.match(/(\d+)\s*เดือน/);
-        if (yMatch) m += parseInt(yMatch[1]) * 12;
-        if (mMatch) m += parseInt(mMatch[1]);
-        return m;
+        let hasVal = false;
+        const yMatch = s.match(/(\d+)\s*ปี/);
+        const mMatch = s.match(/(\d+)\s*เดือน/) || s.match(/(\d+)\s*ด\./);
+        if (yMatch) { m += parseInt(yMatch[1], 10) * 12; hasVal = true; }
+        if (mMatch) { m += parseInt(mMatch[1], 10); hasVal = true; }
+        return hasVal ? m : (parseFloat(s) || 0);
     }
 
-    // ✅ คำนวณอายุเป็นข้อความ "X ปี Y เดือน" จากวันเกิด (รองรับทุกรูปแบบ: ISO, dd/mm/yyyy, Date)
-    function calculateAgeString(birthDateVal) {
-        if (!birthDateVal || birthDateVal === '-') return '-';
-        let dob = null;
-        if (birthDateVal instanceof Date) {
-            dob = isNaN(birthDateVal.getTime()) ? null : birthDateVal;
-        } else {
-            const s = String(birthDateVal).trim();
-            if (!s || s === '-') return '-';
-            // YYYY-MM-DD (ISO)
-            const isoM = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-            if (isoM) {
-                let y = parseInt(isoM[1], 10);
+    // ============================================================
+    // ✅ HELPER: แปลงวันเกิดและคำนวณอายุเด็ก (Safe Birthdate & Child Age Calculation)
+    // รองรับครบทุกรูปแบบ: Date, ISO (YYYY-MM-DD), Thai text (DD/MM/YYYY, '1 ต.ค. 2568')
+    // รองรับทั้ง พ.ศ. (>2400) และ ค.ศ., ป้องกันข้อผิดพลาดคำนวณอายุเด็ก 0-5 ปี
+    // ============================================================
+    function parseBirthDateSafe(val) {
+        if (!val || val === '-' || val === '0') return null;
+        if (val instanceof Date) {
+            if (isNaN(val.getTime())) return null;
+            let y = val.getFullYear();
+            if (y > 2400) y -= 543;
+            return new Date(y, val.getMonth(), val.getDate());
+        }
+        const s = String(val).trim();
+        if (!s || s === '-' || s === '0' || s === 'undefined' || s === 'null') return null;
+
+        // 1. ISO: YYYY-MM-DD or YYYY/MM/DD
+        const isoM = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+        if (isoM) {
+            let y = parseInt(isoM[1], 10);
+            let m = parseInt(isoM[2], 10);
+            let d = parseInt(isoM[3], 10);
+            if (y > 2400) y -= 543;
+            if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                return new Date(y, m - 1, d);
+            }
+        }
+
+        // 2. DD/MM/YYYY or DD-MM-YYYY
+        const ddmmyyyy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+        if (ddmmyyyy) {
+            let p1 = parseInt(ddmmyyyy[1], 10);
+            let p2 = parseInt(ddmmyyyy[2], 10);
+            let y = parseInt(ddmmyyyy[3], 10);
+            if (y < 100) y += (y > 40 ? 2500 - 543 : 2000);
+            if (y > 2400) y -= 543;
+            let d = p1;
+            let m = p2;
+            if (p2 > 12 && p1 <= 12) { m = p1; d = p2; }
+            if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                return new Date(y, m - 1, d);
+            }
+        }
+
+        // 3. Thai month text, e.g. "1 ต.ค. 2568"
+        const thaiMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.',
+                            'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+        const parts = s.split(/[\s/-]+/);
+        if (parts.length >= 3) {
+            let d = parseInt(parts[0], 10);
+            let mStr = parts[1];
+            let y = parseInt(parts[2], 10);
+            let mIdx = thaiMonths.findIndex(tm => tm === mStr);
+            if (mIdx !== -1) {
+                let m = (mIdx % 12) + 1;
+                if (y < 100) y += (y > 40 ? 2500 - 543 : 2000);
                 if (y > 2400) y -= 543;
-                dob = new Date(y, parseInt(isoM[2], 10) - 1, parseInt(isoM[3], 10));
-            } else {
-                // DD/MM/YYYY
-                const ddmmyyyy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-                if (ddmmyyyy) {
-                    let y = parseInt(ddmmyyyy[3], 10);
-                    if (y < 100) y += 2000;
-                    if (y > 2400) y -= 543;
-                    dob = new Date(y, parseInt(ddmmyyyy[2], 10) - 1, parseInt(ddmmyyyy[1], 10));
-                } else {
-                    const parsed = new Date(s);
-                    if (!isNaN(parsed.getTime())) dob = parsed;
+                if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                    return new Date(y, m - 1, d);
                 }
             }
         }
-        if (!dob || isNaN(dob.getTime())) return '-';
-        const today = new Date();
-        let years = today.getFullYear() - dob.getFullYear();
-        let months = today.getMonth() - dob.getMonth();
-        if (months < 0 || (months === 0 && today.getDate() < dob.getDate())) {
+
+        // 4. Fallback Date parse
+        const parsed = new Date(s);
+        if (!isNaN(parsed.getTime())) {
+            let y = parsed.getFullYear();
+            if (y > 2400) y -= 543;
+            return new Date(y, parsed.getMonth(), parsed.getDate());
+        }
+        return null;
+    }
+
+    function calculateChildAgeDetail(birthDateVal, asOfDate) {
+        const dob = parseBirthDateSafe(birthDateVal);
+        if (!dob) return null;
+
+        const refDate = (asOfDate && asOfDate instanceof Date && !isNaN(asOfDate.getTime())) ? asOfDate : new Date();
+
+        let years = refDate.getFullYear() - dob.getFullYear();
+        let months = refDate.getMonth() - dob.getMonth();
+        let days = refDate.getDate() - dob.getDate();
+
+        if (days < 0) {
+            months--;
+            const prevMonthDays = new Date(refDate.getFullYear(), refDate.getMonth(), 0).getDate();
+            days += prevMonthDays;
+        }
+        if (months < 0) {
             years--;
             months += 12;
         }
-        if (today.getDate() < dob.getDate()) {
-            months--;
-            if (months < 0) {
-                years--;
-                months = 11;
-            }
+
+        if (years < 0) {
+            years = 0; months = 0; days = 0;
         }
-        if (years <= 0 && months <= 0) return 'ไม่ถึง 1 เดือน';
-        let res = [];
-        if (years > 0) res.push(years + ' ปี');
-        if (months > 0) res.push(months + ' เดือน');
-        return res.join(' ') || '-';
+
+        const totalMonths = years * 12 + months;
+        const decimalMonths = totalMonths + (days / 30);
+
+        let text = '';
+        if (years > 0) {
+            text = years + ' ปี';
+            if (months > 0) text += ' ' + months + ' เดือน';
+        } else if (months > 0) {
+            text = months + ' เดือน';
+            if (days > 0) text += ' ' + days + ' วัน';
+        } else {
+            text = days > 0 ? (days + ' วัน') : 'แรกเกิด';
+        }
+
+        return {
+            years: years,
+            months: months,
+            days: days,
+            totalMonths: totalMonths,
+            decimalMonths: decimalMonths,
+            text: text,
+            dob: dob
+        };
     }
+
+    // ✅ คำนวณอายุเป็นข้อความ "X ปี Y เดือน Z วัน" จากวันเกิดอย่างแม่นยำ
+    function calculateAgeString(birthDateVal, asOfDate) {
+        const detail = calculateChildAgeDetail(birthDateVal, asOfDate);
+        return detail ? detail.text : '-';
+    }
+
+    // Expose helpers globally for other components & modals
+    window.parseBirthDateSafe = parseBirthDateSafe;
+    window.calculateChildAgeDetail = calculateChildAgeDetail;
+    window.calculateAgeString = calculateAgeString;
 
     // ✅ ค้นหาคอลัมน์แบบรองรับชื่อพ้องทั้งภาษาไทยและอังกฤษ (Synonym-Aware)
     function findColumnIndex(headers, possibleNames, defaultIdx = -1) {
@@ -12438,15 +12594,22 @@ window.switchLogTab = function(tab) {
     }
     
     const facilityEl = document.getElementById('cFacility');
+    const isAdminAmpur = isAdminAmpurUser();
+    const isSpecialOfficer = isSpecialOfficerUser();
+    const canSelectAll = isAdminAmpur || isSpecialOfficer;
+    const effectiveHcode = canSelectAll 
+        ? (facilityEl ? facilityEl.value : 'ทั้งหมด')
+        : (APP.currentUser && APP.currentUser.hcode ? APP.currentUser.hcode : '');
+
     const filters = {
-            hcode: facilityEl ? facilityEl.value : 'ทั้งหมด',
+            hcode: effectiveHcode || 'ทั้งหมด',
             search: document.getElementById('cSearch') ? document.getElementById('cSearch').value.trim() : '',
             status: document.getElementById('cStatus') ? document.getElementById('cStatus').value : 'ทั้งหมด',
             village: document.getElementById('cVillage') ? document.getElementById('cVillage').value : 'ทั้งหมด',
-            userRole: APP.currentUser.role,
-            userHcode: APP.currentUser.hcode,
-            userSubdistrict: APP.currentUser.subdistrict,
-            userVillage: APP.currentUser.village         
+            userRole: APP.currentUser ? APP.currentUser.role : '',
+            userHcode: APP.currentUser ? APP.currentUser.hcode : '',
+            userSubdistrict: APP.currentUser ? APP.currentUser.subdistrict : '',
+            userVillage: APP.currentUser ? APP.currentUser.village : ''         
         };
 
         try {
@@ -12459,6 +12622,15 @@ window.switchLogTab = function(tab) {
 
             const ageFilter = document.getElementById('cAge') ? document.getElementById('cAge').value : 'all';
             let childrenList = (result.success && result.children) ? result.children : [];
+
+            // ✅ Client-side Guard: กรองสถานพยาบาลของตัวเองอย่างเด็ดขาดสำหรับเจ้าหน้าที่
+            if (!canSelectAll && APP.currentUser && APP.currentUser.hcode) {
+                const myHcNorm = String(APP.currentUser.hcode).replace(/^0+/, '');
+                childrenList = childrenList.filter(function(c) {
+                    const cHcNorm = String(c.hcode || '').replace(/^0+/, '');
+                    return cHcNorm === myHcNorm;
+                });
+            }
 
             // filter age
             childrenList = childrenList.filter(function(c) {
@@ -12622,15 +12794,22 @@ window.switchLogTab = function(tab) {
     }
     
     const facilityEl = document.getElementById('mFacility');
+    const isAdminAmpur = isAdminAmpurUser();
+    const isSpecialOfficer = isSpecialOfficerUser();
+    const canSelectAll = isAdminAmpur || isSpecialOfficer;
+    const effectiveHcode = canSelectAll 
+        ? (facilityEl ? facilityEl.value : 'ทั้งหมด')
+        : (APP.currentUser && APP.currentUser.hcode ? APP.currentUser.hcode : '');
+
         const filters = {
-            hcode: facilityEl ? facilityEl.value : 'ทั้งหมด',
+            hcode: effectiveHcode || 'ทั้งหมด',
             search: document.getElementById('mSearch') ? document.getElementById('mSearch').value.trim() : '',
             status: 'ขาดนัด',
             village: document.getElementById('mVillage') ? document.getElementById('mVillage').value : 'ทั้งหมด',
-            userRole: APP.currentUser.role,
-            userHcode: APP.currentUser.hcode,
-            userSubdistrict: APP.currentUser.subdistrict,
-            userVillage: APP.currentUser.village
+            userRole: APP.currentUser ? APP.currentUser.role : '',
+            userHcode: APP.currentUser ? APP.currentUser.hcode : '',
+            userSubdistrict: APP.currentUser ? APP.currentUser.subdistrict : '',
+            userVillage: APP.currentUser ? APP.currentUser.village : ''
         };
 
         try {
@@ -12641,6 +12820,17 @@ window.switchLogTab = function(tab) {
 
             destroyDT('missingTable');
             tbody.innerHTML = '';
+
+            let childrenList = (result.success && result.children) ? result.children : [];
+
+            // ✅ Client-side Guard: กรองสถานพยาบาลของตัวเองอย่างเด็ดขาดสำหรับเจ้าหน้าที่
+            if (!canSelectAll && APP.currentUser && APP.currentUser.hcode) {
+                const myHcNorm = String(APP.currentUser.hcode).replace(/^0+/, '');
+                childrenList = childrenList.filter(function(c) {
+                    const cHcNorm = String(c.hcode || '').replace(/^0+/, '');
+                    return cHcNorm === myHcNorm;
+                });
+            }
 
             if (!result.success || !result.children || result.children.length === 0) {
                 APP.missingAllRecords = [];
@@ -20339,19 +20529,33 @@ async function fetchAndRenderPcvData() {
     showLoading('กำลังโหลดรายชื่อเด็กเป้าหมาย PCV...');
     try {
         const facEl = document.getElementById('pcvFacility');
-        const selectedFacility = facEl ? facEl.value : 'ทั้งหมด';
+        const isAdminAmpur = isAdminAmpurUser();
+        const isSpecialOfficer = isSpecialOfficerUser();
+        const canSelectAll = isAdminAmpur || isSpecialOfficer;
+        const selectedFacility = canSelectAll
+            ? (facEl ? facEl.value : 'ทั้งหมด')
+            : (APP.currentUser && APP.currentUser.hcode ? APP.currentUser.hcode : '');
         const typeEl = document.getElementById('pcvType');
         const selectedType = typeEl ? typeEl.value : 'in_area';
 
         const res = await callGAS('getPcvTargetReport', [{
-            hcode: selectedFacility,
+            hcode: selectedFacility || 'ทั้งหมด',
             type: selectedType,
             userRole: APP.currentUser ? APP.currentUser.role : '',
             userHcode: APP.currentUser ? APP.currentUser.hcode : ''
         }]);
 
         if (res && res.success) {
-            PCV_RAW_CHILDREN = res.children || [];
+            let list = res.children || [];
+            // ✅ Client-side Guard: ป้องกันข้อมูลข้ามสถานพยาบาลสำหรับเจ้าหน้าที่
+            if (!canSelectAll && APP.currentUser && APP.currentUser.hcode) {
+                const myHcNorm = String(APP.currentUser.hcode).replace(/^0+/, '');
+                list = list.filter(function(c) {
+                    const cHcNorm = String(c.hcode || '').replace(/^0+/, '');
+                    return cHcNorm === myHcNorm;
+                });
+            }
+            PCV_RAW_CHILDREN = list;
         } else {
             PCV_RAW_CHILDREN = [];
         }
