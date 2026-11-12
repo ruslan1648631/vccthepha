@@ -6365,7 +6365,8 @@
                 const rawDob = row.DOB || row.dob || row.birthdate || row['\u0E27/\u0E14/\u0E1B\u0E40\u0E01\u0E34\u0E14'] || row['\u0E27\u0E31\u0E19\u0E40\u0E01\u0E34\u0E14'] || '';
                 if (!rawDob || rawDob === '-' || rawDob === '0') return;
                 const isoDob = parseThaiDateToISO(rawDob);
-                if (!isoDob || isoDob < '2025-10-01') return;
+                const todayIso = new Date().toISOString().slice(0, 10);
+                if (!isoDob || isoDob < '2025-10-01' || isoDob > todayIso) return; // ✅ ข้ามเด็กที่เกิดก่อน 1 ต.ค. 2568 หรือวันเกิดเป็นอนาคต (ข้อมูลผิดพลาด)
 
                 const rowId = String(row.CID || row.cid || row.ID || row.id || row['\u0E40\u0E25\u0E02\u0E1A\u0E31\u0E15\u0E23'] || '-').trim();
                 const rowHn = String(row.HN || row.hn || row['\u0E23\u0E2B\u0E31\u0E2A'] || '-').trim();
@@ -14921,7 +14922,12 @@ window.switchLogTab = function(tab) {
     function parseThaiDateToISO(thaiDateStr) {
         if (!thaiDateStr) return null;
         if (thaiDateStr instanceof Date) {
-            return !isNaN(thaiDateStr.getTime()) ? thaiDateStr.toISOString().slice(0, 10) : null;
+            if (isNaN(thaiDateStr.getTime())) return null;
+            let y = thaiDateStr.getFullYear();
+            let m = thaiDateStr.getMonth() + 1;
+            let d = thaiDateStr.getDate();
+            if (y > 2400) y -= 543;
+            return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         }
         const s = String(thaiDateStr).trim();
         if (!s || s === '-' || s === '0' || s === 'undefined' || s === 'null') return null;
